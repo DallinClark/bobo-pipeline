@@ -55,7 +55,6 @@ class MPlayblaster(Playblaster):
                     )
                 },
                 "enableTextureMaxRes": True,
-                "hwFogEnable": True,
                 "maxHardwareLights": 16,
                 "multiSampleEnable": True,
             }
