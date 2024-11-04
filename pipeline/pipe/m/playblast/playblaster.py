@@ -88,6 +88,7 @@ class MPlayblaster(Playblaster):
 
             if self._config.hardware_fog:
                 global_kwargs["viewport_options"].update({"fogging": True})
+                global_kwargs["viewport2_options"].update({"hwFogEnable": True})
 
             if self._config.lighting:
                 global_kwargs["viewport_options"].update({"displayLights": "all"})
