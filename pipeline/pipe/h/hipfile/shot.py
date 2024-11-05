@@ -45,6 +45,11 @@ class HShotFileManager(HFileManager):
     def _get_subpath(self) -> str:
         return self._department
 
+    def _post_open_file(self, entity: SGEntity):
+        shot = cast(Shot, entity)
+        hou.playbar.setFrameRange(shot.cut_in - 5, shot.cut_out + 5)
+        hou.playbar.setPlaybackRange(shot.cut_in - 5, shot.cut_out + 5)
+
     def _setup_file(self, path: Path, entity: SGEntity) -> None:
         super(HShotFileManager, HShotFileManager)._setup_file(self, path, entity)
         shot = cast(Shot, entity)
@@ -69,8 +74,8 @@ class HShotFileManager(HFileManager):
         for dep in muted_deps:
             load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
 
-        if shot.set:
-            layout = self._conn.get_env_by_stub(shot.set)
+        if env_stub := (shot.set or self._conn.get_sequence_by_stub(shot.sequence).set):  # type: ignore[arg-type]
+            layout = self._conn.get_env_by_stub(env_stub)
             load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
 
         layer_break = stage.createNode("layerbreak")
@@ -94,5 +99,7 @@ class HShotFileManager(HFileManager):
         begin_dep.setPosition((0, 4))
         layer_break.setPosition((0, 5))
         load_layer.setPosition((0, 6))
+
+        self._post_open_file(shot)
 
         hou.hipFile.save()

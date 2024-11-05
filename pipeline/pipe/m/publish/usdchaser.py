@@ -21,6 +21,14 @@ class ChaserMode(IntEnum):
     CHAR = 3
 
 
+def get_frames_from_attr(attr: Usd.Attribute) -> Iterable[Usd.TimeCode]:
+    return (
+        (Usd.TimeCode(f) for f in attr.GetTimeSamples())
+        if attr.GetNumTimeSamples()
+        else (Usd.TimeCode.Default(),)
+    )
+
+
 def scale_down_geo(stage: Usd.Stage, scale_factor: float = 0.01) -> None:
     """Recurse through the stage and scale down all Mesh and BasisCurves prims by
     `scale_factor`"""
@@ -28,23 +36,25 @@ def scale_down_geo(stage: Usd.Stage, scale_factor: float = 0.01) -> None:
     root_prim = stage.GetPseudoRoot()
 
     for prim in (it := iter(Usd.PrimRange(root_prim))):
+        extent = prim.GetAttribute(UsdGeom.Tokens.extent)
+        if extent.IsValid():
+            for frame in get_frames_from_attr(extent):
+                data = np.array(extent.Get(frame))
+                data *= scale_factor
+                extent.Set(Vt.Vec3fArray.FromNumpy(data), frame)  # type: ignore[arg-type]
+
         if not (prim.IsA(UsdGeom.Mesh) or prim.IsA(UsdGeom.BasisCurves)):  # type: ignore[call-overload]
             continue
+
         # don't recurse deeper than this
         it.PruneChildren()
 
-        for attr_token in (UsdGeom.Tokens.points, UsdGeom.Tokens.extent):
+        for attr_token in (UsdGeom.Tokens.points,):
             attr = prim.GetAttribute(attr_token)
             if not attr.IsValid():
                 continue
 
-            frames: Iterable[Usd.TimeCode] = (
-                (Usd.TimeCode(f) for f in attr.GetTimeSamples())
-                if attr.GetNumTimeSamples()
-                else (Usd.TimeCode.Default(),)
-            )
-
-            for frame in frames:
+            for frame in get_frames_from_attr(attr):
                 data = np.array(attr.Get(frame))
                 data *= scale_factor
                 attr.Set(Vt.Vec3fArray.FromNumpy(data), frame)  # type: ignore[arg-type]
