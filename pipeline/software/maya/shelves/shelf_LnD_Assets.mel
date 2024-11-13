@@ -32,7 +32,7 @@ global proc shelf_LnD_Assets () {
         -style "iconOnly" 
         -marginWidth 0
         -marginHeight 1
-        -command "from pipe.m.asset import ModelChecker; chck = ModelChecker.get(); chck.configure(); chck.show_UI();" 
+        -command "from pipe.m.publish import ModelChecker; chck = ModelChecker.get(); chck.configure(); chck.show_UI();" 
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
