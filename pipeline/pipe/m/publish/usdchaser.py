@@ -8,7 +8,7 @@ from enum import IntEnum
 from math import isclose
 from pathlib import Path
 from pxr import Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from typing import Callable, Iterable
@@ -332,8 +332,10 @@ def split_preroll(
 @attrs.define
 class ChaserArgs:
     mode: ChaserMode = attrs.field(converter=int)
-    timeline: Timeline = attrs.field(
-        default=None, kw_only=True, converter=lambda t: Timeline.from_json(t)
+    timeline: Optional[Timeline] = attrs.field(
+        default=None,
+        kw_only=True,
+        converter=lambda t: Timeline.from_json(t) if t else None,
     )
 
 
@@ -355,6 +357,8 @@ class ExportChaser(mayaUsdLib.ExportChaser):
     @log_errors
     def PostExport(self) -> bool:
         if self._chaser_args.mode == ChaserMode.ANIM:
+            assert self._chaser_args.timeline is not None
+            
             scale_down_geo(self._stage)
             make_topo_attrs_default(self._stage)
             layers = split_by_namespace(self._stage, "anim")
