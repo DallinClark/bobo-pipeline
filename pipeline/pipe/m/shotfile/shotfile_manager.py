@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import mayaUsd  # type: ignore[import-not-found]
 import maya.api.OpenMaya as om
