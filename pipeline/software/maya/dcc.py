@@ -4,7 +4,6 @@ import logging
 import os
 import platform
 import shutil
-import sys
 
 from pathlib import Path
 from typing import TYPE_CHECKING

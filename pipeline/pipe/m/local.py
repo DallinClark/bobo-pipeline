@@ -17,7 +17,7 @@ class _MayaLocalizer(DCCLocalizer):
         if not self.is_headless():
             ptr = omUI.MQtUtil.mainWindow()
             if ptr is not None:
-                return QtCompat.wrapInstance(int(ptr), QtWidgets.QWidget)
+                return QtCompat.wrapInstance(int(ptr), QtWidgets.QWidget)  # type: ignore[attr-defined]
         return None
 
     def is_headless(self) -> bool:
