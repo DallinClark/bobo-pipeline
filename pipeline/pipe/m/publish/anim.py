@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 
 from pathlib import Path
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 import maya.cmds as mc
 
 from pipe.glui.dialogs import MessageDialog
+from pipe.m.util import maintain_selection
 from pipe.struct.timeline import Timeline
 from shared.util import get_production_path
 
@@ -65,10 +67,19 @@ class AnimPublisher(Publisher):
 
     def _get_mayausd_kwargs(self) -> dict[str, Any]:
         timeline = Timeline.from_shot(self._shot, preroll_duration=55)
+        prop_sets = mc.ls("::" + PROP_SET, sets=True)
+        props = dict()
+        with maintain_selection():
+            for s in prop_sets:
+                mc.select(s)
+                namespace = s.split(":")[0]
+                props[namespace] = [n.split(":")[1] for n in mc.ls(selection=True)]
+
         return {
             "chaser": [ExportChaser.ID],
             "chaserArgs": [
                 (ExportChaser.ID, "mode", ChaserMode.ANIM),
+                (ExportChaser.ID, "props", json.dumps(props)),
                 (ExportChaser.ID, "timeline", timeline.to_json()),
             ],
             "exportColorSets": False,

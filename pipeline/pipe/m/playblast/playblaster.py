@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from mayacapture.capture import capture  # type: ignore[import-not-found]
+from pipe.m.util import maintain_selection
 from pipe.util import Playblaster
 
 from .struct import HudDefinition, MPlayblastConfig
@@ -79,7 +80,7 @@ class MPlayblaster(Playblaster):
     def playblast(self) -> None:
         with applied_hud(
             self._config.builtin_huds, self._config.custom_huds
-        ), unselect_all():
+        ), maintain_selection():
             # assemble kwargs from config options
             global_kwargs: dict[str, Any] = {
                 "viewport_options": {},
@@ -167,14 +168,3 @@ def applied_hud(
 
         for chud in custom_huds:
             mc.headsUpDisplay(chud.name, remove=True)
-
-
-@contextmanager
-def unselect_all() -> Generator[None, None, None]:
-    selection = mc.ls(selection=True, long=True, ufeObjects=True, absoluteName=True)
-    mc.select(clear=True)
-
-    try:
-        yield
-    finally:
-        mc.select(*selection, replace=True)

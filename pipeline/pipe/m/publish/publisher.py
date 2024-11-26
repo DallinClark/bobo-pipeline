@@ -12,6 +12,7 @@ import maya.cmds as mc
 import pipe
 from pipe.db import DB
 from pipe.glui.dialogs import FilteredListDialog, MessageDialog
+from pipe.m.util import maintain_selection
 from pipe.struct.db import SGEntity
 from env_sg import DB_Config
 
@@ -113,69 +114,76 @@ class Publisher:
           - `presave(self)`
           - `get_mayausd_kwargs(self) -> dict[str, Any]`
         """
-        if not self._prepublish():
-            return
-
-        if entity_list := self._get_entity_list():
-            # if there is a non-empty entity list, prompt the user with a dialog
-            self._dialog = self._dialog_T(self._window, entity_list)
-            if not self._dialog.exec_():
+        with maintain_selection():
+            if not self._prepublish():
                 return
 
-            self._selected_item = self._dialog.get_selected_item()
+            if entity_list := self._get_entity_list():
+                # if there is a non-empty entity list, prompt the user with a dialog
+                self._dialog = self._dialog_T(self._window, entity_list)
+                if not self._dialog.exec_():
+                    return
 
-            if self._selected_item is None:
-                error = MessageDialog(
-                    self._window, "Error: Nothing selected. Nothing exported", "Error"
-                )
-                error.exec_()
-                return
+                self._selected_item = self._dialog.get_selected_item()
 
-            # get the corresponding SGEntity object
-            if self._use_sg_entity:
-                try:
-                    self._entity = self._get_entity_from_name(self._selected_item)
-                except AssertionError:
+                if self._selected_item is None:
                     error = MessageDialog(
                         self._window,
-                        "Error: The selected item did not correspond to a valid "
-                        f"{self._entity.__class__.__name__} in ShotGrid. Please "
-                        "report this error. Nothing exported",
+                        "Error: Nothing selected. Nothing exported",
                         "Error",
                     )
                     error.exec_()
                     return
-                log.debug(self._entity)
 
-        self._publish_path = self._get_save_path()
-        if not self._publish_path:
-            mc.error("No save path found!")
-            return
+                # get the corresponding SGEntity object
+                if self._use_sg_entity:
+                    try:
+                        self._entity = self._get_entity_from_name(self._selected_item)
+                    except AssertionError:
+                        error = MessageDialog(
+                            self._window,
+                            "Error: The selected item did not correspond to a valid "
+                            f"{self._entity.__class__.__name__} in ShotGrid. Please "
+                            "report this error. Nothing exported",
+                            "Error",
+                        )
+                        error.exec_()
+                        return
+                    log.debug(self._entity)
 
-        if not self._presave():
-            return
+            self._publish_path = self._get_save_path()
+            if not self._publish_path:
+                mc.error("No save path found!")
+                return
 
-        self._publish_path.parent.mkdir(parents=True, exist_ok=True)
-        temp_publish_path = os.getenv("TEMP", "") + os.pathsep + self._publish_path.name
+            if not self._presave():
+                return
 
-        kwargs = {
-            "file": str(temp_publish_path if self._IS_WINDOWS else self._publish_path),
-            "selection": True,
-            "stripNamespaces": True,
-            # "writeDefaults": True,
-            **self._get_mayausd_kwargs(),
-        }
+            self._publish_path.parent.mkdir(parents=True, exist_ok=True)
+            temp_publish_path = (
+                os.getenv("TEMP", "") + os.pathsep + self._publish_path.name
+            )
 
-        mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
+            kwargs = {
+                "file": str(
+                    temp_publish_path if self._IS_WINDOWS else self._publish_path
+                ),
+                "selection": True,
+                "stripNamespaces": True,
+                # "writeDefaults": True,
+                **self._get_mayausd_kwargs(),
+            }
 
-        # if on Windows, work around this bug: https://github.com/PixarAnimationStudios/OpenUSD/issues/849
-        # TODO: check if this is still needed in Maya 2026
-        if self._IS_WINDOWS:
-            shutil.move(temp_publish_path, self._publish_path)
+            mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
 
-        confirm = MessageDialog(
-            self._window,
-            self._get_confirm_message(),
-            "Export Complete",
-        )
-        confirm.exec_()
+            # if on Windows, work around this bug: https://github.com/PixarAnimationStudios/OpenUSD/issues/849
+            # TODO: check if this is still needed in Maya 2026
+            if self._IS_WINDOWS:
+                shutil.move(temp_publish_path, self._publish_path)
+
+            confirm = MessageDialog(
+                self._window,
+                self._get_confirm_message(),
+                "Export Complete",
+            )
+            confirm.exec_()

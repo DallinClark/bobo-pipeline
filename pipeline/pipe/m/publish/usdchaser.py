@@ -1,20 +1,30 @@
 from __future__ import annotations
 
 import attrs
+import json
 import numpy as np
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 
 from enum import IntEnum
 from math import isclose
 from pathlib import Path
-from pxr import Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from typing import Callable, Iterable
+    from typing import Any, Callable, Iterable, Protocol
 
+    class TimeSampleble(Protocol):
+        def GetTimeSamples(self) -> list[float]: ...
+        def GetNumTimeSamples(self) -> int: ...
+
+
+from pipe.db import DB
 from pipe.struct.timeline import Timeline
 from pipe.util import log_errors
+from shared.util import get_production_path
+
+from env_sg import DB_Config
 
 
 class ChaserMode(IntEnum):
@@ -23,7 +33,7 @@ class ChaserMode(IntEnum):
     CHAR = 3
 
 
-def get_frames_from_attr(attr: Usd.Attribute) -> Iterable[Usd.TimeCode]:
+def get_frames_from_attr(attr: TimeSampleble) -> Iterable[Usd.TimeCode]:
     return (
         (Usd.TimeCode(f) for f in attr.GetTimeSamples())
         if attr.GetNumTimeSamples()
@@ -45,6 +55,7 @@ def scale_down_geo(stage: Usd.Stage, scale_factor: float = 0.01) -> None:
     `scale_factor`"""
 
     root_prim = stage.GetPseudoRoot()
+    data: Any
 
     for prim in (it := iter(Usd.PrimRange(root_prim))):
         extent = prim.GetAttribute(UsdGeom.Tokens.extent)
@@ -53,6 +64,28 @@ def scale_down_geo(stage: Usd.Stage, scale_factor: float = 0.01) -> None:
                 data = np.array(extent.Get(frame))
                 data *= scale_factor
                 extent.Set(Vt.Vec3fArray.FromNumpy(data), frame)  # type: ignore[arg-type]
+
+        xformable = UsdGeom.Xformable(prim)
+        xformop: UsdGeom.XformOp
+        for xformop in xformable.GetOrderedXformOps():
+            xform_type = UsdGeom.XformOp.GetOpTypeToken(xformop.GetOpType())
+
+            if (not xformop.IsDefined()) or xformop.IsInverseOp():
+                continue
+
+            if xform_type == UsdGeom.XformOpTypes.translate:
+                for frame in get_frames_from_attr(xformop):
+                    data: Gf.Vec3d = xformop.Get(frame)  # type: ignore[no-redef]
+                    data *= scale_factor
+                    xformop.Set(data, frame)
+
+            elif xform_type == UsdGeom.XformOpTypes.transform:
+                for frame in get_frames_from_attr(xformop):
+                    data: Gf.Matrix4d = xformop.GetOpTransform(frame)  # type: ignore[no-redef]
+                    translate = data.ExtractTranslation()
+                    translate *= scale_factor
+                    data.SetTranslateOnly(translate)
+                    xformop.Set(data, frame)
 
         if not (prim.IsA(UsdGeom.Mesh) or prim.IsA(UsdGeom.BasisCurves)):  # type: ignore[call-overload]
             continue
@@ -69,14 +102,6 @@ def scale_down_geo(stage: Usd.Stage, scale_factor: float = 0.01) -> None:
                 data = np.array(attr.Get(frame))
                 data *= scale_factor
                 attr.Set(Vt.Vec3fArray.FromNumpy(data), frame)  # type: ignore[arg-type]
-
-        for attr_name in ("xformOp:translate", "xformOp:translate:pivot"):
-            attr = prim.GetAttribute(attr_name)
-            if not attr.IsValid():
-                continue
-            data = attr.Get()
-            data *= scale_factor
-            attr.Set(data)
 
     UsdGeom.SetStageMetersPerUnit(
         stage, UsdGeom.GetStageMetersPerUnit(stage) / scale_factor
@@ -184,7 +209,7 @@ def find_and_move_prim(
     move_prim(layer, prim_to_move, new_prim_parent)
 
 
-def remove_namespace(layer: Sdf.Layer) -> None:
+def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> None:
     edit = Sdf.BatchNamespaceEdit()
 
     def traverse_kernel(path: Sdf.Path | str):
@@ -193,7 +218,7 @@ def remove_namespace(layer: Sdf.Layer) -> None:
         if path.IsPrimPath():
             edit.Add(Sdf.NamespaceEdit.Rename(path, path.name.split("_", 1)[1]))
 
-    layer.Traverse(Sdf.Path("/"), traverse_kernel)
+    layer.Traverse(root, traverse_kernel)
     layer.Apply(edit)
 
 
@@ -203,8 +228,16 @@ def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
     stage.SetEditTarget(root_layer)
 
     child_names = stage.GetPseudoRoot().GetChildrenNames()
-    namespaces = set((n.split("_", 1)[0] for n in child_names))
+    namespaces = set()
+    for n in child_names:
+        namespace, item = n.split("_", 1)
+        if item.startswith("S_"):  # static props
+            remove_namespace(root_layer, Sdf.Path("/" + n))
+            remove_namespace(root_layer, Sdf.Path("/" + item))
+            s, namespace, _ = item.split("_", 2)
+        namespaces.add(namespace)
 
+    child_names = stage.GetPseudoRoot().GetChildrenNames()
     layers: dict[str, Sdf.Layer] = dict()
     for namespace in namespaces:
         layer_name = namespace.lower()
@@ -337,6 +370,11 @@ class ChaserArgs:
         kw_only=True,
         converter=lambda t: Timeline.from_json(t) if t else None,
     )
+    props: Optional[dict[str, list[str]]] = attrs.field(
+        default=None,
+        kw_only=True,
+        converter=lambda p: json.loads(p) if p else None,
+    )
 
 
 class ExportChaser(mayaUsdLib.ExportChaser):
@@ -357,6 +395,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
     @log_errors
     def PostExport(self) -> bool:
         if self._chaser_args.mode == ChaserMode.ANIM:
+            assert self._chaser_args.props is not None
             assert self._chaser_args.timeline is not None
 
             scale_down_geo(self._stage)
@@ -366,6 +405,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
             root_layer = self._stage.GetRootLayer()
             root_layer_path = Path(root_layer.realPath)
 
+            conn = DB.Get(DB_Config)
             character_root_path = Sdf.Path("/ROOT/MODEL")
 
             for name, layer in layers.items():
@@ -384,6 +424,18 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 )
 
                 char_prim_spec.referenceList.appendedItems = [reference]
+
+                try:
+                    asset = conn.get_asset_by_attr("name", name)
+                    assert asset.path is not None
+                except Exception:
+                    raise Exception(f"Could not find asset matching namespace {name}")
+
+                rig_path = f"{asset.path}/usd/main.usd"
+                walk_up_len = (
+                    len(root_layer_path.relative_to(get_production_path()).parts) - 1
+                )
+                root_layer.subLayerPaths.append("../" * walk_up_len + rig_path)
 
         elif self._chaser_args.mode == ChaserMode.CHAR:
             scale_down_geo(self._stage)
