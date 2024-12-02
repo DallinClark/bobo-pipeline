@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 @contextmanager
 def maintain_selection() -> Generator[None, None, None]:
     selection = mc.ls(selection=True, long=True, ufeObjects=True, absoluteName=True)
-    mc.select(clear=True)
 
     try:
         yield

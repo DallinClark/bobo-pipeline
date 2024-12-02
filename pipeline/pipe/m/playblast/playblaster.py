@@ -81,6 +81,8 @@ class MPlayblaster(Playblaster):
         with applied_hud(
             self._config.builtin_huds, self._config.custom_huds
         ), maintain_selection():
+            mc.select(clear=True)
+
             # assemble kwargs from config options
             global_kwargs: dict[str, Any] = {
                 "viewport_options": {},
