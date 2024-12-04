@@ -430,12 +430,12 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     assert asset.path is not None
                     rig_path = f"{asset.path}/usd/main.usd"
                     walk_up_len = (
-                        len(root_layer_path.relative_to(get_production_path()).parts) - 1
+                        len(root_layer_path.relative_to(get_production_path()).parts)
+                        - 1
                     )
                     root_layer.subLayerPaths.append("../" * walk_up_len + rig_path)
                 except Exception:
                     print(f"Warning! Could not find asset matching namespace {name}")
-
 
         elif self._chaser_args.mode == ChaserMode.CHAR:
             scale_down_geo(self._stage)
