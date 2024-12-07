@@ -64,6 +64,7 @@ class MShotFileManager(FileManager):
         # change default render resolution
         mc.setAttr("defaultResolution.width", 1920)  # type: ignore[arg-type]
         mc.setAttr("defaultResolution.height", 816)  # type: ignore[arg-type]
+        mc.setAttr("defaultResolution.pixelAspect", 1.0)  # type: ignore[arg-type]
 
         # set session USD target layer to the override layer
         try:
