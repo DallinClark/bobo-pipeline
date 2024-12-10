@@ -65,6 +65,7 @@ class MShotFileManager(FileManager):
         mc.setAttr("defaultResolution.width", 1920)  # type: ignore[arg-type]
         mc.setAttr("defaultResolution.height", 816)  # type: ignore[arg-type]
         mc.setAttr("defaultResolution.pixelAspect", 1.0)  # type: ignore[arg-type]
+        mc.setAttr("defaultResolution.deviceAspectRatio", 1920 / 816)  # type: ignore[arg-type]
 
         # set session USD target layer to the override layer
         try:
@@ -117,7 +118,8 @@ class MShotFileManager(FileManager):
         classname = self.__class__.__name__
         mc.scriptNode(
             beforeScript=(
-                f"from pipe.m.shotfile import {classname}; {classname}.run_on_open()"
+                f"from pipe.m.shotfile import {classname};"
+                f"{classname}.{self.__class__.run_on_open.__name__}()"
             ),
             name=ON_OPEN_SCRIPT,
             scriptType=1,

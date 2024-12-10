@@ -20,6 +20,8 @@ class MAnimShotFileManager(MShotFileManager):
         CAM_NAME = "shotCam"
         try:
             mc.mayaUsdDiscardEdits(CAM_NAME)
+        except RuntimeError:
+            pass
         finally:
             camera_prim = next(
                 prim
