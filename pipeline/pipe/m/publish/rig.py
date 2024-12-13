@@ -32,6 +32,7 @@ class RigPublisher(Publisher):
             "chaserArgs": [(ExportChaser.ID, "mode", ChaserMode.CHAR)],
             "exportCollectionBasedBindings": True,
             "exportMaterialCollections": True,
+            "legacyMaterialScope": True,
             "materialCollectionsPath": "/ROOT/MODEL",
             "shadingMode": "useRegistry",
         }
