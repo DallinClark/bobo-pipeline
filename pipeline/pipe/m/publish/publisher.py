@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import shutil
+import traceback
 from functools import wraps
 from pathlib import Path
 
@@ -177,6 +178,7 @@ class Publisher:
             try:
                 mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
             except Exception:
+                print(traceback.format_exc())
                 MessageDialog(
                     self._window,
                     "WARNING: Publish failed! Please check the console for more information",

@@ -406,9 +406,14 @@ class ExportChaser(mayaUsdLib.ExportChaser):
             root_layer_path = Path(root_layer.realPath)
 
             conn = DB.Get(DB_Config)
-            character_root_path = Sdf.Path("/ROOT/MODEL")
 
             for name, layer in layers.items():
+                # the one rig that needs the controls exported instead of the mesh
+                if name == "gemheart":
+                    character_root_path = Sdf.Path("/ROOT/CTRLS")
+                else:
+                    character_root_path = Sdf.Path("/ROOT/MODEL")
+
                 stitched_layer = split_preroll(
                     layer, name, character_root_path, self._chaser_args.timeline
                 )
