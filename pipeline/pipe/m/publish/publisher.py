@@ -174,7 +174,15 @@ class Publisher:
                 **self._get_mayausd_kwargs(),
             }
 
-            mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
+            try:
+                mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
+            except Exception:
+                MessageDialog(
+                    self._window,
+                    "WARNING: Publish failed! Please check the console for more information",
+                    "Export Failed",
+                ).exec_()
+                return
 
             # if on Windows, work around this bug: https://github.com/PixarAnimationStudios/OpenUSD/issues/849
             # TODO: check if this is still needed in Maya 2026
