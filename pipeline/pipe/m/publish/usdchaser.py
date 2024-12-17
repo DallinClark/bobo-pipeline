@@ -216,7 +216,10 @@ def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> None:
         if isinstance(path, str):
             path = Sdf.Path(path)
         if path.IsPrimPath():
-            edit.Add(Sdf.NamespaceEdit.Rename(path, path.name.split("_", 1)[1]))
+            try:
+                edit.Add(Sdf.NamespaceEdit.Rename(path, path.name.split("_", 1)[1]))
+            except IndexError:
+                print(f"Namespace not changed for {str(path)}")
 
     layer.Traverse(root, traverse_kernel)
     layer.Apply(edit)
@@ -408,6 +411,8 @@ class ExportChaser(mayaUsdLib.ExportChaser):
             conn = DB.Get(DB_Config)
 
             for name, layer in layers.items():
+                print(name)
+
                 # the one rig that needs the controls exported instead of the mesh
                 if name == "gemheart":
                     character_root_path = Sdf.Path("/ROOT/CTRLS")
