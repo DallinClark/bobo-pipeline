@@ -35,8 +35,7 @@ fm.open_file()]]></script>
   </tool>
 
   <tool name="open_shot" label="Open Shot" icon="NETWORKS_scene">
-    <script scriptType="python">
-      <![CDATA[from pipe.h.hipfile import HShotFileManager
+    <script scriptType="python"><![CDATA[from pipe.h.hipfile import HShotFileManager
 HShotFileManager().open_file()]]></script>
   </tool>
 
