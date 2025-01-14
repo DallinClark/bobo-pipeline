@@ -9,9 +9,9 @@ from argparse import ArgumentParser
 from shared.util import find_implementation
 from software.interface import DCCInterface
 
-r"""Launch the BYU 2025 Capstone pipeline ("Love & Dungeons")
+r"""Launch the BYU 2026 Capstone pipeline ("Honey Buisness")
 
-With much credit to Matthew Minson and the 2024 Capstone team.
+With much credit to Scott Milner and the 2025 Capstone team.
 
 When run as a script, parse the software from the command line
 arguments, then run launch().

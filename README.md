@@ -6,9 +6,9 @@ An OS-agnostic, portable, extensible 3D pipeline for the BYU Center for Animatio
 
 ## Repo structure
 ```
-dungeon-pipeline/
-├── Dungance Painter.lnk  # Linux and Windows launchers for DCCs. 
-├── Dungaya.desktop       # These are at the root so they're easy for artists to locate
+bobo-pipeline/
+├── Bobo Painter.lnk  # Linux and Windows launchers for DCCs. 
+├── Bobaya.desktop       # These are at the root so they're easy for artists to locate
 ├── ...
 ├── LICENSE
 ├── pipeline
@@ -22,7 +22,7 @@ dungeon-pipeline/
 └── README.md
 ```
 
-## Setting up a copy of `dungeon-pipeline`
+## Setting up a copy of `bobo-pipeline`
 1. Fork this repo and clone it to the production location.
 1. Create an `pipeline/env.py` file following the specifications in `pipeline/env.py.md`. This will get things like ShotGrid auth set up, and provide OS-specific DCC executable paths.
 1. Install needed python libraries into `pipeline/lib/python/any`. (This will soon by managed via Poetry (Issue #137), for now see the list in `.githooks/setup-venv.sh`).
@@ -40,8 +40,8 @@ dungeon-pipeline/
 1. Make a local copy of the git repo
    ```bash
    cd ~/Documents
-   git clone --recurse-submodules -c core.sshCommand='ssh -i ~/.ssh/github' git@github.com:scottdmilner/dungeon-pipeline.git
-   cd dungeon-pipeline
+   git clone --recurse-submodules -c core.sshCommand='ssh -i ~/.ssh/github' git@github.com:DallinClark/bobo-pipeline.git
+   cd bobo-pipeline
    ```
 1. Configure the git repo to use the new SSH key and our git hooks
    ```bash

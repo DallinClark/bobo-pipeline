@@ -64,7 +64,7 @@ class HoudiniDCC(DCC):
                 ]
             ),
             # Splash file
-            "HOUDINI_SPLASH_FILE": str(pipe_path / "lib/splash/dunginisplash19.5.png"),
+            "HOUDINI_SPLASH_FILE": str(pipe_path / "lib/splash/bobini_splash.png"),
             # Project-specific preference overrides
             "HSITE": str(resolve_mapped_path(this_path.parent / "hsite")),
             # Job directory
