@@ -5850,7 +5850,7 @@ set N1b790a40 [stack 0]
   Read {
    inputs 0
    file_type png
-   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/undecagon.png
+   file /groups/geons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/undecagon.png
    format "512 512 0 0 512 512 1 square_512"
    origset true
    name Read26

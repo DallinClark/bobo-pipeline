@@ -1,8 +1,8 @@
-# dungeon-pipeline
+# bobo-pipeline
 
-An OS-agnostic, portable, extensible 3D pipeline for the BYU Center for Animation's 2025 Capstone film, *Love & Dungeons*.
+An OS-agnostic, portable, extensible 3D pipeline for the BYU Center for Animation's 2026 Capstone film, *Honey Buisness*.
 
-`dungeon-pipeline` is currently being used on EL8 and Windows 10 systems. It should also be functional on macOS systems, but that has not been tested.
+`bobo-pipeline` is currently being used on EL8 and Windows 10 systems. It should also be functional on macOS systems, but that has not been tested.
 
 ## Repo structure
 ```

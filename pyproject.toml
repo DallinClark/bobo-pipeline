@@ -52,7 +52,7 @@ exclude = [
 ]
 
 [tool.poetry]
-name = "dungeon-pipeline"
+name = "bobo-pipeline"
 version = "0.1.0"
 description = "Pipeline for BYU Animation's Class of 2025 capstone film"
 license = "BSD-3"
