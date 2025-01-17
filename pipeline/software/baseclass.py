@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import subprocess
@@ -46,14 +47,22 @@ class DCC(DCCInterface):
         self.env_vars = env_vars or {}
         self.pre_launch_tasks = pre_launch_tasks or (lambda: None)
 
-    def _set_env_vars(
+    def _get_env_vars(
         self, env_vars: typing.Mapping[str, int | str | None] | None = None
-    ) -> None:
+    ) -> dict[str, str]:
         """(Un)Set environment variables to their associated values.
 
         All values will be converted to strings. If a value is None,
         that environment variable will be unset.
         """
+        BASE_ENVIRON = "BASE_ENVIRON"
+
+        if BASE_ENVIRON not in os.environ:
+            venv = os.environ.copy()
+            venv[BASE_ENVIRON] = json.dumps(venv)
+        else:
+            venv = json.loads(os.environ[BASE_ENVIRON])
+
         if env_vars is None:
             env_vars = self.env_vars
 
@@ -61,10 +70,10 @@ class DCC(DCCInterface):
 
         for key, val in env_vars.items():
             if val is None:
-                if key in os.environ:
-                    del os.environ[key]
+                if key in venv:
+                    del venv[key]
             else:
-                os.environ[key] = str(val)
+                venv[key] = str(val)
 
         PYTHONPATH = "PYTHONPATH"
         if PYTHONPATH not in venv:
@@ -94,11 +103,11 @@ class DCC(DCCInterface):
 
         fix_launcher_metadata()
         pre_launch_tasks()
-        self._set_env_vars()
+        venv = self._get_env_vars()
 
         log.info("Launching the software")
         log.debug(f"Command: {command}, Args: {args}")
-        subprocess.call([command] + list(args or []))
+        subprocess.call([command] + list(args or []), env=venv)
 
 
 class DCCLocalizer(DCCLocalizerInterface):

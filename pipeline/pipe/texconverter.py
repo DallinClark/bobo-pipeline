@@ -62,7 +62,7 @@ class TexConverter:
                 img,
                 *(
                     [
-                        "--colorconvert", "ACEScg", "srgb-ap1",
+                        #"--colorconvert", "ACEScg", "srgb-ap1",
                         "-d", "uint8", 
                         "--dither",
                     ] if is_color else []
@@ -70,7 +70,7 @@ class TexConverter:
                 "--compression", "lzw" if is_color else "lossless",
                 "--planarconfig", "separate",
                 "-otex:fileformatname=tx:wrap=clamp:resize=1:prman_options=1",
-                f"{str(self.tex_path / Path(img).stem.replace('ACEScg', 'srgb-ap1'))}.tex",
+                f"{str(self.tex_path / Path(img).stem.replace)}.tex",
             ]
             # fmt: on
 
