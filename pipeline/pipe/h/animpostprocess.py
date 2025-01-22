@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hou
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING
 
 from pipe.db import DB
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     pass
 
 
-class PostProcessor:
+class PostProcessor(metaclass=ABCMeta):
     _conn: DB
 
     def __init__(self):

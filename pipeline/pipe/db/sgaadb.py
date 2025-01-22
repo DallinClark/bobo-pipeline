@@ -47,7 +47,6 @@ class SGaaDB(DBInterface):
     _sg: shotgun_api3.Shotgun
     _id: int
     _sg_entity_lists: dict[str, list[dict]]
-    _cache_lock: threading.Lock
     _update_notifier: threading.Condition
     _update_thread: threading.Thread
 
@@ -68,7 +67,6 @@ class SGaaDB(DBInterface):
         )
         self._id = config.project_id
 
-        self._cache_lock = threading.Lock()
         self._update_notifier = threading.Condition()
 
         self._sg_entity_lists = {}
@@ -99,27 +97,23 @@ class SGaaDB(DBInterface):
 
     def _load_sg_asset_list(self) -> None:
         """Load the list of assets from SG to local cache"""
-        with self._cache_lock:
-            query = _AssetListQuery(self._id)
-            self._sg_entity_lists[Asset.__name__] = query.exec(self._sg)
+        query = _AssetListQuery(self._id)
+        self._sg_entity_lists[Asset.__name__] = query.exec(self._sg)
 
     def _load_sg_env_list(self) -> None:
         """Load the list of environments from SG to local cache"""
-        with self._cache_lock:
-            query = _EnvironmentListQuery(self._id)
-            self._sg_entity_lists[Environment.__name__] = query.exec(self._sg)
+        query = _EnvironmentListQuery(self._id)
+        self._sg_entity_lists[Environment.__name__] = query.exec(self._sg)
 
     def _load_sg_sequence_list(self) -> None:
         """Load the list of sequences from SG to local cache"""
-        with self._cache_lock:
-            query = _SequenceListQuery(self._id)
-            self._sg_entity_lists[Sequence.__name__] = query.exec(self._sg)
+        query = _SequenceListQuery(self._id)
+        self._sg_entity_lists[Sequence.__name__] = query.exec(self._sg)
 
     def _load_sg_shot_list(self) -> None:
         """Load the list of shots from SG to local cache"""
-        with self._cache_lock:
-            query = _ShotListQuery(self._id)
-            self._sg_entity_lists[Shot.__name__] = query.exec(self._sg)
+        query = _ShotListQuery(self._id)
+        self._sg_entity_lists[Shot.__name__] = query.exec(self._sg)
 
     def expire_cache(self) -> None:
         with self._update_notifier:
