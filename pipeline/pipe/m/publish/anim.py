@@ -20,7 +20,7 @@ from pipe.glui.dialogs import MessageDialog
 from pipe.m.util import maintain_selection
 from pipe.struct.timeline import Timeline
 from software.houdini import HoudiniDCC
-from shared.util import get_production_path, get_pipe_path
+from shared.util import get_pipe_path, get_production_path
 
 from .publisher import Publisher
 from .usdchaser import ChaserMode, ExportChaser
@@ -92,7 +92,7 @@ class AnimPublisher(Publisher):
             "exportUVs": False,
             "frameRange": (
                 timeline.preroll,
-                timeline.end,
+                timeline.tail,
             ),
             "frameStride": 1.0 / self._shot.substeps,
             "shadingMode": "none",
