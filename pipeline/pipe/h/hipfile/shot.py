@@ -93,7 +93,7 @@ class HShotFileManager(HFileManager):
                 return
             try:
                 shot_code = str(hou.contextOption("SHOT")).split("/").pop()
-                conn = DB.Get(DB_Config)
+                conn = DB.Get(DB_Config, auto_update=False)
                 shot = conn.get_shot_by_code(shot_code)
                 self._post_open_file(shot)
             except Exception:

@@ -53,15 +53,17 @@ class SGaaDB(DBInterface):
     _conn_instances: dict[SG_Config, SGaaDB] = {}
 
     @classmethod
-    def Get(cls, config: SG_Config) -> SGaaDB:
-        if config in cls._conn_instances:
-            return cls._conn_instances[config]
+    def Get(cls, config: SG_Config, *, auto_update: bool = True) -> SGaaDB:
+        key = (config, auto_update)
+        if key in cls._conn_instances:
+            cls._conn_instances[key]._update_sg_entity_lists()
+            return cls._conn_instances[key]
         else:
             log.debug("Creating new DB instance.")
-            cls._conn_instances[config] = cls(config)
-            return cls._conn_instances[config]
+            cls._conn_instances[key] = cls(config, auto_update=auto_update)
+            return cls._conn_instances[key]
 
-    def __init__(self, config: SG_Config) -> None:
+    def __init__(self, config: SG_Config, *, auto_update: bool = True) -> None:
         self._sg = shotgun_api3.Shotgun(
             config.sg_server, config.sg_script, config.sg_key
         )
@@ -75,10 +77,17 @@ class SGaaDB(DBInterface):
         self._load_sg_sequence_list()
         self._load_sg_shot_list()
 
-        self._update_thread = threading.Thread(
-            target=self._threaded_updater, daemon=True
-        )
-        self._update_thread.start()
+        if auto_update:
+            self._update_thread = threading.Thread(
+                target=self._threaded_updater, daemon=True
+            )
+            self._update_thread.start()
+
+    def _update_sg_entity_lists(self) -> None:
+        self._load_sg_asset_list()
+        self._load_sg_shot_list()
+        self._load_sg_sequence_list()
+        self._load_sg_env_list()
 
     def _threaded_updater(self) -> None:
         while True:
@@ -90,10 +99,7 @@ class SGaaDB(DBInterface):
                     pass
 
                 log.debug("Cache expired, refreshing list")
-                # sequences and environments don't update freqently, so we
-                #   just pull them once
-                self._load_sg_asset_list()
-                self._load_sg_shot_list()
+                self._update_sg_entity_lists()
 
     def _load_sg_asset_list(self) -> None:
         """Load the list of assets from SG to local cache"""

@@ -22,7 +22,7 @@ class HFileManager(FileManager):
         version_glob: str = "",
         override_entity_code: str | None = None,
     ) -> None:
-        conn = DB.Get(DB_Config)
+        conn = DB.Get(DB_Config, auto_update=False)
         window = pipe.h.local.get_main_qt_window()
         super().__init__(
             conn,
