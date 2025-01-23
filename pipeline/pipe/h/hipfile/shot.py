@@ -77,8 +77,8 @@ class HShotFileManager(HFileManager):
         if self._department == HShotFileManager.DEPARTMENT.CFX:
             shot_in = 940
 
-        hou.playbar.setFrameRange(shot_in - 5, shot_out + 5)
-        hou.playbar.setPlaybackRange(shot_in - 5, shot_out + 5)
+        hou.playbar.setFrameRange(shot_in, shot_out)
+        hou.playbar.setPlaybackRange(shot_in, shot_out)
         hou.setFrame(shot_in)
 
         # update substeps
