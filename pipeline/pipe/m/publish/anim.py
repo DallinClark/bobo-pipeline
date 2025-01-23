@@ -35,18 +35,19 @@ class AnimPublisher(Publisher):
     _shot: Shot
     _init_success: bool
 
-    def __init__(self):
-        super().__init__(use_sg_entity=False)
+    def __init__(self, headless: bool = False):
+        super().__init__(use_sg_entity=False, headless=headless)
         try:
             shot_code = mc.fileInfo("code", query=True)[0]
             self._init_success = True
         except IndexError:
             mc.error("Could not find shot code in fileInfo! Cannot export shot.")
-            error = MessageDialog(
-                self._window,
-                "Error: could not detect shot code. Please reach out to Scott",
-            )
-            error.exec_()
+            if not self._is_headless:
+                error = MessageDialog(
+                    self._window,
+                    "Error: could not detect shot code. Please reach out to Scott",
+                )
+                error.exec_()
             self._init_success = False
 
         self._shot = self._conn.get_shot_by_code(shot_code)

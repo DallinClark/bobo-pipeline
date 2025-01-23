@@ -50,7 +50,7 @@ class SGaaDB(DBInterface):
     _update_notifier: threading.Condition
     _update_thread: threading.Thread
 
-    _conn_instances: dict[SG_Config, SGaaDB] = {}
+    _conn_instances: dict[tuple[SG_Config, bool], SGaaDB] = {}
 
     @classmethod
     def Get(cls, config: SG_Config, *, auto_update: bool = True) -> SGaaDB:
