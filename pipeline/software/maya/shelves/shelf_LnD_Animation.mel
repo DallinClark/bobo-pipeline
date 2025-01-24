@@ -317,7 +317,7 @@ global proc shelf_LnD_Animation () {
         -style "iconOnly" 
         -marginWidth 0
         -marginHeight 1
-        -command "import softMod as sm; sm.ui();" 
+        -command "from softMod import *; from softMod import ui as smui; smui();" 
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
