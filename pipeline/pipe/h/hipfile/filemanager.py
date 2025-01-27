@@ -15,15 +15,19 @@ log = logging.getLogger(__name__)
 
 
 class HFileManager(FileManager):
+    _ignore_load_warnings: bool
+
     def __init__(
         self,
         entity_type: type[SGEntity],
         versioning: bool = False,
         version_glob: str = "",
         override_entity_code: str | None = None,
+        ignore_load_warnings: bool = False,
     ) -> None:
         conn = DB.Get(DB_Config, auto_update=False)
         window = pipe.h.local.get_main_qt_window()
+        self._ignore_load_warnings = ignore_load_warnings
         super().__init__(
             conn,
             entity_type,
@@ -49,7 +53,11 @@ class HFileManager(FileManager):
         return True
 
     def _open_file(self, path: Path) -> None:
-        hou.hipFile.load(str(path), suppress_save_prompt=True)
+        hou.hipFile.load(
+            str(path),
+            suppress_save_prompt=True,
+            ignore_load_warnings=self._ignore_load_warnings,
+        )
 
     def _setup_file(self, path: Path, entity: SGEntity) -> None:
         hou.hipFile.clear(suppress_save_prompt=True)

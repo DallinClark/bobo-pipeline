@@ -33,6 +33,7 @@ class HShotFileManager(HFileManager):
         *,
         override_dept: str | None = None,
         override_entity_code: str | None = None,
+        ignore_load_warnings: bool = False,
     ):
         if override_dept:
             self._department = override_dept
@@ -61,6 +62,7 @@ class HShotFileManager(HFileManager):
             versioning=True,
             version_glob="{}_v*.{}",
             override_entity_code=override_entity_code,
+            ignore_load_warnings=ignore_load_warnings,
         )
 
     def _generate_filename_ext(self, entity) -> tuple[str, str]:

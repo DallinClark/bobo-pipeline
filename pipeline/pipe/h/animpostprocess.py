@@ -65,6 +65,7 @@ class CfxPostProcessor(PostProcessor):
         HShotFileManager(
             override_dept="cfx",
             override_entity_code=shot_code,
+            ignore_load_warnings=True,
         ).open_file()
 
         publish = hou.node("/stage/PUBLISH")
