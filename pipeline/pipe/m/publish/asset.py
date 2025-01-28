@@ -8,8 +8,11 @@ from hashlib import sha1
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from urllib import request
-from Qt.QtWidgets import QCheckBox, QWidget
+from Qt.QtWidgets import QCheckBox, QWidget, QComboBox, QLabel, QLineEdit, QPushButton
 from Qt.QtGui import QTextCursor
+from pipe.db import DB
+from typing import Optional
+
 
 if TYPE_CHECKING:
     from typing import Any, Sequence
@@ -35,8 +38,12 @@ log = logging.getLogger(__name__)
 
 class PublishAssetDialog(FilteredListDialog):
     _substance_only: QCheckBox
+    _variant_selector: QComboBox
+    _new_variant_line_edit: QLineEdit
+    _add_variant_button: QPushButton
 
-    def __init__(self, parent: QWidget | None, items: Sequence[str]) -> None:
+
+    def __init__(self, parent: QWidget | None, items: Sequence[str], conn: Optional[DB]) -> None:
         super().__init__(
             parent,
             items,
@@ -49,10 +56,52 @@ class PublishAssetDialog(FilteredListDialog):
             "Export Substance-only file? ONLY USE IF INSTRUCTED BY A LEAD"
         )
         self._layout.insertWidget(1, self._substance_only)
+        
+        self._conn = conn
+
+        self._layout.insertWidget(2, QLabel("Select Variant:"))
+
+        self._variant_selector = QComboBox(self)
+        self._layout.insertWidget(3, self._variant_selector)
+
+        self._populate_variant_selector(None)  # Initially populate with no asset
+        
+
+    def get_selected_variant(self) -> str:
+        return self._variant_selector.currentText()
 
     @property
     def is_substance_only(self) -> bool:
+        """Return whether the substance-only option is checked."""
         return self._substance_only.isChecked()
+    
+    
+    def get_selected_item(self) -> str | None:
+        selected_items = self._list_widget.selectedItems()
+        if selected_items:
+            return selected_items[0].text()
+        return None
+    
+    def _on_item_selected(self) -> None:
+        selected = self.get_selected_item()
+        if self._conn and selected:
+            asset = self._conn.get_asset_by_name(selected)
+        else:
+            return
+        self._populate_variant_selector(asset)
+        
+    def _populate_variant_selector(self, asset: Asset | None) -> None:
+        """Populate the variant selector with variants from the selected asset."""
+        if asset and hasattr(asset, 'geometry_variants'):
+            variants = asset.geometry_variants
+        else:
+            variants = set()
+
+        self._variant_selector.clear()
+        self._variant_selector.addItems(variants)
+        
+
+
 
 
 class AssetPublisher(Publisher):
@@ -94,8 +143,13 @@ class AssetPublisher(Publisher):
     def _get_save_path(self) -> Path | None:
         dialog = cast(PublishAssetDialog, self._dialog)
         asset = cast(Asset, self._entity)
+        variant_name = dialog.get_selected_variant()
         try:
             assert asset.path is not None
+            
+            if not variant_name:
+                raise ValueError()
+        
         except AssertionError:
             error = MessageDialog(
                 self._window,
@@ -104,11 +158,21 @@ class AssetPublisher(Publisher):
             )
             error.exec_()
             return None
+        
+        except ValueError:
+            error = MessageDialog(
+                self._window,
+                "Error: No variant selected. Nothing exported,",
+                "Error",
+            )
+            error.exec_()
+            return None
+        
 
         return (
             get_production_path()
             / asset.path
-            / (asset.name + ("_SUBSTANCE" if dialog.is_substance_only else "") + ".usd")
+            / (asset.name + (f"_{variant_name}" if variant_name != "main" else "") + ("_SUBSTANCE" if dialog.is_substance_only else "") + ".usd")
         )
 
     def _presave(self) -> bool:

@@ -89,6 +89,7 @@ class DialogFilteredList:
                 item.setHidden(False)
             else:
                 item.setHidden(True)
+            
 
     def get_selected_item(self) -> str | None:
         selected_items = self._list_widget.selectedItems()
@@ -168,6 +169,7 @@ class FilteredListDialog(QtWidgets.QDialog, DialogButtons, DialogFilteredList):
         reject_button_name: str | None = "Cancel",
     ) -> None:
         super(FilteredListDialog, self).__init__(parent)
+        
         self._init_buttons(True, accept_button_name, reject_button_name)
         self._init_filtered_list(items, list_label, include_filter_field)
 
@@ -180,6 +182,13 @@ class FilteredListDialog(QtWidgets.QDialog, DialogButtons, DialogFilteredList):
         self._layout = QtWidgets.QVBoxLayout(self)
         self._layout.addLayout(self.filtered_list)
         self._layout.addWidget(self.buttons)
+
+        self._list_widget.itemSelectionChanged.connect(self._on_item_selected)
+
+    def _on_item_selected(self):
+        """Called when the selection changes in the list widget. Override based on need"""
+        return
+    
 
 
 # class DialogFactory:

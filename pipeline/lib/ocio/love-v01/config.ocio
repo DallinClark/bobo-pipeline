@@ -20,11 +20,12 @@ roles:
   substance_3d_painter_standard_srgb: sRGB-Texture
   substance_3d_painter_bitmap_import_8bit: sRGB-Texture
   substance_3d_painter_bitmap_import_16bit: sRGB-Texture
-  substance_3d_painter_bitmap_import_floating: ACEScg
-  substance_3d_painter_substance_material: ACEScg
+  substance_3d_painter_bitmap_import_floating: Linear-Rawr
+  substance_3d_painter_substance_material: sRGB-Texture
   substance_3d_painter_bitmap_export_8bit: sRGB-Texture
-  substance_3d_painter_bitmap_export_16bit: ACEScg
-  substance_3d_painter_bitmap_export_floating: ACEScg
+  substance_3d_painter_bitmap_export_16bit: sRGB-Texture
+  substance_3d_painter_bitmap_export_floating: Linear-Rawr
+  
   # Note to future generations: Setting the colorspace srgb-ap1 as the export 
   # transform will export textures that use the ACEScg color primaries and 
   # white point, but have an sRGB transformation applied on them. This is 
