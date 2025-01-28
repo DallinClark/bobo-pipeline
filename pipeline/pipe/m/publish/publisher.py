@@ -121,14 +121,14 @@ class Publisher:
 
             if entity_list := self._get_entity_list():
                 from pipe.m.publish.asset import PublishAssetDialog
-                
+
                 if self._dialog_T == PublishAssetDialog:
                     # Pass extra parameter (conn) if it's PublishAssetDialog
                     self._dialog = self._dialog_T(self._window, entity_list, self._conn)
                 else:
                     # Otherwise, use the dialog normally
                     self._dialog = self._dialog_T(self._window, entity_list)
-                    
+
                 if not self._dialog.exec_():
                     return
 
