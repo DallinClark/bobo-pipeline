@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-import resource
 
 from argparse import ArgumentParser
 
@@ -40,6 +39,7 @@ def launch(
 ) -> None:
     if sys.platform == "linux":
         # raise file descriptor limit for the enclosing Python process
+        import resource
         _, max_fd = resource.getrlimit(resource.RLIMIT_NOFILE)
         resource.setrlimit(resource.RLIMIT_NOFILE, (max_fd, max_fd))
 
