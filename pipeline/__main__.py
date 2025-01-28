@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
+import resource
 
 from argparse import ArgumentParser
 
@@ -36,6 +38,11 @@ def launch(
     is_python_shell: bool = False,
     extra_args: list[str] | None = None,
 ) -> None:
+    if sys.platform == "linux":
+        # raise file descriptor limit for the enclosing Python process
+        _, max_fd = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (max_fd, max_fd))
+
     software = find_implementation(DCCInterface, f"software.{software_name}")
     software(is_python_shell, extra_args).launch()
 
