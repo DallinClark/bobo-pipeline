@@ -3,6 +3,7 @@ from __future__ import annotations
 import attrs
 import cattrs
 
+
 from attrs import field
 
 # We need to always import typing for defining the structs
@@ -102,13 +103,22 @@ class Asset(SGEntity):
             _UNSTRUCT_HOOK: lambda mv, _: ",".join(mv) if mv else "",
         }
     )
-    parent: Optional[AssetStub] = field(
+    geometry_variants: set[str] = field(
         metadata={
-            _SG_NAME: "parents",
-            _STRUCT_HOOK: lambda p, _: AssetStub.from_sg(p[0]) if len(p) else None,
-            _UNSTRUCT_HOOK: lambda p, _: [p] if p else [],
-        },
-        on_setattr=attrs.setters.frozen,
+            _SG_NAME: "sg_geometry_variants",
+            _STRUCT_HOOK: lambda mv, _: set(mv.split(",") if mv else []),
+            _UNSTRUCT_HOOK: lambda mv, _: ",".join(mv) if mv else "",
+        }
+    )
+    parent: Optional[AssetStub] = (
+        field(  # TODO see if we still need this for the new way of tracking variants
+            metadata={
+                _SG_NAME: "parents",
+                _STRUCT_HOOK: lambda p, _: AssetStub.from_sg(p[0]) if len(p) else None,
+                _UNSTRUCT_HOOK: lambda p, _: [p] if p else [],
+            },
+            on_setattr=attrs.setters.frozen,
+        )
     )
     variants: list[AssetStub] = field(metadata={_SG_NAME: "assets"})
     version = None

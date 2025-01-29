@@ -14,7 +14,7 @@ plugin_widgets: list[QtWidgets.QWidget] = []
 
 def start_plugin():
     # Create text widget for menu
-    action = QtWidgets.QAction("LnD — Publish Textures")
+    action = QtWidgets.QAction("Bobo — Publish Textures")
     action.triggered.connect(launch_exporter)
 
     # Add widget to the File menu
