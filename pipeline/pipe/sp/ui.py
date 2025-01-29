@@ -69,7 +69,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setWindowTitle("LnD Publish Textures")
+        self.setWindowTitle("Bobo Publish Textures")
 
         # Make sure window always stays on top
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
@@ -81,7 +81,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._central_widget.setLayout(self._main_layout)
 
         # title
-        title = QLabel("Publish Textures")
+        title = QLabel("tures")
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size: 15px; font-weight: bold;")
         self._main_layout.addWidget(title, 0)

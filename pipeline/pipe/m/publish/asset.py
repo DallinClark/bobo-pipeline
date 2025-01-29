@@ -8,8 +8,9 @@ from hashlib import sha1
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from urllib import request
-from Qt.QtWidgets import QCheckBox, QWidget, QComboBox, QLabel, QLineEdit, QPushButton
-from Qt.QtGui import QTextCursor
+from Qt.QtWidgets import QCheckBox, QWidget, QComboBox, QLabel, QHBoxLayout
+from Qt.QtGui import QTextCursor, QRegExpValidator
+from Qt.QtCore import QRegExp
 from pipe.db import DB
 from typing import Optional
 
@@ -38,9 +39,7 @@ log = logging.getLogger(__name__)
 
 class PublishAssetDialog(FilteredListDialog):
     _substance_only: QCheckBox
-    _variant_selector: QComboBox
-    _new_variant_line_edit: QLineEdit
-    _add_variant_button: QPushButton
+    _geo_var_widget: QWidget
 
     def __init__(
         self, parent: QWidget | None, items: Sequence[str], conn: Optional[DB]
@@ -59,16 +58,31 @@ class PublishAssetDialog(FilteredListDialog):
         self._layout.insertWidget(1, self._substance_only)
 
         self._conn = conn
+        
+        geo_var_widget = QWidget(self)
+        geo_var_layout = QHBoxLayout(geo_var_widget)
+        geo_var_layout.setContentsMargins(0, 0, 0, 0)
+        geo_var_layout.setSpacing(0)
+        geo_var_settings_widget = QWidget()
+        geo_var_settings_layout = QHBoxLayout(geo_var_settings_widget)
+        geo_var_label = QLabel("Geometry Variant:")
+        geo_var_settings_layout.addWidget(geo_var_label, 30)
+        
+        # Editable combo box for geo variant
+        self._geo_var_dropdown = QComboBox()
+        self._geo_var_dropdown.setEditable(True)  
+        self._geo_var_dropdown.setCurrentText("default")
+        pattern = QRegExp("[a-z][a-z_\d]*")
+        geo_var_validator = QRegExpValidator(pattern)
+        self._geo_var_dropdown.setValidator(geo_var_validator) 
+        geo_var_settings_layout.addWidget(self._geo_var_dropdown, 70)
+        geo_var_layout.addWidget(geo_var_settings_widget, 90)
+        self._layout.addWidget(geo_var_widget)
 
-        self._layout.insertWidget(2, QLabel("Select Variant:"))
-
-        self._variant_selector = QComboBox(self)
-        self._layout.insertWidget(3, self._variant_selector)
-
-        self._populate_variant_selector(None)  # Initially populate with no asset
+        self._populate_geo_var(None) 
 
     def get_selected_variant(self) -> str:
-        return self._variant_selector.currentText()
+        return self._geo_var_dropdown.currentText()
 
     @property
     def is_substance_only(self) -> bool:
@@ -87,17 +101,17 @@ class PublishAssetDialog(FilteredListDialog):
             asset = self._conn.get_asset_by_name(selected)
         else:
             return
-        self._populate_variant_selector(asset)
+        self._populate_geo_var(asset)
 
-    def _populate_variant_selector(self, asset: Asset | None) -> None:
+    def _populate_geo_var(self, asset: Asset | None) -> None:
         """Populate the variant selector with variants from the selected asset."""
         if asset and hasattr(asset, "geometry_variants"):
             variants = asset.geometry_variants
         else:
             variants = set()
 
-        self._variant_selector.clear()
-        self._variant_selector.addItems(variants)
+        self._geo_var_dropdown.clear()
+        self._geo_var_dropdown.addItems(variants)
 
 
 class AssetPublisher(Publisher):
@@ -163,6 +177,11 @@ class AssetPublisher(Publisher):
             )
             error.exec_()
             return None
+        
+        if variant_name not in asset.geometry_variants:
+            asset.geometry_variants.add(variant_name)
+            log.info(f"Updating new geo variant: {variant_name}")
+            self._conn.update_asset(asset)
 
         return (
             get_production_path()
