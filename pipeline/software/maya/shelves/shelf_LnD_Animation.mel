@@ -282,7 +282,7 @@ global proc shelf_LnD_Animation () {
         -marginHeight 1
         -image "createContainer.png" 
         -image1 "createContainer.png" 
-        -command "import shotSculpt as ss; ss.setupMenu();" 
+        -command "import rjg.libs.shotSculpt as ss; ss.setupMenu();"
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
@@ -317,7 +317,7 @@ global proc shelf_LnD_Animation () {
         -style "iconOnly" 
         -marginWidth 0
         -marginHeight 1
-        -command "from softMod import *; from softMod import ui as smui; smui();" 
+        -command "from rjg.libs.softMod import *; from rjg.libs.softMod import ui as smui; smui();"
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
