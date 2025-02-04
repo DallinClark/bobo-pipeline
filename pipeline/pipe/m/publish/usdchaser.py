@@ -425,7 +425,13 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 print(name)
 
                 # the rigs that need the controls exported instead of the mesh
-                if (name == "gemheart") or (name == "strikemagicpillarpath"):
+                if name in [
+                    "gemheart", 
+                    # "ringrayden",
+                    # "ringrobin",
+                    "statueringpillar",
+                    "strikemagicpillarpath",
+                ]:
                     character_root_path = Sdf.Path("/ROOT/CTRLS")
                 else:
                     character_root_path = Sdf.Path("/ROOT/MODEL")
