@@ -426,9 +426,9 @@ class ExportChaser(mayaUsdLib.ExportChaser):
 
                 # the rigs that need the controls exported instead of the mesh
                 if name in [
-                    "gemheart", 
-                    # "ringrayden",
-                    # "ringrobin",
+                    "gemheart",
+                    "raydenring",
+                    "robinring",
                     "statueringpillar",
                     "strikemagicpillarpath",
                 ]:
