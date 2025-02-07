@@ -97,7 +97,8 @@ class HoudiniDCC(DCC):
                 [
                     str(pipe_path),
                     # Add $RMANTREE/bin to PYTHONPATH for the Tractor PDG scheduler
-                    os.environ.get("RMANTREE", "") + "/bin",
+                    # os.environ.get("RMANTREE", "") + "/bin",
+                    str(get_production_path() / "opt/pixar/RenderManProServer-26.3"),
                 ]
             ),
             # RenderMan color config json file
