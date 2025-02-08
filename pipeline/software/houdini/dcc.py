@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -98,7 +99,14 @@ class HoudiniDCC(DCC):
                     str(pipe_path),
                     # Add $RMANTREE/bin to PYTHONPATH for the Tractor PDG scheduler
                     # os.environ.get("RMANTREE", "") + "/bin",
-                    str(get_production_path() / "opt/pixar/RenderManProServer-26.3"),
+                    str(
+                        get_production_path()
+                        / (
+                            "opt/pixar/RenderManProServer-26.3"
+                            if platform.system() == "Linux"
+                            else "PFiles/Pixar/RenderManProServer-26.3"
+                        )
+                    ),
                 ]
             ),
             # RenderMan color config json file

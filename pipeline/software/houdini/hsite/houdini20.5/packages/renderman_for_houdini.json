@@ -1,8 +1,19 @@
 {
     "load_package_once": true,
     "env": [
-        {"RMANTREE": "/groups/dungeons/production/opt/pixar/RenderManProServer-26.3"},
-        {"RFHTREE": "/groups/dungeons/production/opt/pixar/RenderManForHoudini-26.3"},
+        {
+            "RMANTREE": {"houdini_os == 'linux'": "/groups/dungeons/production/opt/pixar/RenderManProServer-26.3"}
+        },
+        {
+            "RMANTREE": {"houdini_os == 'windows'": "G:/dungeons/production/PFiles/Pixar/RenderManProServer-26.3"}
+        },
+        {
+            "RFHTREE": {"houdini_os == 'linux'": "/groups/dungeons/production/opt/pixar/RenderManForHoudini-26.3"}
+        },
+        {
+            "RFHTREE": {"houdini_os == 'windows'": "G:/dungeons/production/PFiles/Pixar/RenderManForHoudini-26.3/"}
+
+        },
         {
             "RFH_HOUDINI_VERS" :
             [
@@ -24,7 +35,7 @@
                 { "houdini_python=='python3.7'": "3.7" },
                 { "houdini_python=='python3.9'": "3.9" },
                 { "houdini_python=='python3.10'": "3.10" },
-                { "houdini_python=='python3.11'": "3.11" },
+                { "houdini_python=='python3.11'": "3.11" }
             ]
         },
         { "HOUDINI_PATH": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}" },
