@@ -36,3 +36,6 @@
 [submodule "pipeline/lib/tractor-lops"]
 	path = pipeline/lib/tractor-lops
 	url = https://github.com/scottdmilner/tractor-lops.git
+[submodule "pipeline/software/houdini/hsite/ae_SVG"]
+	path = pipeline/software/houdini/hsite/ae_SVG
+	url = https://github.com/takavfx/ae_SVG.git
