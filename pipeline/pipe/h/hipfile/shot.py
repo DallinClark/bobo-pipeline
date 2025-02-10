@@ -24,9 +24,10 @@ class HShotFileManager(HFileManager):
 
     class DEPARTMENT(str, Enum):
         CFX = "cfx"
-        FLO = "flo"
         FX = "fx"
+        FLO = "flo"
         LIGHTING = "lighting"
+        RENDER = "render"
 
     def __init__(
         self,
@@ -42,9 +43,10 @@ class HShotFileManager(HFileManager):
                 pipe.h.local.get_main_qt_window(),
                 [
                     self.DEPARTMENT.CFX,
-                    self.DEPARTMENT.FLO,
                     self.DEPARTMENT.FX,
+                    self.DEPARTMENT.FLO,
                     self.DEPARTMENT.LIGHTING,
+                    self.DEPARTMENT.RENDER,
                 ],
                 "Department Select",
                 include_filter_field=False,
@@ -74,10 +76,14 @@ class HShotFileManager(HFileManager):
     def _post_open_file(self, entity: SGEntity):
         shot = cast(Shot, entity)
 
-        shot_in = shot.cut_in - 5
-        shot_out = shot.cut_out + 5
         if self._department == HShotFileManager.DEPARTMENT.CFX:
             shot_in = 940
+        elif self._department == HShotFileManager.DEPARTMENT.RENDER:
+            shot_in = shot.cut_in
+            shot_out = shot.cut_out
+        else:
+            shot_in = shot.cut_in - 5
+            shot_out = shot.cut_out + 5
 
         hou.playbar.setFrameRange(shot_in, shot_out)
         hou.playbar.setPlaybackRange(shot_in, shot_out)
