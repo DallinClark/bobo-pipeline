@@ -78,6 +78,7 @@ class HShotFileManager(HFileManager):
 
         if self._department == HShotFileManager.DEPARTMENT.CFX:
             shot_in = 940
+            shot_out = shot.cut_out + 5
         elif self._department == HShotFileManager.DEPARTMENT.RENDER:
             shot_in = shot.cut_in
             shot_out = shot.cut_out
@@ -185,6 +186,17 @@ class HShotFileManager(HFileManager):
                 char_cfx.setPosition((idx + 1, 3))
                 char_cfx.setInput(0, begin_dep)
                 sublayer.setNextInput(char_cfx)
+        
+        elif self._department == HShotFileManager.DEPARTMENT.RENDER:
+            if shot.substeps != 1:
+                deform_substeps = stage.createNode("rendergeometrysettings")
+                deform_substeps.setName("deformation_substeps")
+                deform_substeps.parm("primpattern").set("/camera /character")  # type: ignore[union-attr]
+                deform_substeps.parm("xn__primvarsriobjectgeosamples_control_iwbcg").set("set")  # type: ignore[union-attr]
+                deform_substeps.parm("xn__primvarsriobjectgeosamples_hjbcg").set(shot.substeps)  # type: ignore[union-attr]
+                deform_substeps.setPosition((0, 2))
+                deform_substeps.setInput(0, begin_dep)
+                end_dep.setInput(0, deform_substeps)
 
         self._post_open_file(shot)
 
