@@ -106,9 +106,11 @@ class PublishAssetDialog(FilteredListDialog):
     def _populate_geo_var(self, asset: Asset | None) -> None:
         """Populate the variant selector with variants from the selected asset."""
         if asset and hasattr(asset, "geometry_variants"):
-            variants = asset.geometry_variants
+            var_set = set(asset.geometry_variants)
+            var_set.add("main")
+            variants = list(var_set)
         else:
-            variants = set()
+            variants = []
 
         self._geo_var_dropdown.clear()
         self._geo_var_dropdown.addItems(variants)

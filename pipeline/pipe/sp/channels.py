@@ -33,20 +33,20 @@ class sRGBChecker:
 
         return not bool(self.srgb_channels)
 
-    def prompt_srgb_fix(self) -> bool:
-        """Return True if fix is successful"""
-        fix_channels = MessageDialog(
-            get_main_qt_window(),
-            "Warning! Some of your color channels do not have a high enough bit depth for this color space! (sRGB8, RGB8). Would you like to convert them to RGB16 now?",
-            "Color Bit Depth Issue",
-            has_cancel_button=True,
-        ).exec_()
+    # def prompt_srgb_fix(self) -> bool:
+    #     """Return True if fix is successful"""
+    #     fix_channels = MessageDialog(
+    #         get_main_qt_window(),
+    #         "Warning! Some of your color channels do not have a high enough bit depth for this color space! (sRGB8, RGB8). Would you like to convert them to RGB16 now?",
+    #         "Color Bit Depth Issue",
+    #         has_cancel_button=True,
+    #     ).exec_()
 
-        if not fix_channels:
-            return False
+    #     if not fix_channels:
+    #         return False
 
-        for ch in self.srgb_channels:
-            ch.edit(sp.textureset.ChannelFormat.RGB16)
+    #     for ch in self.srgb_channels:
+    #         ch.edit(sp.textureset.ChannelFormat.RGB16)
 
-        MessageDialog(get_main_qt_window(), "Color bit depth has been updated.").exec_()
-        return True
+    #     MessageDialog(get_main_qt_window(), "Color bit depth has been updated.").exec_()
+    #     return True

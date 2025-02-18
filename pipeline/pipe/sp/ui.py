@@ -5,6 +5,7 @@ import os
 from math import log2
 from Qt import QtCore, QtWidgets
 from Qt.QtGui import QIcon, QPixmap, QRegExpValidator
+from Qt.QtCore import QRegExp
 from Qt.QtWidgets import QComboBox, QLabel, QLayout, QMainWindow
 from re import findall
 from typing import TYPE_CHECKING
@@ -22,13 +23,14 @@ from pipe.sp.local import get_main_qt_window
 from pipe.struct.db import Asset
 from pipe.struct.material import DisplacementSource, NormalSource, NormalType
 from pipe.util import checkbox_callback_helper, dict_index
+from substance_painter.textureset import TextureSet
 
 from env_sg import DB_Config
 
 log = logging.getLogger(__name__)
 
 
-class SubstanceExportWindow(QMainWindow, ButtonPair):
+class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
     _asset: Asset
     _central_widget: QtWidgets.QWidget
     _conn: DB
@@ -36,39 +38,147 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
     _mat_var_dropdown: QComboBox
     # _mat_var_enabled: QtWidgets.QCheckBox
     _metadataManager: pipe.sp.metadata.MetadataUpdater
-    _srgbChecker: pipe.sp.channels.sRGBChecker
-    _tex_set_dict: typing.Mapping[sp.textureset.TextureSet, "TexSetWidget"]
+    #_srgbChecker: pipe.sp.channels.sRGBChecker
+    _tex_set_dict: dict[sp.textureset.TextureSet, "TexSetWidget"]
     _tex_set_widgets: list["TexSetWidget"]
 
     def __init__(
         self,
         flags: QtCore.Qt.WindowFlags | None = None,
+        is_batch: bool = False,
     ) -> None:
         super(SubstanceExportWindow, self).__init__(get_main_qt_window())
 
         self._tex_set_dict = {}
         self._tex_set_widgets = []
 
-        if not self._preflight():
-            MessageDialog(
-                get_main_qt_window(),
-                (
-                    "Your file has failed preflight checks. Please follow the "
-                    "instructions to fix them when you first open this window."
-                ),
-                "Preflight failed.",
-            ).exec_()
-            return
-
         self._conn = DB.Get(DB_Config)
-        metadata = sp.project.Metadata("LnD")
-        asset = self._conn.get_asset_by_id(int(metadata.get("asset_id")))
-        assert asset is not None
-        self._asset = asset
 
-        self._setup_ui()
+        if not is_batch:
+            if not self._preflight():
+                MessageDialog(
+                    get_main_qt_window(),
+                    (
+                        "Your file has failed preflight checks. Please follow the "
+                        "instructions to fix them when you first open this window."
+                    ),
+                    "Preflight failed.",
+                ).exec_()
+                return
 
-    def _setup_ui(self):
+            metadata = sp.project.Metadata("Bobo")
+            asset = self._conn.get_asset_by_id(int(metadata.get("asset_id")))
+            assert asset is not None
+            self._asset = asset
+
+            self._setup_asset_ui()
+        
+        else:
+            self._tex_set_assets: dict[str, str] = {}
+            self.setup_batch_ui()
+
+    def setup_batch_ui(self):
+        self.setWindowTitle("Match Assets")
+
+        # Make sure window always stays on top
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+
+        # Set up main layout
+        self._central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self._central_widget)
+        self._main_layout = QtWidgets.QVBoxLayout()
+        self._central_widget.setLayout(self._main_layout)
+
+        # Title label
+        title = QLabel("Match Textures")
+        title.setAlignment(QtCore.Qt.AlignCenter)
+        title.setStyleSheet("font-size: 15px; font-weight: bold;")
+        self._main_layout.addWidget(title, 0)
+
+        texture_set_layout = QtWidgets.QVBoxLayout()
+
+        asset_names = self._conn.get_asset_name_list(sorted=True)
+
+        # Add widgets for each texture set
+        for ts in sp.textureset.all_texture_sets():
+            ts_label = QLabel(ts.name())
+            ts_label.setStyleSheet("font-size: 12px; font-weight: normal;")
+            texture_set_layout.addWidget(ts_label)
+
+            asset_dropdown = QtWidgets.QComboBox()
+            
+            for asset_name in asset_names:
+                asset_dropdown.addItem(asset_name)
+
+            self._tex_set_assets[ts.name()] = asset_dropdown
+            
+            texture_set_layout.addWidget(asset_dropdown)
+
+        # Create a container for the texture set layout
+        texture_set_widget = QtWidgets.QWidget()
+        texture_set_widget.setLayout(texture_set_layout)
+
+        # Create a scroll area for the texture set layout
+        texture_set_scroll_area = QtWidgets.QScrollArea()
+        texture_set_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        texture_set_scroll_area.setWidget(texture_set_widget)
+        texture_set_scroll_area.setWidgetResizable(True)
+
+        # Add the scroll area to the main layout
+        self._main_layout.addWidget(texture_set_scroll_area)
+
+        confirm_button = QtWidgets.QPushButton("Confirm", self)
+        confirm_button.clicked.connect(self.on_confirm_button_clicked)  # Connect to the handler
+        self._main_layout.addWidget(confirm_button)
+
+    def on_confirm_button_clicked(self):
+        self.tex_set_asset_dict = {}
+        self.selected_assets=[]
+        
+        for ts_name, dropdown in self._tex_set_assets.items():
+            selected_asset = dropdown.currentText()
+            self.selected_assets.append(selected_asset)
+
+            if selected_asset not in self.tex_set_asset_dict.keys():
+                self.tex_set_asset_dict[selected_asset] = []
+            
+            self.tex_set_asset_dict[selected_asset].append(ts_name)
+
+
+        self.clear_layout()
+
+        self.batchIndex = 0
+
+        self._setup_asset_ui(isBatch=True)
+
+    def clear_layout(self):
+        layout = self._main_layout
+
+        # Function to delete all child widgets in the layout recursively
+        def delete_items(layout):
+            if layout:
+                index = 0
+                while True:
+                    item = layout.itemAt(index)
+                    if not item:
+                        break  # No more items to remove
+                    widget = item.widget()
+                    if widget:
+                        widget.deleteLater()  # Delete the widget
+                    else:
+                        # If the item is a nested layout, recursively delete its children
+                        delete_items(item.layout())
+                    index += 1
+
+        # Clear the layout
+        delete_items(layout)
+
+        self.resize(800,1200)
+
+    def _setup_asset_ui(self, isBatch: bool=False):
+        if isBatch:
+            self._asset = self._conn.get_asset_by_name(self.selected_assets[self.batchIndex])
+
         self.setWindowTitle("Bobo Publish Textures")
 
         # Make sure window always stays on top
@@ -81,7 +191,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._central_widget.setLayout(self._main_layout)
 
         # title
-        title = QLabel("tures")
+        title = QLabel(f"{self._asset.name} Publish Textures")
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size: 15px; font-weight: bold;")
         self._main_layout.addWidget(title, 0)
@@ -97,21 +207,40 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._main_layout.addWidget(lock_warning)
 
         # Texture set widgets
-        texture_set_layout = QtWidgets.QVBoxLayout()
-        for ts in sp.textureset.all_texture_sets():
-            widget = TexSetWidget(self, ts)
-            self._tex_set_dict[ts] = widget
-            texture_set_layout.addWidget(widget)
+        if not isBatch:
+            texture_set_layout = QtWidgets.QVBoxLayout()
+            for ts in sp.textureset.all_texture_sets():
+                widget = TexSetWidget(self, ts)
+                self._tex_set_dict[ts] = widget
+                texture_set_layout.addWidget(widget)
 
-        texture_set_widget = QtWidgets.QWidget()
-        texture_set_widget.setLayout(texture_set_layout)
-        texture_set_scroll_area = QtWidgets.QScrollArea()
-        texture_set_scroll_area.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAlwaysOff
-        )
-        texture_set_scroll_area.setWidget(texture_set_widget)
-        texture_set_scroll_area.setWidgetResizable(True)
-        self._main_layout.addWidget(texture_set_scroll_area)
+            texture_set_widget = QtWidgets.QWidget()
+            texture_set_widget.setLayout(texture_set_layout)
+            texture_set_scroll_area = QtWidgets.QScrollArea()
+            texture_set_scroll_area.setHorizontalScrollBarPolicy(
+                QtCore.Qt.ScrollBarAlwaysOff
+            )
+            texture_set_scroll_area.setWidget(texture_set_widget)
+            texture_set_scroll_area.setWidgetResizable(True)
+            self._main_layout.addWidget(texture_set_scroll_area)
+
+        else:
+            texture_set_layout = QtWidgets.QVBoxLayout()
+            for ts_name in self.tex_set_asset_dict[self.selected_assets[self.batchIndex]]:
+                ts = TextureSet.from_name(ts_name)
+                widget = TexSetWidget(self, ts)
+                self._tex_set_dict[ts] = widget
+                texture_set_layout.addWidget(widget)
+
+            texture_set_widget = QtWidgets.QWidget()
+            texture_set_widget.setLayout(texture_set_layout)
+            texture_set_scroll_area = QtWidgets.QScrollArea()
+            texture_set_scroll_area.setHorizontalScrollBarPolicy(
+                QtCore.Qt.ScrollBarAlwaysOff
+            )
+            texture_set_scroll_area.setWidget(texture_set_widget)
+            texture_set_scroll_area.setWidgetResizable(True)
+            self._main_layout.addWidget(texture_set_scroll_area)
 
         # Material Variants
         mat_var_widget = QtWidgets.QWidget()
@@ -129,39 +258,87 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._mat_var_dropdown.addItems(mv_items)
         self._mat_var_dropdown.setCurrentText("default")
         self._mat_var_dropdown.setEditable(True)
-        mat_var_validator = QRegExpValidator("[a-z][a-z_\d]*")
+        pattern = QRegExp("[a-z][a-z_\d]*")
+        mat_var_validator = QRegExpValidator(pattern)
         self._mat_var_dropdown.setValidator(mat_var_validator)
         mat_var_settings_layout.addWidget(self._mat_var_dropdown, 70)
         mat_var_layout.addWidget(mat_var_settings_widget, 90)
         self._main_layout.addWidget(mat_var_widget)
 
+        # Geometry Variants
+        geo_var_widget = QtWidgets.QWidget()
+        geo_var_layout = QtWidgets.QHBoxLayout(geo_var_widget)
+        geo_var_layout.setContentsMargins(0, 0, 0, 0)
+        geo_var_layout.setSpacing(0)
+        geo_var_settings_widget = QtWidgets.QWidget()
+        geo_var_settings_layout = QtWidgets.QHBoxLayout(geo_var_settings_widget)
+        geo_var_label = QLabel("Geometry Variant:")
+        geo_var_settings_layout.addWidget(geo_var_label, 30)
+        self._geo_var_dropdown = QComboBox()
+        mv_set = set(self._asset.geometry_variants)
+        mv_items = list(mv_set)
+        self._geo_var_dropdown.addItems(mv_items)
+        self._geo_var_dropdown.setCurrentText("main")
+        geo_var_settings_layout.addWidget(self._geo_var_dropdown, 70)
+        geo_var_layout.addWidget(geo_var_settings_widget, 90)
+        self._main_layout.addWidget(geo_var_widget)
+        
         # Buttons
         self._init_buttons(has_cancel_button=True, ok_name="Export")
-        self.buttons.rejected.connect(self.close)
-        self.buttons.accepted.connect(self.do_export)
+
+        if isBatch:
+            self.buttons.rejected.connect(self.batch_asset_finished_fail)
+            self.buttons.accepted.connect(self.batch_asset_finished_success)
+
+        else:
+            self.buttons.rejected.connect(self.close)
+            self.buttons.accepted.connect(self.do_export)
+
         self._main_layout.addWidget(self.buttons)
+
+    def batch_asset_finished_fail(self):
+        self.clear_layout()
+        if self.batchIndex >= len(self.selected_assets):
+            self.close()
+        else:
+            self.batchIndex += 1
+            self._setup_asset_ui(isBatch=True)
+
+    def batch_asset_finished_success(self):
+        self.clear_layout()
+        self.do_export(True)
+        if self.batchIndex >= len(self.selected_assets):
+            self.close()
+        else:
+            self.batchIndex += 1
+            self._setup_asset_ui(isBatch=True)
 
     def _preflight(self) -> bool:
         """Check for asset metadata and correct channel types before running
         the export"""
         metaUpdater = pipe.sp.metadata.MetadataUpdater()
-        srgbChecker = pipe.sp.channels.sRGBChecker()
         meta = metaUpdater.check() or metaUpdater.do_update()
-        srgb = srgbChecker.check() or srgbChecker.prompt_srgb_fix()
-        return meta and srgb
+        return meta #and srgb
 
     @property
     def mat_var(self) -> str:
         return self._mat_var_dropdown.currentText()
 
-    def do_export(self) -> None:
+    @property
+    def geo_var(self) -> str:
+        return self._geo_var_dropdown.currentText()
+
+    def do_export(self, isBatch: bool=False) -> None:
         if self.mat_var not in self._asset.material_variants:
             self._asset.material_variants.add(self.mat_var)
             log.info(f"Updating new material variant: {self.mat_var}")
             self._conn.update_asset(self._asset)
 
         log.info("Exporting!")
-        exporter = Exporter()
+        if not isBatch:
+            exporter = Exporter()
+        else:
+            exporter = Exporter(self._asset)
         if exporter.export(
             [
                 TexSetExportSettings(
@@ -176,6 +353,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
                 if wgt.enabled
             ],
             self.mat_var,
+            self.geo_var,
         ):
             MessageDialog(
                 get_main_qt_window(),
@@ -189,8 +367,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
                     "console for more information"
                 ),
             ).exec_()
-
-        self.close()
+        if not isBatch:
+            self.close()
+        
 
 
 class TexSetWidget(QtWidgets.QWidget):

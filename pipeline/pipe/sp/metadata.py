@@ -16,7 +16,7 @@ class MetadataUpdater:
         self._conn = DB.Get(DB_Config)
 
     def check(self) -> bool:
-        data = sp.project.Metadata("LnD")
+        data = sp.project.Metadata("Bobo")
         return data.get("asset_id") in self._conn.get_asset_attr_list("id")
 
     def prompt_update(self) -> bool:
@@ -62,7 +62,7 @@ class MetadataUpdater:
 
         asset = self._conn.get_asset_by_name(item)
         assert asset is not None
-        data = sp.project.Metadata("LnD")
+        data = sp.project.Metadata("Bobo")
         data.set("asset_id", asset.id)
 
         MessageDialog(
