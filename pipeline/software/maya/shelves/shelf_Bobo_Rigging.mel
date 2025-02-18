@@ -1,4 +1,4 @@
-global proc shelf_LnD_Rigging () {
+global proc shelf_Bobo_Rigging () {
     global string $gBuffStr;
     global string $gBuffStr0;
     global string $gBuffStr1;
