@@ -23,7 +23,9 @@ class MayaDCC(DCC):
 
     shelf_path: str
 
-    def __init__(self, is_python_shell: bool = False) -> None:
+    def __init__(
+        self, is_python_shell: bool = False, extra_args: list[str] | None = None
+    ) -> None:
         this_path = Path(__file__).resolve()
         pipe_path = this_path.parents[2]
 
@@ -46,6 +48,7 @@ class MayaDCC(DCC):
                     str(this_path.parent / "scripts"),
                     str(this_path.parent / "userSetup"),
                     str(this_path.parent / "scripts/studiolibrary/src"),
+                    os.environ.get("RMANTREE", "") + "/bin",
                 ]
             ),
             "OCIO": str(pipe_path / "lib/ocio/love-v01/config.ocio"),
@@ -64,6 +67,7 @@ class MayaDCC(DCC):
                     os.environ.get("PXR_PLUGINPATH_NAME", ""),
                 ]
             ),
+            "TRACTOR_ENGINE": "tractor-engine.cs.byu.edu:443",
             # Icons
             "XBMLANGPATH": os.pathsep.join(
                 [
@@ -82,7 +86,36 @@ class MayaDCC(DCC):
         launch_args: list[str] = []
         if is_python_shell:
             launch_command = str(Executables.mayapy)
-            launch_args = [
+            cmd_str = ""
+            extra_args_preamble = []
+
+            print(extra_args)
+
+            if extra_args:
+                # extract the cmd arg so we can append it to everything else
+                try:
+                    cmd_flag_index = next(
+                        (
+                            i
+                            for i, f in enumerate(extra_args)
+                            if (f[0] == "-") and (f[-1] == "c")
+                        )
+                    )
+                    cmd_str = extra_args[cmd_flag_index + 1]
+                    if len(extra_args[cmd_flag_index]) > 2:
+                        cmd_str_other_flags = ["-" + extra_args[cmd_flag_index][1:-1]]
+                    else:
+                        cmd_str_other_flags = []
+
+                    extra_args_preamble = (
+                        extra_args[:cmd_flag_index]
+                        + extra_args[cmd_flag_index + 2 :]
+                        + cmd_str_other_flags
+                    )
+                except StopIteration:
+                    pass
+
+            launch_args = extra_args_preamble + [
                 "-ic",
                 ";".join(
                     [
@@ -90,11 +123,14 @@ class MayaDCC(DCC):
                         "import maya.standalone",
                         "maya.standalone.initialize()",
                         "atexit.register(maya.standalone.uninitialize)",
+                        cmd_str,
                     ]
                 ),
             ]
         else:
             launch_command = str(Executables.maya)
+            if extra_args:
+                launch_args = extra_args
 
         super().__init__(
             launch_command, launch_args, env_vars, lambda: self.set_up_shelf_path()

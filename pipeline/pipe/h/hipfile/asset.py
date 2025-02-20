@@ -13,8 +13,8 @@ log = logging.getLogger(__name__)
 
 
 class HAssetFileManager(HFileManager):
-    def __init__(self) -> None:
-        super().__init__(Asset)
+    def __init__(self, ignore_load_warnings: bool = False) -> None:
+        super().__init__(Asset, ignore_load_warnings=ignore_load_warnings)
 
     def _generate_filename_ext(self, entity) -> tuple[str, str]:
         asset = cast(Asset, entity)

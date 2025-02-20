@@ -33,6 +33,7 @@ class Publisher:
     _dialog: FilteredListDialog
     _dialog_T: type[FilteredListDialog]
     _entity: SGEntity
+    _is_headless: bool
     _publish_path: Path
     _selected_item: str
     _system: str
@@ -40,13 +41,17 @@ class Publisher:
     _window: QWidget | None
 
     def __init__(
-        self, dialog: type[FilteredListDialog] | None = None, use_sg_entity: bool = True
+        self,
+        dialog: type[FilteredListDialog] | None = None,
+        use_sg_entity: bool = True,
+        headless: bool = False,
     ) -> None:
         self._conn = DB.Get(DB_Config)
-        self._window = pipe.m.local.get_main_qt_window()
+        self._window = None if headless else pipe.m.local.get_main_qt_window()
         self._system = platform.system()
         self._dialog_T = dialog or FilteredListDialog
         self._use_sg_entity = use_sg_entity
+        self._is_headless = headless
 
     @staticmethod
     def _assert_not_none(fun):
@@ -179,11 +184,12 @@ class Publisher:
                 mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
             except Exception:
                 print(traceback.format_exc())
-                MessageDialog(
-                    self._window,
-                    "WARNING: Publish failed! Please check the console for more information",
-                    "Export Failed",
-                ).exec_()
+                if not self._is_headless:
+                    MessageDialog(
+                        self._window,
+                        "WARNING: Publish failed! Please check the console for more information",
+                        "Export Failed",
+                    ).exec_()
                 return
 
             # if on Windows, work around this bug: https://github.com/PixarAnimationStudios/OpenUSD/issues/849
@@ -191,9 +197,16 @@ class Publisher:
             if self._IS_WINDOWS:
                 shutil.move(temp_publish_path, self._publish_path)
 
-            confirm = MessageDialog(
-                self._window,
-                self._get_confirm_message(),
-                "Export Complete",
-            )
-            confirm.exec_()
+            self._postpublish()
+
+            print("Export Complete")
+            if not self._is_headless:
+                confirm = MessageDialog(
+                    self._window,
+                    self._get_confirm_message(),
+                    "Export Complete",
+                )
+                confirm.exec_()
+
+    def _postpublish(self) -> None:
+        pass

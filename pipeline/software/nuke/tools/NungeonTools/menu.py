@@ -11,6 +11,7 @@ nuke.pluginAddPath("./nk_files")
 nuke.pluginAddPath("./toolsets")
 nuke.pluginAddPath('./scripts')
 
+
 # Nungeon buttons
 toolbar = nuke.menu("Nodes")
 m = toolbar.addMenu("Nungeon", icon="nungeonIcon.png")
@@ -23,6 +24,7 @@ m.addCommand(
     f"nuke.nodePaste(\"{str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk')}\")",
     icon="nungeonIcon.png",
 )
+m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
 
 
 # aspect ratio

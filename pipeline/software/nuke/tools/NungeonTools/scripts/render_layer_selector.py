@@ -1,5 +1,6 @@
 import nuke
 from Qt import QtWidgets, QtCore, QtGui
+
 import os
 import random
 import time
@@ -376,7 +377,6 @@ def show_simple_window():
     simple_window.show()
 
 def run():
-    
     show_simple_window()
 
 run()
