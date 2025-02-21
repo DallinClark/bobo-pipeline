@@ -4,10 +4,10 @@ import os
 import random
 import time
 from functools import partial
-import sys
 from pipe.db import DB
 from env_sg import DB_Config
 import re
+
 
 class CascadingComboBox(QtWidgets.QWidget):
     def __init__(self):
@@ -23,7 +23,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         self.current_render = None  # Holds the selected render folder
 
         # Create a label for the title
-        self.title_label = QtWidgets.QLabel("This tool was not written by Scott, believe it or not", self)
+        self.title_label = QtWidgets.QLabel(
+            "This tool was not written by Scott, believe it or not", self
+        )
         self.title_label.setAlignment(QtCore.Qt.AlignCenter)
 
         # Create a tool button to mimic a cascading combobox
@@ -48,7 +50,9 @@ class CascadingComboBox(QtWidgets.QWidget):
             self.default_shot = "A_010"
 
         # Create a label to display the current shot
-        self.current_shot_label = QtWidgets.QLabel(f"Current Shot: {self.default_shot}", self)
+        self.current_shot_label = QtWidgets.QLabel(
+            f"Current Shot: {self.default_shot}", self
+        )
         self.current_shot_label.setAlignment(QtCore.Qt.AlignLeft)
 
         # Create a list widget for displaying thumbnails
@@ -57,7 +61,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         self.thumbnail_list.setIconSize(QtCore.QSize(150, 150))
         self.thumbnail_list.setResizeMode(QtWidgets.QListWidget.Adjust)
         # Initially, enforce single selection in "renders" mode.
-        self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.thumbnail_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
 
         # Load render folders for the default shot.
         self.update_renders(self.default_shot)
@@ -121,7 +127,9 @@ class CascadingComboBox(QtWidgets.QWidget):
             categorized_data[key] = sorted(categorized_data[key])
 
         # Sort categories and ensure "Other" is last
-        sorted_categories = {k: categorized_data[k] for k in sorted(categorized_data) if k != "Other"}
+        sorted_categories = {
+            k: categorized_data[k] for k in sorted(categorized_data) if k != "Other"
+        }
         if "Other" in categorized_data:
             sorted_categories["Other"] = categorized_data["Other"]
         return sorted_categories
@@ -153,7 +161,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         # Reset mode to renders and update render folders.
         self.current_mode = "renders"
         self.current_render = None
-        self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.thumbnail_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
         self.action_button.setText("Select Render")
         self.back_button.hide()
         self.update_renders(shot)
@@ -192,30 +202,50 @@ class CascadingComboBox(QtWidgets.QWidget):
                     if beauty_folder and os.path.isdir(beauty_folder):
                         thumb_folder = os.path.join(beauty_folder, "thumb")
                         if os.path.exists(thumb_folder) and os.path.isdir(thumb_folder):
-                            thumbs = [f for f in os.listdir(thumb_folder)
-                                      if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+                            thumbs = [
+                                f
+                                for f in os.listdir(thumb_folder)
+                                if f.lower().endswith((".png", ".jpg", ".jpeg"))
+                            ]
                             if thumbs:
                                 thumb_image = random.choice(thumbs)
                                 thumbnail_path = os.path.join(thumb_folder, thumb_image)
-                                print("Using beauty layer thumbnail for render:", thumbnail_path)
+                                print(
+                                    "Using beauty layer thumbnail for render:",
+                                    thumbnail_path,
+                                )
                     else:
                         # --- Fallback: Check the render folder's own thumbnail folder ---
                         render_thumb_folder = os.path.join(folder_path, "thumbnail")
-                        if os.path.exists(render_thumb_folder) and os.path.isdir(render_thumb_folder):
-                            thumbs = [f for f in os.listdir(render_thumb_folder)
-                                      if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+                        if os.path.exists(render_thumb_folder) and os.path.isdir(
+                            render_thumb_folder
+                        ):
+                            thumbs = [
+                                f
+                                for f in os.listdir(render_thumb_folder)
+                                if f.lower().endswith((".png", ".jpg", ".jpeg"))
+                            ]
                             if thumbs:
                                 thumb_image = random.choice(thumbs)
-                                thumbnail_path = os.path.join(render_thumb_folder, thumb_image)
+                                thumbnail_path = os.path.join(
+                                    render_thumb_folder, thumb_image
+                                )
                                 print("Using render folder thumbnail:", thumbnail_path)
                         else:
-                            print("Using default thumbnail for render folder:", thumbnail_path)
+                            print(
+                                "Using default thumbnail for render folder:",
+                                thumbnail_path,
+                            )
 
                     # Create list widget item.
                     item = QtWidgets.QListWidgetItem()
                     pixmap = QtGui.QPixmap(thumbnail_path)
-                    scaled_pixmap = pixmap.scaled(316, 150, QtCore.Qt.KeepAspectRatio,
-                                                   QtCore.Qt.SmoothTransformation)
+                    scaled_pixmap = pixmap.scaled(
+                        316,
+                        150,
+                        QtCore.Qt.KeepAspectRatio,
+                        QtCore.Qt.SmoothTransformation,
+                    )
                     item.setIcon(QtGui.QIcon(scaled_pixmap))
 
                     # Define paths for images (to get creation time)
@@ -233,7 +263,9 @@ class CascadingComboBox(QtWidgets.QWidget):
                     except Exception:
                         creation_time = os.path.getmtime(folder_path)
 
-                    creation_date = time.strftime("%m-%d-%Y", time.localtime(creation_time))
+                    creation_date = time.strftime(
+                        "%m-%d-%Y", time.localtime(creation_time)
+                    )
                     item.setText(f"{folder_name}\n{creation_date}")
                     item.setTextAlignment(QtCore.Qt.AlignCenter)
                     items_list.append((creation_time, item))
@@ -251,7 +283,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         """
         selected_items = self.thumbnail_list.selectedItems()
         if not selected_items:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a render folder.")
+            QtWidgets.QMessageBox.warning(
+                self, "No Selection", "Please select a render folder."
+            )
             return
 
         # Enforce single selection for render folder; get the folder name.
@@ -267,7 +301,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         if os.path.exists(shot_path):
             layer_items = []
             # Change selection mode to allow multiple selection for layers.
-            self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+            self.thumbnail_list.setSelectionMode(
+                QtWidgets.QAbstractItemView.ExtendedSelection
+            )
 
             for layer_name in os.listdir(shot_path):
                 # Skip folders named .backup
@@ -282,8 +318,11 @@ class CascadingComboBox(QtWidgets.QWidget):
                     # Check for a thumb folder inside the layer folder.
                     thumb_folder = os.path.join(layer_path, "thumb")
                     if os.path.exists(thumb_folder) and os.path.isdir(thumb_folder):
-                        thumbs = [f for f in os.listdir(thumb_folder)
-                                  if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+                        thumbs = [
+                            f
+                            for f in os.listdir(thumb_folder)
+                            if f.lower().endswith((".png", ".jpg", ".jpeg"))
+                        ]
                         if thumbs:
                             thumb_image = random.choice(thumbs)
                             thumbnail_path = os.path.join(thumb_folder, thumb_image)
@@ -293,8 +332,12 @@ class CascadingComboBox(QtWidgets.QWidget):
 
                     item = QtWidgets.QListWidgetItem()
                     pixmap = QtGui.QPixmap(thumbnail_path)
-                    scaled_pixmap = pixmap.scaled(316, 150, QtCore.Qt.KeepAspectRatio,
-                                                   QtCore.Qt.SmoothTransformation)
+                    scaled_pixmap = pixmap.scaled(
+                        316,
+                        150,
+                        QtCore.Qt.KeepAspectRatio,
+                        QtCore.Qt.SmoothTransformation,
+                    )
                     item.setIcon(QtGui.QIcon(scaled_pixmap))
                     item.setText(layer_name)
                     item.setTextAlignment(QtCore.Qt.AlignCenter)
@@ -308,7 +351,11 @@ class CascadingComboBox(QtWidgets.QWidget):
             self.action_button.setText("Import Layers")
             self.back_button.show()
         else:
-            QtWidgets.QMessageBox.warning(self, "Missing Folder", f"The render folder '{render_folder}' does not exist.")
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Missing Folder",
+                f"The render folder '{render_folder}' does not exist.",
+            )
 
     def on_action_button_clicked(self):
         """
@@ -327,7 +374,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         """
         self.current_mode = "renders"
         self.current_render = None
-        self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.thumbnail_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
         self.action_button.setText("Select Render")
         self.back_button.hide()
         self.update_renders(self.default_shot)
@@ -339,20 +388,37 @@ class CascadingComboBox(QtWidgets.QWidget):
         """
         selected_items = self.thumbnail_list.selectedItems()
         if not selected_items:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select at least one render layer to import.")
+            QtWidgets.QMessageBox.warning(
+                self,
+                "No Selection",
+                "Please select at least one render layer to import.",
+            )
             return
 
         base_path = r"/groups/dungeons/production/shot"
         for item in selected_items:
-            layer_folder = item.text()  # In layers mode, the text is just the layer name.
-            images_dn_path = os.path.join(base_path, self.default_shot, "render", self.current_render, layer_folder, "images_dn")
+            layer_folder = (
+                item.text()
+            )  # In layers mode, the text is just the layer name.
+            images_dn_path = os.path.join(
+                base_path,
+                self.default_shot,
+                "render",
+                self.current_render,
+                layer_folder,
+                "images_dn",
+            )
             print("Importing from:", images_dn_path)
 
             if os.path.exists(images_dn_path):
-                exr_files = [f for f in os.listdir(images_dn_path) if f.lower().endswith(".exr")]
+                exr_files = [
+                    f for f in os.listdir(images_dn_path) if f.lower().endswith(".exr")
+                ]
                 if exr_files:
                     try:
-                        exr_files.sort(key=lambda x: int(os.path.splitext(x)[0].split(".")[-1]))
+                        exr_files.sort(
+                            key=lambda x: int(os.path.splitext(x)[0].split(".")[-1])
+                        )
                     except Exception as e:
                         print("Error sorting EXR files:", e)
 
@@ -365,18 +431,28 @@ class CascadingComboBox(QtWidgets.QWidget):
                     read["first"].setValue(first_frame)
                     read["last"].setValue(last_frame)
                 else:
-                    QtWidgets.QMessageBox.warning(self, "Missing Sequence", f"No EXR files found in {images_dn_path}")
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Missing Sequence",
+                        f"No EXR files found in {images_dn_path}",
+                    )
             else:
-                QtWidgets.QMessageBox.warning(self, "Missing Folder", f"The folder '{images_dn_path}' does not exist.")
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Missing Folder",
+                    f"The folder '{images_dn_path}' does not exist.",
+                )
         self.close()
+
 
 def show_simple_window():
     global simple_window  # Prevent garbage collection
     simple_window = CascadingComboBox()
     simple_window.show()
 
+
 def run():
-    
     show_simple_window()
 
-run()
+
+# run()
