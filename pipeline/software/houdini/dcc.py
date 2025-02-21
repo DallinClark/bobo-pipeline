@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,8 +22,7 @@ class HoudiniDCC(DCC):
     """Houdini DCC class"""
 
     def __init__(
-        self,
-        is_python_shell: bool = False,
+        self, is_python_shell: bool = False, extra_args: list[str] | None = None
     ) -> None:
         this_path = Path(__file__).resolve()
         pipe_path = this_path.parents[2]
@@ -69,6 +69,8 @@ class HoudiniDCC(DCC):
             "HSITE": str(resolve_mapped_path(this_path.parent / "hsite")),
             # Job directory
             "JOB": str(resolve_mapped_path(get_production_path())),
+            # Ensure LD_LIBRARY_PATH is unset to allow nesting pipe instances
+            "LD_LIBRARY_PATH": None,
             # Manually set LD_LIBRARY_PATH to integrated Houdini libraries (for Axiom)
             # "LD_LIBRARY_PATH": str(Executables.hfs / "dsolib")
             # if platform.system() == "Linux"
@@ -96,7 +98,15 @@ class HoudiniDCC(DCC):
                 [
                     str(pipe_path),
                     # Add $RMANTREE/bin to PYTHONPATH for the Tractor PDG scheduler
-                    os.environ.get("RMANTREE", "") + "/bin",
+                    # os.environ.get("RMANTREE", "") + "/bin",
+                    str(
+                        get_production_path()
+                        / (
+                            "opt/pixar/RenderManProServer-26.3"
+                            if platform.system() == "Linux"
+                            else "PFiles/Pixar/RenderManProServer-26.3"
+                        )
+                    ),
                 ]
             ),
             # RenderMan color config json file
@@ -111,6 +121,9 @@ class HoudiniDCC(DCC):
         else:
             launch_command = str(Executables.houdini)
 
-        launch_args: list[str] = [] if is_python_shell else ["-foreground"]
+        if is_python_shell:
+            launch_args = extra_args or []
+        else:
+            launch_args = ["-foreground", *(extra_args or [])]
 
         super().__init__(launch_command, launch_args, env_vars)

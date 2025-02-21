@@ -7,8 +7,11 @@ from pathlib import Path
 from typing import cast
 
 import pipe.h
+from pipe.db import DB
 from pipe.glui.dialogs import FilteredListDialog
 from pipe.struct.db import SGEntity, Shot
+
+from env_sg import DB_Config
 
 from .filemanager import HFileManager
 
@@ -17,27 +20,52 @@ log = logging.getLogger(__name__)
 
 
 class HShotFileManager(HFileManager):
-    _department: DEPARTMENT
+    _department: str
 
     class DEPARTMENT(str, Enum):
         CFX = "cfx"
         FX = "fx"
+        FLO = "flo"
         LIGHTING = "lighting"
+        RENDER = "render"
 
-    def __init__(self):
-        department_dialog = FilteredListDialog(
-            pipe.h.local.get_main_qt_window(),
-            [self.DEPARTMENT.CFX, self.DEPARTMENT.FX, self.DEPARTMENT.LIGHTING],
-            "Department Select",
-            include_filter_field=False,
-            accept_button_name="Select",
-        )
-        department_dialog.exec_()
+    def __init__(
+        self,
+        *,
+        override_dept: str | None = None,
+        override_entity_code: str | None = None,
+        ignore_load_warnings: bool = False,
+    ):
+        if override_dept:
+            self._department = override_dept
+        else:
+            department_dialog = FilteredListDialog(
+                pipe.h.local.get_main_qt_window(),
+                [
+                    self.DEPARTMENT.CFX,
+                    self.DEPARTMENT.FX,
+                    self.DEPARTMENT.FLO,
+                    self.DEPARTMENT.LIGHTING,
+                    self.DEPARTMENT.RENDER,
+                ],
+                "Department Select",
+                include_filter_field=False,
+                accept_button_name="Select",
+            )
+            department_dialog.exec_()
 
-        self._department = department_dialog.get_selected_item()
+            self._department = department_dialog.get_selected_item() or ""
+
         if not self._department:
             return
-        super().__init__(Shot, versioning=True, version_glob="{}_v*.{}")
+
+        super().__init__(
+            Shot,
+            versioning=True,
+            version_glob="{}_v*.{}",
+            override_entity_code=override_entity_code,
+            ignore_load_warnings=ignore_load_warnings,
+        )
 
     def _generate_filename_ext(self, entity) -> tuple[str, str]:
         return self._department, "hipnc"
@@ -47,8 +75,45 @@ class HShotFileManager(HFileManager):
 
     def _post_open_file(self, entity: SGEntity):
         shot = cast(Shot, entity)
-        hou.playbar.setFrameRange(shot.cut_in - 5, shot.cut_out + 5)
-        hou.playbar.setPlaybackRange(shot.cut_in - 5, shot.cut_out + 5)
+
+        if self._department == HShotFileManager.DEPARTMENT.CFX:
+            shot_in = 940
+            shot_out = shot.cut_out + 5
+        elif self._department == HShotFileManager.DEPARTMENT.RENDER:
+            shot_in = shot.cut_in
+            shot_out = shot.cut_out
+        else:
+            shot_in = shot.cut_in - 5
+            shot_out = shot.cut_out + 5
+
+        hou.playbar.setFrameRange(shot_in, shot_out)
+        hou.playbar.setPlaybackRange(shot_in, shot_out)
+        hou.setFrame(shot_in)
+
+        # update substeps
+        try:
+            hou.node("/stage/PUBLISH").parm("f3").set(1.0 / shot.substeps)  # type: ignore[union-attr]
+        except Exception:
+            pass
+
+    def _open_file(self, path):
+        def do_post_open_file(event: hou.hipFileEventType) -> None:
+            if event != hou.hipFileEventType.AfterLoad:
+                return
+            try:
+                shot_code = str(hou.contextOption("SHOT")).split("/").pop()
+                conn = DB.Get(DB_Config, auto_update=False)
+                shot = conn.get_shot_by_code(shot_code)
+                self._post_open_file(shot)
+            except Exception:
+                print("Failed to update frame range!")
+
+            hou.hipFile.removeEventCallback(do_post_open_file)
+
+        # hou.hipFile.load interrupts the running of the script so we have to
+        # call _post_open_file with a callback instead
+        hou.hipFile.addEventCallback(do_post_open_file)
+        super()._open_file(path)
 
     def _setup_file(self, path: Path, entity: SGEntity) -> None:
         super(HShotFileManager, HShotFileManager)._setup_file(self, path, entity)
@@ -64,11 +129,13 @@ class HShotFileManager(HFileManager):
         load_layer.parm("shot").set("$JOB/`@SHOT`")  # type: ignore[union-attr]
 
         muted_deps: list[str] = []
-        if self._department == self.DEPARTMENT.CFX:
+        if self._department == HShotFileManager.DEPARTMENT.CFX:
             muted_deps = ["cfx", "fx", "layout", "lighting"]
-        elif self._department == self.DEPARTMENT.FX:
+        elif self._department == HShotFileManager.DEPARTMENT.FLO:
+            muted_deps = ["cfx", "flo", "lighting"]
+        elif self._department == HShotFileManager.DEPARTMENT.FX:
             muted_deps = ["fx"]
-        elif self._department == self.DEPARTMENT.LIGHTING:
+        elif self._department == HShotFileManager.DEPARTMENT.LIGHTING:
             muted_deps = ["lighting"]
 
         for dep in muted_deps:
@@ -89,6 +156,7 @@ class HShotFileManager(HFileManager):
         publish = stage.createNode("usd_rop")
         publish.setName("PUBLISH")
         publish.parm("lopoutput").set("$HIP/usd/main.usd")  # type: ignore[union-attr]
+        publish.parm("trange").set("normal")  # type: ignore[union-attr]
 
         layer_break.setInput(0, load_layer)
         begin_dep.setInput(0, layer_break)
@@ -99,6 +167,40 @@ class HShotFileManager(HFileManager):
         begin_dep.setPosition((0, 4))
         layer_break.setPosition((0, 5))
         load_layer.setPosition((0, 6))
+
+        if self._department == HShotFileManager.DEPARTMENT.CFX:
+            publish.parm("f1").set(shot.cut_in - 5)  # type: ignore[union-attr]
+            sublayer = stage.createNode("sublayer")
+            sublayer.setPosition((0, 2))
+            sublayer.setInput(0, begin_dep)
+            end_dep.setInput(0, sublayer)
+
+            for idx, stub in enumerate(shot.assets):
+                asset = self._conn.get_asset_by_stub(stub)
+                if asset.name == "rayden":
+                    char_cfx = stage.createNode("cooks23::RAYDEN_CFXSHOT::1.0")
+                elif asset.name == "robin":
+                    char_cfx = stage.createNode("cooks23::dev::ROBIN_CFXSHOT::1.0")
+                else:
+                    continue
+                char_cfx.setPosition((idx + 1, 3))
+                char_cfx.setInput(0, begin_dep)
+                sublayer.setNextInput(char_cfx)
+
+        elif self._department == HShotFileManager.DEPARTMENT.RENDER:
+            if shot.substeps != 1:
+                deform_substeps = stage.createNode("rendergeometrysettings")
+                deform_substeps.setName("deformation_substeps")
+                deform_substeps.parm("primpattern").set("/camera /character")  # type: ignore[union-attr]
+                deform_substeps.parm(
+                    "xn__primvarsriobjectgeosamples_control_iwbcg"
+                ).set("set")  # type: ignore[union-attr]
+                deform_substeps.parm("xn__primvarsriobjectgeosamples_hjbcg").set(  # type: ignore[union-attr]
+                    shot.substeps
+                )
+                deform_substeps.setPosition((0, 2))
+                deform_substeps.setInput(0, begin_dep)
+                end_dep.setInput(0, deform_substeps)
 
         self._post_open_file(shot)
 

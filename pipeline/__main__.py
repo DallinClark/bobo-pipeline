@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 
 from argparse import ArgumentParser
 
@@ -31,9 +32,19 @@ def getLevelNamesMapping():
     return logging._nameToLevel.keys()
 
 
-def launch(software_name: str, is_python_shell: bool = False) -> None:
+def launch(
+    software_name: str,
+    is_python_shell: bool = False,
+    extra_args: list[str] | None = None,
+) -> None:
+    if sys.platform == "linux":
+        # raise file descriptor limit for the enclosing Python process
+        import resource
+        _, max_fd = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (max_fd, max_fd))
+
     software = find_implementation(DCCInterface, f"software.{software_name}")
-    software(is_python_shell).launch()
+    software(is_python_shell, extra_args).launch()
 
 
 if __name__ == "__main__":
@@ -58,13 +69,13 @@ if __name__ == "__main__":
         action="store_true",
     )
 
-    args = parser.parse_args()
+    args, extras = parser.parse_known_args()
 
     logging.basicConfig(
         level=args.log_level,
         format="%(asctime)s %(processName)s(%(process)s) %(threadName)s [%(name)s(%(lineno)s)] [%(levelname)s] %(message)s",
     )
 
-    launch(args.software, args.python)
+    launch(args.software, args.python, extras)
 
     log.info("Exiting")

@@ -33,7 +33,7 @@ class MatlibManager:
     _conn: DB
 
     def __init__(self, node: hou.LopNode | None = None) -> None:
-        self._conn = DB.Get(DB_Config)
+        self._conn = DB.Get(DB_Config, auto_update=False)
         if node:
             self._init_hda(node)
 

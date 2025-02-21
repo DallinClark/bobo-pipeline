@@ -18,10 +18,11 @@ def main():
     # set workspace
     mc.workspace(str(get_production_path().parent), openWorkspace=True)
 
-    # enable timeline-marker plugin
-    from timeline_marker import install  # type: ignore[import-not-found]
+    if not mc.about(batch=True):
+        # enable timeline-marker plugin
+        from timeline_marker import install  # type: ignore[import-not-found]
 
-    install.execute()
+        install.execute()
 
     # register USD Export chaser
     import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
@@ -30,5 +31,4 @@ def main():
     mayaUsdLib.ExportChaser.Register(ExportChaser, ExportChaser.ID)
 
 
-if not mc.about(batch=True):
-    mc.evalDeferred(main)
+mc.evalDeferred(main)
