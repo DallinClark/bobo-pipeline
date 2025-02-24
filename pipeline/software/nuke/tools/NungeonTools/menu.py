@@ -12,6 +12,7 @@ nuke.pluginAddPath("./toolsets")
 nuke.pluginAddPath('./scripts')
 
 
+
 # Nungeon buttons
 toolbar = nuke.menu("Nodes")
 m = toolbar.addMenu("Nungeon", icon="nungeonIcon.png")
@@ -29,25 +30,22 @@ m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png"
 
 # aspect ratio
 nuke.addFormat("2048 870 Love_and_Dungeons_aspect_ratio")
-nuke.knobDefault("Root.format", "Love_and_Dungeons_aspect_ratio")
 
 
-#Shelf Tools 
+# Shelf Tools
 def import_render_layers():
-    import render_layer_selector
+
+    import render_layer_selector  # type: ignore[import-not-found]
     render_layer_selector.run()
-    print(1)
 
 
 def choose_shot():
-    nuke.message("Ah, this doesn't do anything quite yet sorry")
+    import open_shot  # type: ignore[import-not-found]
+    open_shot.run()
 
 menu = nuke.menu('Nuke')
 menu.addCommand('Choose Shot', 'choose_shot()')
 menu.addCommand('Import Render Layers', 'import_render_layers()')
-
-
-
 
 
 
