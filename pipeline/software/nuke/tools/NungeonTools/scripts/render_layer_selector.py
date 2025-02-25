@@ -5,7 +5,6 @@ import os
 import random
 import time
 from functools import partial
-import sys
 from pipe.db import DB
 from env_sg import DB_Config
 import re
