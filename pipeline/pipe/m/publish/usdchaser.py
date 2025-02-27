@@ -430,6 +430,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     "raydenring",
                     "ringroom",
                     "robinring",
+                    "rrbrickdoor",
                     "statueringpillar",
                     "strikemagicpillarpath",
                 ]:
