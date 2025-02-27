@@ -429,6 +429,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     "gemheart",
                     "raydenring",
                     "robinring",
+                    "rrbrickdoor",
                     "statueringpillar",
                     "strikemagicpillarpath",
                 ]:
