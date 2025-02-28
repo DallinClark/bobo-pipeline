@@ -30,7 +30,7 @@ from env_sg import DB_Config
 log = logging.getLogger(__name__)
 
 
-class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
+class SubstanceExportWindow(QMainWindow, ButtonPair):  # TODO this is messy
     _asset: Asset
     _central_widget: QtWidgets.QWidget
     _conn: DB
@@ -38,7 +38,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
     _mat_var_dropdown: QComboBox
     # _mat_var_enabled: QtWidgets.QCheckBox
     _metadataManager: pipe.sp.metadata.MetadataUpdater
-    #_srgbChecker: pipe.sp.channels.sRGBChecker
+    # _srgbChecker: pipe.sp.channels.sRGBChecker
     _tex_set_dict: dict[sp.textureset.TextureSet, "TexSetWidget"]
     _tex_set_widgets: list["TexSetWidget"]
 
@@ -72,7 +72,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
             self._asset = asset
 
             self._setup_asset_ui()
-        
+
         else:
             self._tex_set_assets: dict[str, str] = {}
             self.setup_batch_ui()
@@ -106,12 +106,12 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
             texture_set_layout.addWidget(ts_label)
 
             asset_dropdown = QtWidgets.QComboBox()
-            
+
             for asset_name in asset_names:
                 asset_dropdown.addItem(asset_name)
 
             self._tex_set_assets[ts.name()] = asset_dropdown
-            
+
             texture_set_layout.addWidget(asset_dropdown)
 
         # Create a container for the texture set layout
@@ -120,7 +120,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
 
         # Create a scroll area for the texture set layout
         texture_set_scroll_area = QtWidgets.QScrollArea()
-        texture_set_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        texture_set_scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
         texture_set_scroll_area.setWidget(texture_set_widget)
         texture_set_scroll_area.setWidgetResizable(True)
 
@@ -128,22 +130,23 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
         self._main_layout.addWidget(texture_set_scroll_area)
 
         confirm_button = QtWidgets.QPushButton("Confirm", self)
-        confirm_button.clicked.connect(self.on_confirm_button_clicked)  # Connect to the handler
+        confirm_button.clicked.connect(
+            self.on_confirm_button_clicked
+        )  # Connect to the handler
         self._main_layout.addWidget(confirm_button)
 
     def on_confirm_button_clicked(self):
         self.tex_set_asset_dict = {}
-        self.selected_assets=[]
-        
+        self.selected_assets = []
+
         for ts_name, dropdown in self._tex_set_assets.items():
             selected_asset = dropdown.currentText()
             self.selected_assets.append(selected_asset)
 
             if selected_asset not in self.tex_set_asset_dict.keys():
                 self.tex_set_asset_dict[selected_asset] = []
-            
-            self.tex_set_asset_dict[selected_asset].append(ts_name)
 
+            self.tex_set_asset_dict[selected_asset].append(ts_name)
 
         self.clear_layout()
 
@@ -173,11 +176,13 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
         # Clear the layout
         delete_items(layout)
 
-        self.resize(800,1200)
+        self.resize(400, 600)
 
-    def _setup_asset_ui(self, isBatch: bool=False):
+    def _setup_asset_ui(self, isBatch: bool = False):
         if isBatch:
-            self._asset = self._conn.get_asset_by_name(self.selected_assets[self.batchIndex])
+            self._asset = self._conn.get_asset_by_name(
+                self.selected_assets[self.batchIndex]
+            )
 
         self.setWindowTitle("Bobo Publish Textures")
 
@@ -226,7 +231,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
 
         else:
             texture_set_layout = QtWidgets.QVBoxLayout()
-            for ts_name in self.tex_set_asset_dict[self.selected_assets[self.batchIndex]]:
+            for ts_name in self.tex_set_asset_dict[
+                self.selected_assets[self.batchIndex]
+            ]:
                 ts = TextureSet.from_name(ts_name)
                 widget = TexSetWidget(self, ts)
                 self._tex_set_dict[ts] = widget
@@ -282,7 +289,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
         geo_var_settings_layout.addWidget(self._geo_var_dropdown, 70)
         geo_var_layout.addWidget(geo_var_settings_widget, 90)
         self._main_layout.addWidget(geo_var_widget)
-        
+
         # Buttons
         self._init_buttons(has_cancel_button=True, ok_name="Export")
 
@@ -298,7 +305,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
 
     def batch_asset_finished_fail(self):
         self.clear_layout()
-        if self.batchIndex >= len(self.selected_assets):
+        if self.batchIndex >= len(self.selected_assets - 1):
             self.close()
         else:
             self.batchIndex += 1
@@ -318,7 +325,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
         the export"""
         metaUpdater = pipe.sp.metadata.MetadataUpdater()
         meta = metaUpdater.check() or metaUpdater.do_update()
-        return meta #and srgb
+        return meta  # and srgb
 
     @property
     def mat_var(self) -> str:
@@ -328,7 +335,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
     def geo_var(self) -> str:
         return self._geo_var_dropdown.currentText()
 
-    def do_export(self, isBatch: bool=False) -> None:
+    def do_export(self, isBatch: bool = False) -> None:
         if self.mat_var not in self._asset.material_variants:
             self._asset.material_variants.add(self.mat_var)
             log.info(f"Updating new material variant: {self.mat_var}")
@@ -369,7 +376,6 @@ class SubstanceExportWindow(QMainWindow, ButtonPair): #TODO this is messy
             ).exec_()
         if not isBatch:
             self.close()
-        
 
 
 class TexSetWidget(QtWidgets.QWidget):
