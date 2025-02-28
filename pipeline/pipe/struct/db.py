@@ -134,7 +134,7 @@ class Asset(SGEntity):
 
     @property
     def tex_path(self) -> Optional[str]:
-        return f"{self.path}/tex/" + (self.variant_name or "main")
+        return f"{self.path}/tex/"
 
     @property
     def variant_name(self) -> Optional[str]:

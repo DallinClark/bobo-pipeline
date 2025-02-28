@@ -44,12 +44,13 @@ def close_plugin():
 if __name__ == "__main__":
     window = start_plugin()
 
+
 def launch_batch_exporter():
-    launch_exporter(is_batch=True) 
+    launch_exporter(is_batch=True)
     print("Launching Batch Exporter")
 
 
-def launch_exporter(is_batch : bool=False):
+def launch_exporter(is_batch: bool = False):
     if not sp.project.is_open():
         MessageDialog(
             pipe.sp.local.get_main_qt_window(),

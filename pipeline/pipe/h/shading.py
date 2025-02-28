@@ -41,27 +41,8 @@ class MatlibManager:
         """Initialize values on the HDA instance.
         Note that self.node does not work before initialization, so
         node is passed in as an arg"""
-        var_name = node.parm("variant_name")
-        assert var_name is not None
-        var_id = node.parm("variant_id")
-        assert var_id is not None
-
-        # get variant list from SG
-        variants = self._asset.variants
-        if not variants:
-            var_name.set("main")
-            assert self._asset.id is not None
-            var_id.set(self._asset.id)
-            return
-
-        # set default variant on the hda
-        default_geo_var = self._conn.get_asset_by_stub(self._asset.variants[0])
-        assert default_geo_var.variant_name is not None
-        assert default_geo_var.id is not None
-        var_name.set(default_geo_var.variant_name)
-        var_id.set(default_geo_var.id)
-
-        self._update_default_mat_var(default_geo_var, node=node)
+        self._update_default_mat_var(node=node)
+        self._update_default_geo_var(node=node)
 
         self.update_base_path(node=node)
 
@@ -85,15 +66,12 @@ class MatlibManager:
     @property
     def material_info(self) -> MaterialInfo | None:
         """Attempt to get mat.json file for selected variant"""
+        print(self.variant_name)
         try:
-            variant = self._conn.get_asset_by_id(self.geo_variant_id)
-
-            if not (variant_name := variant.variant_name):
-                variant_name = "main"
             with open(
                 self._hip
                 / "tex"
-                / variant_name
+                / self.variant_name
                 / "variants"
                 / self.mat_variant_name
                 / "mat.json",
@@ -118,68 +96,37 @@ class MatlibManager:
         return node
 
     @property
-    def geo_variant_id(self) -> int:
-        """Get the id of the current geo variant"""
-        geo_var_id = self.node.parm("variant_id")
-        assert geo_var_id is not None
-        # if it hasn't been set yet, set it to the default value
-        if (node_val := geo_var_id.evalAsInt()) == -1:
-            default = int(self.get_variant_list()[0])
-            geo_var_id.set(default)
-            return default
-        return node_val
-
-    @geo_variant_id.setter
-    def geo_variant_id(self, id: int) -> None:
-        """Set the variant ID and update the variant name"""
-        geo_var_id = self.node.parm("variant_id")
-        assert geo_var_id is not None
-        geo_var_id.set(id)
-        asset = self._conn.get_asset_by_id(id)
-        assert asset.variant_name is not None
-        var_name = self.node.parm("variant_name")
-        assert var_name is not None
-        if self._asset.variants:
-            var_name.set(asset.variant_name)
-        else:
-            var_name.set("main")
-
-        self._update_default_mat_var(asset)
-        self.update_base_path()
-
-    @property
     def variant_name(self) -> str:
-        var_name = self.node.parm("variant_name")
-        assert var_name is not None
-        if (node_val := var_name.evalAsString()) == "none":
-            variants = self._asset.variants
-            variant_name: str
-            if variants:
-                var1 = self._conn.get_asset_by_stub(variants[0])
-                assert var1.variant_name is not None
-                variant_name = var1.variant_name
-            else:
-                variant_name = "main"
-            var_name.set(variant_name)
-            return variant_name
-        return node_val
+        var_name = self.node.parm("geo_var")
+        if (var_name):
+            return var_name.unexpandedString() 
+        return "main"
+        
 
     @property
     def mat_variant_name(self) -> str:
         mat_var_name = self.node.parm("mat_var")
         assert mat_var_name is not None
-        return mat_var_name.evalAsString()
+        print(mat_var_name.unexpandedString())
+        return mat_var_name.unexpandedString() 
 
-    def _update_default_mat_var(
-        self, default_geo_var: Asset, /, node: hou.Node | None = None
-    ) -> None:
+    def _update_default_geo_var(self,  node: hou.LopNode | None = None) -> None:
+        # this may be called before initialization, so `self.node` may not work
+        if not node:
+            node = self.node
+        # update geo_variant on the hda
+        geo_var = node.parm("geo_var")
+        assert geo_var is not None
+        geo_var.set(next(iter(self._asset.geometry_variants)))
+        
+    def _update_default_mat_var(self,  node: hou.LopNode | None = None) -> None:
         # this may be called before initialization, so `self.node` may not work
         if not node:
             node = self.node
         # update mat_variant on the hda
         mat_var = node.parm("mat_var")
         assert mat_var is not None
-        mat_var.set(next(iter(default_geo_var.material_variants), _NO_TEXTURES))
+        mat_var.set(next(iter(self._asset.material_variants), _NO_TEXTURES))
 
     def update_base_path(self, node: hou.LopNode | None = None) -> None:
         if not node:
@@ -189,14 +136,14 @@ class MatlibManager:
         base_path = node.parm("base_path")
         assert base_path is not None
 
-        var_name = node.parm("variant_name")
+        var_name = node.parm("geo_var")
         assert var_name is not None
 
         mat_var_name = node.parm("mat_var")
         assert mat_var_name is not None
 
         base_path.set(
-            f"tex/{var_name.evalAsString()}/variants/{mat_var_name.evalAsString()}"
+            f"tex/{var_name.unexpandedString()}/variants/{mat_var_name.unexpandedString()}"
         )
 
     @staticmethod
@@ -286,6 +233,7 @@ class MatlibManager:
             assert undisplaced_parm is not None
             undisplaced_parm.set(True)
 
+
     def load_items_from_file(
         self, dest_node: hou.LopNode, file_path: str
     ) -> list[hou.NetworkMovableItem]:
@@ -340,16 +288,13 @@ class MatlibManager:
     def get_variant_list(self) -> list[str]:
         """Gets list of variants in the way that the HDA interface expects:
         [id1, label1, id2, label2, ...]"""
-        if len(self._asset.variants):
-            return [s for v in self._asset.variants for s in (str(v.id), v.disp_name)]
-        else:
-            return [str(self._asset.id), "Main"]
+        mvs = list(self._asset.geometry_variants)
+        return [s for v in mvs for s in (v, v)]
 
     def get_mat_variant_list(self) -> list[str]:
         """Gets list of mat variants in the way that the HDA interface
         expects: [id1, label1, id2, label2, ...]"""
-        current_geo_var = self._conn.get_asset_by_id(self.geo_variant_id)
-        mvs = list(current_geo_var.material_variants) or [_NO_TEXTURES]
+        mvs = list(self._asset.material_variants) or [_NO_TEXTURES]
         return [s for v in mvs for s in (v, v)]
 
     def export_selected_to_path(
