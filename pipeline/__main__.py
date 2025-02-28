@@ -40,6 +40,7 @@ def launch(
     if sys.platform == "linux":
         # raise file descriptor limit for the enclosing Python process
         import resource
+
         _, max_fd = resource.getrlimit(resource.RLIMIT_NOFILE)
         resource.setrlimit(resource.RLIMIT_NOFILE, (max_fd, max_fd))
 
