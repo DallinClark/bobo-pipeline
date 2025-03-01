@@ -128,15 +128,6 @@ set N9d0a940 [stack 0]
   ypos -255
  }
 push $N9d0a940
- Grade {
-  white {1.01 1.01 0.98 1}
-  white_panelDropped true
-  gamma {1.04 1.04 1 1}
-  gamma_panelDropped true
-  name Grade1
-  xpos 35
-  ypos -532
- }
  Reformat {
   format "2048 1305 0 0 2048 1305 1 LnDanamorphic"
   resize distort
@@ -6028,7 +6019,7 @@ set N1b8fe9d0 [stack 0]
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/twoCircle2.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/twoCircle2.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read12
@@ -6336,7 +6327,7 @@ push $N1b8fe9d0
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/circleNoise1.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/circleNoise1.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read7
@@ -6521,7 +6512,7 @@ push $N1b8fe9d0
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/circleHard1.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/circleHard1.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read14
@@ -6729,7 +6720,7 @@ push $N1b8fe9d0
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/circleBlur1.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/circleBlur1.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read9
@@ -7562,7 +7553,7 @@ push $N1b8fe9d0
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/twoCircle1.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/twoCircle1.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read11
@@ -8054,7 +8045,7 @@ push $N1b8fe9d0
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/circleHard3.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/circleHard3.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read6
@@ -8215,7 +8206,7 @@ push $N1b8fe9d0
   Read {
    inputs 0
    file_type png
-   file /users/animation/ijc23/.nuke/NukeSurvivalToolkit/images/circleHard2.png
+   file /groups/dungeons/pipeline/pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease/NukeSurvivalToolkit/images/circleHard2.png
    format "256 256 0 0 256 256 1 square_256"
    origset true
    name Read5
@@ -10263,7 +10254,7 @@ push $N1d224b30
  Merge2 {
   inputs 2
   operation plus
-  mix {{"parent.flaregain1 * 0.3"}}
+  mix {{"parent.flaregain1 * 0.12"}}
   name Merge3
   xpos 35
   ypos 20
@@ -10271,7 +10262,7 @@ push $N1d224b30
  Merge2 {
   inputs 2
   operation plus
-  mix {{"parent.flaregain2 * 0.2"}}
+  mix {{"parent.flaregain2 * 0.12"}}
   name Plus
   xpos 35
   ypos 114
