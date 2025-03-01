@@ -428,7 +428,9 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 if name in [
                     "gemheart",
                     "raydenring",
+                    "ringroom",
                     "robinring",
+                    "rrbrickdoor",
                     "statueringpillar",
                     "strikemagicpillarpath",
                 ]:

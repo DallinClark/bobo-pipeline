@@ -144,6 +144,7 @@ class AnimPlayblastDialog(PlayblastDialog):
             custom_config = next(
                 c for c in self._shot_dialog_configs if c.id == self.CUSTOM_ID
             )
+            current_filename = mc.file(query=True, sceneName=True, shortName=True)
             shots.append(
                 MShotPlayblastConfig(
                     camera=self._custom_camera.currentText(),
@@ -156,7 +157,7 @@ class AnimPlayblastDialog(PlayblastDialog):
                     paths=self.save_locations_to_paths(
                         self.CUSTOM_ID,
                         (sl[0] for sl in custom_config.save_locs),
-                        f"customPB_{date}",
+                        f"customPB_{current_filename}_{date}",
                     ),
                 )
             )
