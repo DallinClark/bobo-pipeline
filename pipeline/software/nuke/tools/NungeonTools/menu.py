@@ -51,6 +51,16 @@ m.addCommand(
     icon="nungeonIcon.png",
 )
 m.addCommand(
+    "Depth Fog",
+    f"nuke.nodePaste(\"{str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/depth_fog.nk')}\")",
+    icon="nungeonIcon.png",
+)
+m.addCommand(
+    "Deep Fog",
+    f"nuke.nodePaste(\"{str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/deep_fog.nk')}\")",
+    icon="nungeonIcon.png",
+)
+m.addCommand(
     "Relight",
     f"nuke.nodePaste(\"{str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/relight_template.nk')}\")",
     icon="nungeonIcon.png",
