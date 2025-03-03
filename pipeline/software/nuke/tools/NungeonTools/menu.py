@@ -50,6 +50,11 @@ m.addCommand(
     f"nuke.nodePaste(\"{str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk')}\")",
     icon="nungeonIcon.png",
 )
+m.addCommand(
+    "Relight",
+    f"nuke.nodePaste(\"{str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/relight_template.nk')}\")",
+    icon="nungeonIcon.png",
+)
 m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
 
 m.addCommand("L&D Write Node", "make_ld_write_node()", icon="nungeonIcon.png")
