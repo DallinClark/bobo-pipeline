@@ -1,3 +1,1 @@
-from .dcc import MayaDCC
-
-__all__ = ["MayaDCC"]
+from .dcc import MayaDCC as MayaDCC

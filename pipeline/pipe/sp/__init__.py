@@ -1,14 +1,5 @@
-# import substance painter-specific scripts
-from . import channels
-from . import export
-from . import local
-from . import metadata
-from . import reload
-
-__all__ = [
-    "channels",
-    "export",
-    "local",
-    "metadata",
-    "reload",
-]
+from . import channels as channels
+from . import export as export
+from . import local as local
+from . import metadata as metadata
+from . import reload as reload

@@ -1,10 +1,3 @@
-# Import nested module
-from . import hipfile
-from . import local
-from . import shading
-
-__all__ = [
-    "hipfile",
-    "local",
-    "shading",
-]
+from . import hipfile as hipfile
+from . import local as local
+from . import shading as shading

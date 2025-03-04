@@ -1,3 +1,1 @@
-from .dcc import SubstanceDesignerDCC
-
-__all__ = ["SubstanceDesignerDCC"]
+from .dcc import SubstanceDesignerDCC as SubstanceDesignerDCC

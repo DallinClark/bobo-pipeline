@@ -1,3 +1,1 @@
-from .dcc import HoudiniDCC
-
-__all__ = ["HoudiniDCC"]
+from .dcc import HoudiniDCC as HoudiniDCC

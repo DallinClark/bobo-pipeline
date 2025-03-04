@@ -1,3 +1,1 @@
-from .dcc import NukeDCC
-
-__all__ = ["NukeDCC"]
+from .dcc import NukeDCC as NukeDCC

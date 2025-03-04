@@ -1,5 +1,1 @@
-from . import util
-
-__all__ = [
-    "util",
-]
+from . import util as util

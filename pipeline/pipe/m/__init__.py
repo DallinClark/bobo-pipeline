@@ -1,12 +1,5 @@
 # Import nested modules
-from . import local
-from . import picker
-from . import reload
-from . import rig_publish
-
-__all__ = [
-    "local",
-    "picker",
-    "reload",
-    "rig_publish",
-]
+from . import local as local
+from . import picker as picker
+from . import reload as reload
+from . import rig_publish as rig_publish
