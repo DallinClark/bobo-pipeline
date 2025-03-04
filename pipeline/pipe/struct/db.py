@@ -9,7 +9,7 @@ from attrs import field
 # attrs doesn't support `|` syntax in 3.9
 from typing import Any, Optional, Type, TypeVar
 
-from pipe.struct.util import Diffable
+from .util import Diffable
 
 _S = TypeVar("_S")
 

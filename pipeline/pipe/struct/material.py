@@ -4,7 +4,7 @@ import attrs
 
 from enum import IntEnum
 
-from pipe.struct.util import JsonSerializable
+from .util import JsonSerializable
 
 
 class DisplacementSource(IntEnum):
