@@ -13,9 +13,8 @@ nuke.addFormat("1920 816 Love_and_Dungeons_aspect_ratio")
 
 
 def make_ld_write_node():
-    import ld_write_node  # type: ignore[import-not-found]
-
-    ld_write_node.main()
+    import ld_write_node_v2  # type: ignore[import-not-found]
+    ld_write_node_v2.main()
 
 
 def import_render_layers():
@@ -32,7 +31,6 @@ def choose_shot():
 
 def set_frameRange_and_aspectRatio():
     import set_frameRange_and_aspectRatio  # type: ignore[import-not-found]
-
     set_frameRange_and_aspectRatio.run()
 
 
