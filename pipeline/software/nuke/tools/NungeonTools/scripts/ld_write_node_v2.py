@@ -167,15 +167,15 @@ def get_week_range():
     end_of_week = start_of_week + datetime.timedelta(days=6)  # Saturday
     return start_of_week, end_of_week
 
-
 def get_output_file_info_mov():
     start_of_week, end_of_week = get_week_range()
     base_path = "/groups/dungeons/edit/shots/lighting/"
     shot_code = os.path.splitext(os.path.basename(nuke.root().name()))[0]
 
-    valid_subfolder = None  # Store a valid subfolder if found
+    valid_subfolder = None  # Store the most recent valid subfolder if found
+    latest_date = None  # Track the most recent date found
 
-    # Look for an existing subfolder within the current week
+    # Look for the most recent subfolder within the current week
     for subfolder in os.listdir(base_path):
         subfolder_path = os.path.join(base_path, subfolder)
 
@@ -183,9 +183,9 @@ def get_output_file_info_mov():
             try:
                 folder_date = datetime.datetime.strptime(subfolder, "%m-%d-%Y").date()
                 if start_of_week <= folder_date <= end_of_week:
-                    print(f"Using existing subfolder: {subfolder}")
-                    valid_subfolder = subfolder_path  # Use this folder
-                    break  # Stop searching once a valid folder is found
+                    if latest_date is None or folder_date > latest_date:
+                        latest_date = folder_date
+                        valid_subfolder = subfolder_path  # Store the most recent valid folder
             except ValueError:
                 continue  # Skip non-matching folders
 
@@ -195,19 +195,21 @@ def get_output_file_info_mov():
         valid_subfolder = os.path.join(base_path, today_str)
         os.makedirs(valid_subfolder)
         print(f"Created new subfolder: {valid_subfolder}")
+    else:
+        print(f"Using most recent subfolder: {valid_subfolder}")
 
-    # Determine the next file version
-    all_file_names = os.listdir(valid_subfolder)
-    version_numbers = [
+    # Determine the next version number for the specific shot
+    existing_versions = [
         int(re.search(r"_V(\d+)", f).group(1))
-        for f in all_file_names
-        if re.search(r"_V\d+", f)
+        for f in os.listdir(valid_subfolder)
+        if re.search(rf"^{shot_code}_V(\d+)", f)  # Match only files that belong to this shot
     ]
-    next_version = (max(version_numbers) if version_numbers else 0) + 1
-    today_str = datetime.date.today().strftime("%m-%d")
-    new_file_name = f"{shot_code}_{today_str}_V{next_version:03d}.mov"
+
+    next_version = (max(existing_versions) if existing_versions else 0) + 1
+    new_file_name = f"{shot_code}_V{next_version:03d}.mov"
 
     return [new_file_name, valid_subfolder]  # Always returns a list
+
 
 
 def get_output_file_info_exr():
