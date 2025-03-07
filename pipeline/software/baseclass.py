@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import typing
 
-from shared.util import fix_launcher_metadata, get_production_path
+from shared.util import fix_launcher_metadata
 
 from .interface import DCCInterface, DCCLocalizerInterface
 
@@ -66,15 +66,12 @@ class DCC(DCCInterface):
             else:
                 os.environ[key] = str(val)
 
-        if not os.environ["PYTHONPATH"]:
-            os.environ["PYTHONPATH"] = ""
-        os.environ["PYTHONPATH"] = os.pathsep.join(
-            [
-                os.environ["PYTHONPATH"],
-                str(get_production_path() / "../pipeline/pipeline/lib/python/any"),
-            ]
-        )
-        print(os.environ["PYTHONPATH"])
+        PYTHONPATH = "PYTHONPATH"
+        if PYTHONPATH not in venv:
+            venv[PYTHONPATH] = ""
+
+        print(venv[PYTHONPATH])
+        return venv
 
     def launch(
         self,
