@@ -24,7 +24,7 @@ from env import Executables
 log = logging.getLogger(__name__)
 
 _PROD_DB = str(get_production_path() / "asset/assetGallery.db")
-_TMPDIR = Path(os.getenv("TMPDIR", os.getenv("TEMP", "tmp"))).resolve() / str(
+_TMPDIR = Path(os.getenv("TMPDIR", os.getenv("TEMP", "/tmp"))).resolve() / str(
     os.getpid()
 )
 _TMPDIR.mkdir(0o755, exist_ok=True)

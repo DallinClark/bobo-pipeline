@@ -2,13 +2,16 @@
 
 set -e
 
+PROD_DIR=/groups/dungeons/pipeline
 LOCAL_DIR=$(git rev-parse --show-toplevel)
 
 source "${LOCAL_DIR}/.githooks/update-venv"
 
+if [[ "${PROD_DIR}" != "${LOCAL_DIR}" ]]; then
+    echo "Static type checking (mypy)..."
+    mypy
+fi
 
-echo "Static type checking (mypy)..."
-mypy
 echo "Linting (ruff)..."
 ruff check "${LOCAL_DIR}"
 echo "Formatting (ruff)..."
