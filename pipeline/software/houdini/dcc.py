@@ -146,7 +146,7 @@ class HoudiniDCC(DCC):
         if is_python_shell:
             launch_args = extra_args or []
         else:
-            launch_args = ["-foreground", *(extra_args or [])]
+            launch_args = ["-foreground", "-desktop", "Solungeon", *(extra_args or [])]
 
         super().__init__(
             launch_command, launch_args, env_vars, lambda: self._set_up_asset_gallery()
