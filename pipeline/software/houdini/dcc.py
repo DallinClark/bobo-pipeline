@@ -171,7 +171,8 @@ class HoudiniDCC(DCC):
 
         lock_path = _PROD_DB + ".lock"
 
-        lock = FileLock(lock_path, mode=0o775)
+        lock = FileLock(lock_path)
+        os.chmod(lock_path, 0o775)
 
         # merge local modifications into the prod database
         with lock.acquire(timeout=40), closing(sqlite3.connect(_PROD_DB)) as conn:
