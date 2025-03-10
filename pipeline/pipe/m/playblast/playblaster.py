@@ -79,9 +79,10 @@ class MPlayblaster(Playblaster):
         )
 
     def playblast(self) -> None:
-        with applied_hud(
-            self._config.builtin_huds, self._config.custom_huds
-        ), maintain_selection():
+        with (
+            applied_hud(self._config.builtin_huds, self._config.custom_huds),
+            maintain_selection(),
+        ):
             mc.select(clear=True)
 
             # assemble kwargs from config options

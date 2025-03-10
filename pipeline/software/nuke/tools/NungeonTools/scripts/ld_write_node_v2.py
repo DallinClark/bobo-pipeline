@@ -167,6 +167,7 @@ def get_week_range():
     end_of_week = start_of_week + datetime.timedelta(days=6)  # Saturday
     return start_of_week, end_of_week
 
+
 def get_output_file_info_mov():
     start_of_week, end_of_week = get_week_range()
     base_path = "/groups/dungeons/edit/shots/lighting/"
@@ -185,7 +186,9 @@ def get_output_file_info_mov():
                 if start_of_week <= folder_date <= end_of_week:
                     if latest_date is None or folder_date > latest_date:
                         latest_date = folder_date
-                        valid_subfolder = subfolder_path  # Store the most recent valid folder
+                        valid_subfolder = (
+                            subfolder_path  # Store the most recent valid folder
+                        )
             except ValueError:
                 continue  # Skip non-matching folders
 
@@ -202,14 +205,15 @@ def get_output_file_info_mov():
     existing_versions = [
         int(re.search(r"_V(\d+)", f).group(1))
         for f in os.listdir(valid_subfolder)
-        if re.search(rf"^{shot_code}_V(\d+)", f)  # Match only files that belong to this shot
+        if re.search(
+            rf"^{shot_code}_V(\d+)", f
+        )  # Match only files that belong to this shot
     ]
 
     next_version = (max(existing_versions) if existing_versions else 0) + 1
     new_file_name = f"{shot_code}_V{next_version:03d}.mov"
 
     return [new_file_name, valid_subfolder]  # Always returns a list
-
 
 
 def get_output_file_info_exr():
