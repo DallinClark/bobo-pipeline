@@ -46,8 +46,9 @@ def run():
         return
     else:
         frame_in, frame_out = get_frame_range(project_name)
+        print("Frame out: " + str(frame_out))
         set_frame_range(frame_in, frame_out)
         set_frame_rate(root_node)
 
 
-# run()
+#run()
