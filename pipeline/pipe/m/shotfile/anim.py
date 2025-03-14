@@ -47,10 +47,16 @@ class MAnimShotFileManager(MShotFileManager):
             asset = self._conn.get_asset_by_stub(asset_stub)
             if not asset.path:
                 continue
-            rig_path = "/".join(("production", asset.path, "rig", "rig.mb"))
-            if (get_production_path() / ".." / rig_path).exists():
-                mc.file(rig_path, reference=True, namespace=asset.name)
-            else:
+            rig_folder = get_production_path() / asset.path / "rig"
+            rig_list = sorted(list(rig_folder.glob("rig*.mb")))
+            try:
+                rig_path = rig_list.pop()
+                if rig_path.exists():
+                    mc.file(str(rig_path), reference=True, namespace=asset.name)
+                else:
+                    raise FileNotFoundError
+
+            except (FileNotFoundError, IndexError):
                 print(f'Unable to find rig for asset "{asset.disp_name}"')
 
     def _setup_file(self, path: Path, entity) -> None:
