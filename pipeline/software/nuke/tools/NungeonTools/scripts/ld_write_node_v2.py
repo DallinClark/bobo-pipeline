@@ -1,7 +1,6 @@
 import os
 import datetime
 import nuke
-import re
 import json
 from pipe.db import DB
 from env_sg import DB_Config
@@ -93,7 +92,6 @@ def make_text_nodes():
     )  # What's this for? Idk why, but this makes it so the user name isn't gigantic. idk why.
 
     # set text node message values (because if I don't do it here, the font size won't update in time and you'll just have big massive font sizes)
-
     return [frame_num_text, shot_code_text, date_text, name_text, department_text]
 
 
@@ -135,6 +133,29 @@ def get_date():
     formatted_date = today.strftime("%m/%d/%Y")
     return formatted_date
 
+def increment_version_num(curr_version):
+    num_str = curr_version.split("_")[1]
+    num_int = int(num_str) + 1
+    return f"V_{num_int:0{len(num_str)}d}"
+
+def get_version_num():
+    # path to the shot versions json
+    json_path = str(get_production_path()) + "/json/shot_versions.json"
+
+    with open(json_path, "r") as f:
+        shot_data = json.load(f)
+
+    #I think this should return the version number, with V_001 is the default. Hopefully. 
+    shot_code = get_shot_code()
+    if shot_data.get(shot_code):
+        return increment_version_num(shot_data.get(shot_code)) #if a shot code already exists, you gotta increment it. 
+    else:
+        return "V_001" #If the shot has never been rendered out before
+    
+
+def get_shot_code():
+    return os.path.splitext(os.path.basename(nuke.root().name()))[0]
+
 
 def get_users_name():
     """
@@ -171,7 +192,7 @@ def get_week_range():
 def get_output_file_info_mov():
     start_of_week, end_of_week = get_week_range()
     base_path = "/groups/dungeons/edit/shots/lighting/"
-    shot_code = os.path.splitext(os.path.basename(nuke.root().name()))[0]
+    shot_code = get_shot_code()
 
     valid_subfolder = None  # Store the most recent valid subfolder if found
     latest_date = None  # Track the most recent date found
@@ -201,17 +222,8 @@ def get_output_file_info_mov():
     else:
         print(f"Using most recent subfolder: {valid_subfolder}")
 
-    # Determine the next version number for the specific shot
-    existing_versions = [
-        int(re.search(r"_V(\d+)", f).group(1))
-        for f in os.listdir(valid_subfolder)
-        if re.search(
-            rf"^{shot_code}_V(\d+)", f
-        )  # Match only files that belong to this shot
-    ]
-
-    next_version = (max(existing_versions) if existing_versions else 0) + 1
-    new_file_name = f"{shot_code}_V{next_version:03d}.mov"
+    next_version = get_version_num()
+    new_file_name = shot_code + "_" + next_version + ".mov"
 
     return [new_file_name, valid_subfolder]  # Always returns a list
 
@@ -220,7 +232,7 @@ def get_output_file_info_exr():
     base_path = "/groups/dungeons/edit/shots/comp/"
 
     # setting the file parameter
-    file_name = os.path.splitext(os.path.basename(nuke.root().name()))[0]
+    file_name = get_shot_code()
     folder_path = base_path + file_name
     full_path = folder_path + "/" + file_name + ".###.exr"
     return [folder_path, full_path]
@@ -252,8 +264,20 @@ def make_MOV_node():
     )  # Avid DnxHr (integer value 12 for some reason)
     write_node["mov64_dnxhd_codec_profile"].setValue(1)  # DNxHD 422 10-bit 220Mbit
 
-    # Example: touching the file after render (using the new file name)
-    command = 'os.system("touch ' + os.path.join(folder_path, new_file_name) + '")'
+
+    #update the version number json.
+    shot_code = get_shot_code()
+    version_num = get_version_num()
+    json_path = str(get_production_path()) + "/json/shot_versions.json"
+    command = (
+        'import json, os\n'
+        'json_path = "{json_path}"\n'
+        'with open(json_path, "r") as f:\n'
+        '    data = json.load(f)\n'
+        'data["{shot_code}"] = "{version_num}"\n'
+        'with open(json_path, "w") as f:\n'
+        '    json.dump(data, f, indent=4)'
+    ).format(json_path=json_path, shot_code=shot_code, version_num=version_num)
     write_node["afterRender"].setValue(command)
 
     return write_node
@@ -288,7 +312,7 @@ def make_EXR_node():
 
 
 def check_saved():
-    current_script_name = os.path.splitext(os.path.basename(nuke.root().name()))[0]
+    current_script_name = get_shot_code()
     if current_script_name == "Root":
         nuke.message(
             "This nuke script isn't saved, so I don't know what shot you're wanting to write out! Please save your shot!"
@@ -302,7 +326,6 @@ def makeUI(groupNode):
     mov_tab_name = "MOV Export"
     tab_knob = nuke.Tab_Knob(mov_tab_name)
     groupNode.addKnob(tab_knob)
-
     mov_export_script = """
 #
 group = nuke.thisNode()
