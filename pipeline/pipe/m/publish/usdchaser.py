@@ -151,7 +151,10 @@ def update_material_bindings(
     for rel in bindings.GetCollectionBindingRels():
         t1, t2 = rel.GetTargets()
         # strip the namespace because the USD exporter strips the geo namespace but not the material namespace
-        new_name = t2.name.split("_", 1)[1]
+        new_name_split = t2.name.split("_", 1)
+        if (len(new_name_split) < 2):
+            continue
+        new_name = new_name_split[1]
         # Change the material binding to match how it will look in Houdini
         rel.SetTargets(
             (
