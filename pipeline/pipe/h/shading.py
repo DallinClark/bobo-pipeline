@@ -98,19 +98,18 @@ class MatlibManager:
     @property
     def variant_name(self) -> str:
         var_name = self.node.parm("geo_var")
-        if (var_name):
-            return var_name.unexpandedString() 
+        if var_name:
+            return var_name.unexpandedString()
         return "main"
-        
 
     @property
     def mat_variant_name(self) -> str:
         mat_var_name = self.node.parm("mat_var")
         assert mat_var_name is not None
         print(mat_var_name.unexpandedString())
-        return mat_var_name.unexpandedString() 
+        return mat_var_name.unexpandedString()
 
-    def _update_default_geo_var(self,  node: hou.LopNode | None = None) -> None:
+    def _update_default_geo_var(self, node: hou.LopNode | None = None) -> None:
         # this may be called before initialization, so `self.node` may not work
         if not node:
             node = self.node
@@ -118,8 +117,8 @@ class MatlibManager:
         geo_var = node.parm("geo_var")
         assert geo_var is not None
         geo_var.set(next(iter(self._asset.geometry_variants)))
-        
-    def _update_default_mat_var(self,  node: hou.LopNode | None = None) -> None:
+
+    def _update_default_mat_var(self, node: hou.LopNode | None = None) -> None:
         # this may be called before initialization, so `self.node` may not work
         if not node:
             node = self.node
@@ -232,7 +231,6 @@ class MatlibManager:
             undisplaced_parm = normal_node.parm("useUndisplacedPosition")
             assert undisplaced_parm is not None
             undisplaced_parm.set(True)
-
 
     def load_items_from_file(
         self, dest_node: hou.LopNode, file_path: str
