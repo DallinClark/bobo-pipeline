@@ -55,9 +55,7 @@ class Exporter:
 
     def __init__(self, a=None) -> None:
         self._conn = DB.Get(DB_Config)
-        id = sp.project.Metadata("Bobo").get(
-            "asset_id"
-        )  
+        id = sp.project.Metadata("Bobo").get("asset_id")
         if a is None:
             assert (a := self._conn.get_asset_by_id(id)) is not None
         self._asset = a
