@@ -62,8 +62,8 @@ class MPlayblaster(Playblaster):
         )
 
         capture(
-            width=1920,
-            height=816,
+            width=1280,
+            height=720,
             filename=path,
             start_frame=(self._shot.cut_in - 5),
             end_frame=(self._shot.cut_out + 5),
