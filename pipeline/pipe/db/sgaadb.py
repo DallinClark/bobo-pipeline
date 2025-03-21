@@ -337,6 +337,7 @@ class _AssetListQuery(_Query):
     """Helper class for making queries about assets to a SG connection instance"""
 
     _untracked_asset_types = [
+        "Environment",
         "FX",
         "Graphic",
         "Matte Painting",
