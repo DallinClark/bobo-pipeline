@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import site
-import sys
 
 from argparse import ArgumentParser
 

@@ -70,7 +70,7 @@ class TexConverter:
                 "--compression", "lzw" if is_color else "lossless",
                 "--planarconfig", "separate",
                 "-otex:fileformatname=tx:wrap=clamp:resize=1:prman_options=1",
-                f"{str(self.tex_path / Path(img).stem.replace)}.tex",
+                f"{str(self.tex_path / Path(img).stem)}.tex",
             ]
             # fmt: on
 
