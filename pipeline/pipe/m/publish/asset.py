@@ -234,7 +234,7 @@ class ModelChecker(MCUI):
     def configure(self) -> None:
         self.uncheckAll()
         commands = [
-            #"crossBorder",
+            # "crossBorder",
             "hardEdges",
             "lamina",
             # "missingUVs",
