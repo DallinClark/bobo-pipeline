@@ -99,8 +99,7 @@ class MShotFileManager(FileManager):
         except Exception:
             mc.error("Warning! Could not set edit target!")
 
-    @staticmethod
-    def _check_unsaved_changes() -> bool:
+    def _check_unsaved_changes(self) -> bool:
         if mc.file(query=True, modified=True):
             warning_response = mc.confirmDialog(
                 title="Do you want to save?",
@@ -118,8 +117,7 @@ class MShotFileManager(FileManager):
         shot = cast(Shot, entity)
         return shot.code, "mb"
 
-    @staticmethod
-    def _open_file(path: Path) -> None:
+    def _open_file(self, path: Path) -> None:
         mc.file(str(path), open=True, force=True)
 
     def _post_open_file(self, entity: SGEntity) -> None:
@@ -164,6 +162,14 @@ class MShotFileManager(FileManager):
         root_layer = stage.GetRootLayer()
         # locked_layers: list[str] = []
 
+        ## Fix env scale
+        stage.SetEditTarget(Usd.EditTarget(root_layer))
+        env_prim = stage.OverridePrim(Sdf.Path("/environment"))
+        env_xformable = UsdGeom.Xformable(env_prim)
+        env_xformable.ClearXformOpOrder()
+        env_scale_op = env_xformable.AddScaleOp()
+        env_scale_op.Set((100, 100, 100))
+
         # Set up shot-level overrides
         env_override_layer = Sdf.Layer.FindOrOpenRelativeToLayer(
             root_layer,
@@ -181,10 +187,10 @@ class MShotFileManager(FileManager):
         if env_override_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
             root_layer.subLayerPaths.append(env_override_layer.identifier)
 
-        # Fix env scale
-        env_prim = stage.OverridePrim(Sdf.Path("/environment"))
-        env_xformable = UsdGeom.Xformable(env_prim)
-        env_xformable.GetScaleOp().Set((100, 100, 100))
+        ## Fix env scale
+        # env_prim = stage.OverridePrim(Sdf.Path("/environment"))
+        # env_xformable = UsdGeom.Xformable(env_prim)
+        # env_xformable.GetScaleOp().Set((100, 100, 100))
 
         stage.SetEditTarget(Usd.EditTarget(env_override_layer))
 
