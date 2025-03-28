@@ -1,36 +1,54 @@
 set cut_paste_input [stack 0]
 version 15.0 v4
-StickyNote {
+BackdropNode {
  inputs 0
- name StickyNote1
- label "footage here\n"
+ name BackdropNode1
+ tile_color 0x388e8e00
+ label relight
+ note_font_size 42
  selected true
- xpos -191
- ypos -311
-}
-Dot {
- inputs 0
- name Dot15
- selected true
- xpos 596
- ypos -107
-}
-Cryptomatte {
- pickerAdd {0 0 0 0 0 0 0 0}
- lastSelectedCryptoLayerName identifier_name
- name Cryptomatte1
- selected true
- xpos 479
- ypos -111
+ xpos 4083
+ ypos -1747
+ bdwidth 896
+ bdheight 448
 }
 push $cut_paste_input
 Dot {
+ name Dot17
+ selected true
+ xpos 4274
+ ypos -1667
+}
+set N57a6ae50 [stack 0]
+Dot {
+ name Dot18
+ selected true
+ xpos 4957
+ ypos -1667
+}
+Dot {
+ name Dot15
+ selected true
+ xpos 4957
+ ypos -1414
+}
+Cryptomatte {
+ pickerAdd {0.1092655659 0.248249054 0.2429962158 0 425 261 426 262}
+ matteList /character/*
+ lastSelectedCryptoLayerName identifier_name
+ name Cryptomatte7
+ selected true
+ xpos 4840
+ ypos -1418
+}
+push $N57a6ae50
+Dot {
  name Dot12
  selected true
- xpos -87
- ypos -248
+ xpos 4274
+ ypos -1555
 }
-set Nef3ff00 [stack 0]
+set Nea5fd9a0 [stack 0]
 add_layer {__nworld __nworld.red __nworld.green __nworld.blue}
 Shuffle2 {
  fromInput1 {{0} B}
@@ -39,8 +57,8 @@ Shuffle2 {
  mappings "4 __nworld.red 0 0 rgba.red 0 0 __nworld.green 0 1 rgba.green 0 1 __nworld.blue 0 2 rgba.blue 0 2 black -1 -1 rgba.alpha 0 3"
  name Shuffle1
  selected true
- xpos 90
- ypos -252
+ xpos 4451
+ ypos -1559
 }
 ColorMatrix {
  matrix {
@@ -50,34 +68,34 @@ ColorMatrix {
    }
  name ColorMatrix1
  selected true
- xpos 90
- ypos -200
+ xpos 4451
+ ypos -1507
 }
 Expression {
  expr3 clamp(r+g+b)
  name Expression1
  selected true
- xpos 90
- ypos -174
+ xpos 4451
+ ypos -1481
 }
 Multiply {
  inputs 1+1
  value 0
  invert_mask true
- name Multiply1
+ name Multiply4
  selected true
- xpos 90
- ypos -117
+ xpos 4451
+ ypos -1424
 }
-push $Nef3ff00
+push $Nea5fd9a0
 add_layer {specular specular.red specular.green specular.blue}
 Group {
  inputs 2
  name AOVGrade3
  label "\[value in]\n\[value B] / \[value A]"
  selected true
- xpos -121
- ypos -123
+ xpos 4240
+ ypos -1430
  addUserKnob {20 User}
  addUserKnob {41 in l "Channel to use" T Shuffle.in}
  addUserKnob {41 AlsoGradeChannel l "Also Grade Channel" t "as well as grading the beauty bake the grade into the selected channel" T ShuffleCopy1.AlsoGradeChannel}
@@ -122,7 +140,6 @@ Group {
  addUserKnob {26 modifiedby l "modified by:" T na}
  addUserKnob {26 source l source: T https://github.com/vfxwiki}
  addUserKnob {20 licenceGroup l licence n 1}
- licenceGroup 0
  addUserKnob {26 licence l licence: T "By downloading this nuke group from github.com you agree to the general license terms below.\n Copyright (c) 2015 till present All rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted\n provided that the following conditions are met: Redistributions of source code must retain the\n above copyright notice, this list of conditions and the following disclaimer. Redistributions in binary\n form must reproduce the above copyright notice, this list of conditions and the following disclaimer\n in the documentation and/or other materials provided with the distribution. Neither the name of\n Nukepedia nor the names of its contributors may be used to endorse or promote products derived\n from this software without specific prior written permission. THIS SOFTWARE IS PROVIDED BY THE\n COPYRIGHT HOLDERS AND CONTRIBUTORS 'AS IS' AND ANY EXPRESS OR IMPLIED WARRANTIES,\n INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS\n FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR\n CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\n CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE\n GOO/ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."}
 }
  Input {
@@ -136,7 +153,7 @@ Group {
   xpos -186
   ypos -550
  }
-set Nef8ed00 [stack 0]
+set Nfc1fc160 [stack 0]
  Unpremult {
   alpha -rgba.alpha
   name Unpremult1
@@ -150,7 +167,7 @@ set Nef8ed00 [stack 0]
   xpos -457
   ypos -473
  }
-set Nef9dd30 [stack 0]
+set Nd09f7020 [stack 0]
  Dot {
   name Dot26
   xpos -649
@@ -163,7 +180,7 @@ set Nef9dd30 [stack 0]
   xpos -680
   ypos -419
  }
-set Nefa8ee0 [stack 0]
+set Nbc76ee70 [stack 0]
  Grade {
   channels all
   white 1.68
@@ -191,27 +208,27 @@ set Nefa8ee0 [stack 0]
   xpos -680
   ypos -273
  }
-set Nffeaef0 [stack 0]
+set N68b3feb0 [stack 0]
  Dot {
   name Dot6
   xpos -649
   ypos 89
  }
-push $Nef8ed00
+push $Nfc1fc160
  Dot {
   name Dot2
   xpos -189
   ypos -321
  }
-set N1000b190 [stack 0]
+set N13823ee0 [stack 0]
  Dot {
   name Dot3
   xpos -319
   ypos -321
  }
-push $Nffeaef0
-push $Nefa8ee0
-push $Nef9dd30
+push $N68b3feb0
+push $Nbc76ee70
+push $Nd09f7020
  Merge2 {
   inputs 2
   operation from
@@ -255,8 +272,8 @@ push $Nef9dd30
   addUserKnob {7 mixBlend}
   mixBlend 1
  }
-set N10049e80 [stack 0]
-push $Nef8ed00
+set Ncd3b440 [stack 0]
+push $Nfc1fc160
  Dot {
   name Dot5
   xpos -135
@@ -295,7 +312,7 @@ push $Nef8ed00
   addUserKnob {6 off +STARTLINE}
   off {{"\[python nuke.thisNode()\\\['A'\\].value()\\ ==\\ 'none'\\ and\\ nuke.thisNode()\\\['B'\\].value()\\ ==\\ 'none']"}}
  }
-set N10082180 [stack 0]
+set Nbf165130 [stack 0]
  Shuffle {
   red white
   out alpha
@@ -305,7 +322,7 @@ set N10082180 [stack 0]
   ypos -289
   disable {{!ChannelMerge.off K x22 1}}
  }
-push $N10049e80
+push $Ncd3b440
  Copy {
   inputs 2
   from0 rgba.alpha
@@ -319,7 +336,7 @@ push $N10049e80
   xpos -20
   ypos -88
  }
-push $N1000b190
+push $N13823ee0
  Merge2 {
   inputs 2
   name Merge1
@@ -352,7 +369,7 @@ push $N1000b190
   xpos -220
   ypos 208
  }
-push $N10082180
+push $Nbf165130
  Viewer {
   frame_range 1-115
   fps 25
@@ -363,40 +380,56 @@ push $N10082180
  }
 end_group
 Dot {
- name Dot1
+ name Dot16
  selected true
- xpos -87
- ypos -14
-}
-push $cut_paste_input
-Axis3 {
- rotate {0 -8.285 0}
- name Axis1
- selected true
- xpos 211
- ypos -275
-}
-StickyNote {
- inputs 0
- name StickyNote3
- label "change the rotation of this axis node\nto change where the light is coming from"
- selected true
- xpos 283
- ypos -236
+ xpos 4274
+ ypos -1321
 }
 StickyNote {
  inputs 0
  name StickyNote2
  label output
  selected true
- xpos -188
- ypos 11
+ xpos 4178
+ ypos -1338
+}
+push $cut_paste_input
+Axis3 {
+ rotate {0 -8.285 0}
+ name Axis1
+ selected true
+ xpos 4572
+ ypos -1582
+}
+StickyNote {
+ inputs 0
+ name StickyNote1
+ label "footage here\n"
+ selected true
+ xpos 4190
+ ypos -1656
 }
 StickyNote {
  inputs 0
  name StickyNote4
  label "right now this only affects\nthe specular pass, but you\ncan change which aov\nit affects"
  selected true
- xpos -301
- ypos -130
+ xpos 4093
+ ypos -1433
+}
+StickyNote {
+ inputs 0
+ name StickyNote3
+ label "change the rotation of this axis node\nto change where the light is coming from"
+ selected true
+ xpos 4639
+ ypos -1573
+}
+StickyNote {
+ inputs 0
+ name StickyNote5
+ label "to see what you'll be relighting, look at the expression node's alpha channel"
+ selected true
+ xpos 4553
+ ypos -1477
 }
