@@ -7,17 +7,30 @@ BackdropNode {
  label "Eye lights"
  note_font_size 42
  selected true
- xpos 1557
- ypos 1596
- bdwidth 1122
- bdheight 478
+ xpos 3892
+ ypos -1161
+ bdwidth 721
+ bdheight 492
+}
+push $cut_paste_input
+Dot {
+ name Dot19
+ selected true
+ xpos 4274
+ ypos -1142
 }
 Dot {
- inputs 0
+ name Dot38
+ selected true
+ xpos 4274
+ ypos -1033
+}
+set N11b60880 [stack 0]
+Dot {
  name Dot37
  selected true
- xpos 2622
- ypos 1780
+ xpos 4378
+ ypos -1033
 }
 Cryptomatte {
  pickerAdd {0.03774875402 0.1039800644 0.1659202576 0 592 557 593 558}
@@ -26,22 +39,15 @@ Cryptomatte {
  lastSelectedCryptoLayerName identifier_name
  name Cryptomatte14
  selected true
- xpos 2512
- ypos 1776
+ xpos 4344
+ ypos -967
 }
-push $cut_paste_input
-Dot {
- name Dot38
- selected true
- xpos 1939
- ypos 1710
-}
-set N11662420 [stack 0]
+push $N11b60880
 Dot {
  name Dot41
  selected true
- xpos 1718
- ypos 1710
+ xpos 4053
+ ypos -1033
 }
 Multiply {
  inputs 1+1
@@ -49,8 +55,8 @@ Multiply {
  invert_mask true
  name Multiply12
  selected true
- xpos 1684
- ypos 1770
+ xpos 4019
+ ypos -973
 }
 add_layer {__nworld __nworld.red __nworld.green __nworld.blue}
 Shuffle2 {
@@ -60,8 +66,8 @@ Shuffle2 {
  mappings "4 __nworld.red 0 0 rgba.red 0 0 __nworld.green 0 1 rgba.green 0 1 __nworld.blue 0 2 rgba.blue 0 2 black -1 -1 rgba.alpha 0 3"
  name Shuffle4
  selected true
- xpos 1567
- ypos 1776
+ xpos 3902
+ ypos -967
 }
 Group {
  name NE_NormaLight4
@@ -69,8 +75,8 @@ Group {
  gl_color 0x93ff
  note_font_color 0x5ae2e0ff
  selected true
- xpos 1567
- ypos 1829
+ xpos 3902
+ ypos -914
  addUserKnob {20 User l "Edit Light"}
  addUserKnob {26 Expected_mapping l "Input method :" t "R=>n.r\nG=>n.g\nB=>n.b" T "Normals are expected to be shuffled in rgba\nlayer within R,G and B channels."}
  addUserKnob {41 format l "Normals format" T Constant1.format}
@@ -100,9 +106,9 @@ Group {
   ypos 322
   addUserKnob {20 User}
   addUserKnob {7 light_height l "Light height" R -360 360}
-  light_height {{curve x1014 -20 -10 x1029 -10 x1030 -8 x1050 -8 x1051 -26}}
+  light_height -10
   addUserKnob {7 light_direction l "Light Direction" R -360 360}
-  light_direction {{curve x1014 -272 -252 x1029 -252 x1030 -194 x1050 -194 x1051 -262}}
+  light_direction -320
  }
  Difference {
   inputs 2
@@ -175,20 +181,36 @@ end_group
 Dot {
  name Dot39
  selected true
- xpos 1601
- ypos 1899
+ xpos 3936
+ ypos -844
 }
-push $N11662420
+push $N11b60880
 Merge2 {
  inputs 2
  name Merge9
  selected true
- xpos 1905
- ypos 1895
+ xpos 4240
+ ypos -848
 }
 Dot {
  name Dot40
  selected true
- xpos 1939
- ypos 1981
+ xpos 4274
+ ypos -692
+}
+StickyNote {
+ inputs 0
+ name StickyNote10
+ label "sometimes I think it's helpful to disable to multiply\nnode above and adjust the NE_NormalLight node\nuntil the eye lights are actually showing up in the\neyes. Up to you though"
+ selected true
+ xpos 4005
+ ypos -922
+}
+StickyNote {
+ inputs 0
+ name StickyNote6
+ label "In the cryptomatte node, select your character's corneas. \nBy default, Robin's are selected"
+ selected true
+ xpos 4317
+ ypos -919
 }
