@@ -72,6 +72,9 @@ m.addCommand(
 )
 
 m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
+m.addCommand("Grade_AOV", "nuke.createNode('grade_AOV')", icon="nungeonIcon.png")
+m.addCommand("luma Distort", "nuke.createNode('lumaDistort')", icon="nungeonIcon.png")
+m.addCommand("Roughen Edges", "nuke.createNode('roughenEdges')", icon="nungeonIcon.png")
 
 m.addCommand("L&D Write Node", "make_ld_write_node()", icon="nungeonIcon.png")
 
