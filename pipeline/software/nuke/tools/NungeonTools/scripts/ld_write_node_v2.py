@@ -133,10 +133,12 @@ def get_date():
     formatted_date = today.strftime("%m/%d/%Y")
     return formatted_date
 
+
 def increment_version_num(curr_version):
     num_str = curr_version.split("_")[1]
     num_int = int(num_str) + 1
     return f"V_{num_int:0{len(num_str)}d}"
+
 
 def get_version_num():
     # path to the shot versions json
@@ -145,13 +147,15 @@ def get_version_num():
     with open(json_path, "r") as f:
         shot_data = json.load(f)
 
-    #I think this should return the version number, with V_001 is the default. Hopefully. 
+    # I think this should return the version number, with V_001 is the default. Hopefully.
     shot_code = get_shot_code()
     if shot_data.get(shot_code):
-        return increment_version_num(shot_data.get(shot_code)) #if a shot code already exists, you gotta increment it. 
+        return increment_version_num(
+            shot_data.get(shot_code)
+        )  # if a shot code already exists, you gotta increment it.
     else:
-        return "V_001" #If the shot has never been rendered out before
-    
+        return "V_001"  # If the shot has never been rendered out before
+
 
 def get_shot_code():
     return os.path.splitext(os.path.basename(nuke.root().name()))[0]
@@ -264,19 +268,18 @@ def make_MOV_node():
     )  # Avid DnxHr (integer value 12 for some reason)
     write_node["mov64_dnxhd_codec_profile"].setValue(1)  # DNxHD 422 10-bit 220Mbit
 
-
-    #update the version number json.
+    # update the version number json.
     shot_code = get_shot_code()
     version_num = get_version_num()
     json_path = str(get_production_path()) + "/json/shot_versions.json"
     command = (
-        'import json, os\n'
+        "import json, os\n"
         'json_path = "{json_path}"\n'
         'with open(json_path, "r") as f:\n'
-        '    data = json.load(f)\n'
+        "    data = json.load(f)\n"
         'data["{shot_code}"] = "{version_num}"\n'
         'with open(json_path, "w") as f:\n'
-        '    json.dump(data, f, indent=4)'
+        "    json.dump(data, f, indent=4)"
     ).format(json_path=json_path, shot_code=shot_code, version_num=version_num)
     write_node["afterRender"].setValue(command)
 
@@ -307,7 +310,7 @@ def make_EXR_node():
     # TODO set exr settings and stuff
     write_node["write_ACES_compliant_EXR"].setValue(1)
     write_node["colorspace"].setValue(7)  # Data (linear-rawr)
-    write_node["transformType"].setValue(0)  # Display transform
+    write_node["transformType"].setValue(1)  # Display transform
     return write_node
 
 
