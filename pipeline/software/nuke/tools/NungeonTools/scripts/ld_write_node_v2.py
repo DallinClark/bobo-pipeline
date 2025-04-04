@@ -309,8 +309,8 @@ def make_EXR_node():
 
     # TODO set exr settings and stuff
     write_node["write_ACES_compliant_EXR"].setValue(1)
-    write_node["colorspace"].setValue(7)  # Data (linear-rawr)
-    write_node["transformType"].setValue(1)  # Display transform
+    write_node["colorspace"].setValue(10)  # should be scene_linear (ACEScg)
+    write_node["transformType"].setValue(0)  # transform type- colorspace
     return write_node
 
 
