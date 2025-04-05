@@ -9,7 +9,7 @@ try:
     assert resolutiony is not None
     assert aspectRatioConformPolicy is not None
     resolutionx.set(1920)
-    resolutiony.set(816)
+    resolutiony.set(1080)
     aspectRatioConformPolicy.set("cropAperture")
 except Exception:  # in case this is created as a locked node
     pass
