@@ -427,7 +427,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 # takes of the end number if it's a copy in maya
                 base_name = ""
                 if name[-1].isdigit():
-                    base_name = name[:-1] 
+                    base_name = name[:-1]
                 else:
                     base_name = name
                 print(name)
