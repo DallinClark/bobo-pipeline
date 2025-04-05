@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     class TimeSampleble(Protocol):
         def GetTimeSamples(self) -> list[float]: ...
+
         def GetNumTimeSamples(self) -> int: ...
 
 
@@ -151,10 +152,7 @@ def update_material_bindings(
     for rel in bindings.GetCollectionBindingRels():
         t1, t2 = rel.GetTargets()
         # strip the namespace because the USD exporter strips the geo namespace but not the material namespace
-        new_name_split = t2.name.split("_", 1)
-        if len(new_name_split) < 2:
-            continue
-        new_name = new_name_split[1]
+        new_name = t2.name.split("_", 1)[1]
         # Change the material binding to match how it will look in Houdini
         rel.SetTargets(
             (
@@ -212,7 +210,7 @@ def find_and_move_prim(
     move_prim(layer, prim_to_move, new_prim_parent)
 
 
-def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> None:
+def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> bool:
     edit = Sdf.BatchNamespaceEdit()
 
     def traverse_kernel(path: Sdf.Path | str):
@@ -225,7 +223,7 @@ def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> None:
                 print(f"Namespace not changed for {str(path)}")
 
     layer.Traverse(root, traverse_kernel)
-    layer.Apply(edit)
+    return layer.Apply(edit)
 
 
 def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
@@ -234,7 +232,7 @@ def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
     stage.SetEditTarget(root_layer)
 
     child_names = stage.GetPseudoRoot().GetChildrenNames()
-    namespaces = set()
+    namespaces: set[str] = set()
     for n in child_names:
         namespace, item = n.split("_", 1)
         if item.startswith("S_"):  # static props
@@ -251,16 +249,17 @@ def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
         layer = create_or_clear_layer(layer_path)
         layer.TransferContent(root_layer)
 
-        children_to_keep = [c for c in child_names if c.startswith(namespace)]
+        children_to_keep = [c for c in child_names if c.startswith(namespace + "_")]
         edit = Sdf.BatchNamespaceEdit()
         for child in child_names:
             if child not in children_to_keep:
                 edit.Add(Sdf.NamespaceEdit.Remove("/" + child))
 
         layer.Apply(edit)
-        remove_namespace(layer)
-        layer.Save()
+        if not remove_namespace(layer):
+            raise RuntimeError(f"Could not remove namespace on layer `{layer_name}`")
 
+        layer.Save()
         layers.update({layer_name: layer})
 
     # clear out root layer
@@ -298,8 +297,9 @@ def float_range_compare_factory(
 def timesample_erase_kernel_factory(
     layer: Sdf.Layer, *, keep_start: float | None = None, keep_end: float | None = None
 ) -> Callable[[Sdf.Path | str], None]:
-    """Returns a layer traversal kernal that erases time samples not between
-    keep_start and keep_end"""
+    """Returns a layer traversal kernel that erases time samples not between
+    keep_start and keep_end
+    NOTE: assume that all time samples are in this layer"""
 
     def kernel(path: Sdf.Path | str) -> None:
         if isinstance(path, str):
@@ -310,7 +310,17 @@ def timesample_erase_kernel_factory(
         if not attr_spec.variability == Sdf.VariabilityVarying:
             return
 
-        cmp = float_range_compare_factory(keep_start, keep_end)
+        start = (
+            layer.GetBracketingTimeSamplesForPath(path, keep_start)[0]
+            if keep_start
+            else None
+        )
+        end = (
+            layer.GetBracketingTimeSamplesForPath(path, keep_end)[1]
+            if keep_end
+            else None
+        )
+        cmp = float_range_compare_factory(start, end)
         for ts in layer.ListTimeSamplesForPath(path):
             if cmp(ts):
                 continue
@@ -414,10 +424,24 @@ class ExportChaser(mayaUsdLib.ExportChaser):
             conn = DB.Get(DB_Config)
 
             for name, layer in layers.items():
+                # takes of the end number if it's a copy in maya
+                base_name = ""
+                if name[-1].isdigit():
+                    base_name = name[:-1] 
+                else:
+                    base_name = name
                 print(name)
 
-                # the one rig that needs the controls exported instead of the mesh
-                if name == "gemheart":
+                # the rigs that need the controls exported instead of the mesh
+                if base_name in [
+                    "gemheart",
+                    "raydenring",
+                    "ringroom",
+                    "robinring",
+                    "rrbrickdoor",
+                    "statueringpillar",
+                    "strikemagicpillarpath",
+                ]:
                     character_root_path = Sdf.Path("/ROOT/CTRLS")
                 else:
                     character_root_path = Sdf.Path("/ROOT/MODEL")
@@ -439,7 +463,8 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 char_prim_spec.referenceList.appendedItems = [reference]
 
                 try:
-                    asset = conn.get_asset_by_attr("name", name)
+                    asset = conn.get_asset_by_attr("name", base_name)
+                    print(asset.path)
                     assert asset.path is not None
                     rig_path = f"{asset.path}/usd/main.usd"
                     walk_up_len = (

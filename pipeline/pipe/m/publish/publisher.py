@@ -186,6 +186,7 @@ class Publisher:
                 mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
             except Exception:
                 print(traceback.format_exc())
+                print(kwargs)
                 MessageDialog(
                     self._window,
                     "WARNING: Publish failed! Please check the console for more information",

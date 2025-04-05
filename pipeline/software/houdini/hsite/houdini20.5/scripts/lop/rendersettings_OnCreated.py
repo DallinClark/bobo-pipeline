@@ -12,7 +12,7 @@ try:
     assert aspectRatioConformPolicy is not None
     res_mode.set("manual")
     resolution1.set(1920)
-    resolution2.set(816)
+    resolution2.set(1080)
     aspectRatioConformPolicy.set("cropAperture")
 except Exception:  # in case this is created as a locked node
     pass
