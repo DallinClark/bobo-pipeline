@@ -36,12 +36,34 @@ class MayaDCC(DCC):
         )
 
         env_vars: typing.Mapping[str, int | str | None] | None
+
+        ################################################################################
+        ################################################################################
+        #############                   Pose Driver Code                   #############
+        
+        module_paths = [] # Initialie an empty list for module paths
+
+        module_paths.append(str(get_production_path() / "maya/module")) #add the production path plus the folder where we put our module
+
+        #adding the preexisting path, if it exists
+        existing_module_path = os.environ.get("MAYA_MODULE_PATH")
+        if existing_module_path:
+            module_paths.extend(existing_module_path.split(os.pahtsep))
+
+        ############         End Poste Driver Code (see line 66 also)      ##############
+        #################################################################################
+        #################################################################################
+
+
+
+
         env_vars = {
             "DCC": str(this_path.parent.name),
             "DWPICKER_PROJECT_DIRECTORY": str(get_rigging_path() / "Pickers"),
             "MAYA_SHELF_PATH": self.shelf_path,
             "MAYAUSD_EXPORT_MAP1_AS_PRIMARY_UV_SET": 1,
             "MAYAUSD_IMPORT_PRIMARY_UV_SET_AS_MAP1": 1,
+            "MAYA_MODULE_PATH": os.pathsep.join(module_paths),
             "PYTHONPATH": os.pathsep.join(
                 [
                     str(pipe_path),
