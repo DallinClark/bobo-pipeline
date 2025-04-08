@@ -7,7 +7,7 @@ command -v pipx || {
 command -v poetry || pipx install poetry
 pipx upgrade poetry
 
-PROD_DIR=/groups/dungeons/pipeline
+PROD_DIR=/groups/bobo/pipeline
 LOCAL_DIR=$(git rev-parse --show-toplevel)
 
 if [[ "${PROD_DIR}" == "${LOCAL_DIR}" ]]; then
