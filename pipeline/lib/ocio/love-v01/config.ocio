@@ -22,32 +22,8 @@ roles:
 
 displays:
   ACES:
-    - !<View> {name: sRGB, colorspace: Output - sRGB}
-    - !<View> {name: DCDM, colorspace: Output - DCDM}
-    - !<View> {name: DCDM P3D60 Limited, colorspace: Output - DCDM (P3D60 Limited)}
-    - !<View> {name: DCDM P3D65 Limited, colorspace: Output - DCDM (P3D65 Limited)}
-    - !<View> {name: P3-D60, colorspace: Output - P3-D60}
-    - !<View> {name: P3-D65 ST2084 1000 nits, colorspace: Output - P3-D65 ST2084 (1000 nits)}
-    - !<View> {name: P3-D65 ST2084 2000 nits, colorspace: Output - P3-D65 ST2084 (2000 nits)}
-    - !<View> {name: P3-D65 ST2084 4000 nits, colorspace: Output - P3-D65 ST2084 (4000 nits)}
-    - !<View> {name: P3-DCI D60 simulation, colorspace: Output - P3-DCI (D60 simulation)}
-    - !<View> {name: P3-DCI D65 simulation, colorspace: Output - P3-DCI (D65 simulation)}
-    - !<View> {name: P3D65, colorspace: Output - P3D65}
-    - !<View> {name: P3D65 D60 simulation, colorspace: Output - P3D65 (D60 simulation)}
-    - !<View> {name: P3D65 Rec.709 Limited, colorspace: Output - P3D65 (Rec.709 Limited)}
-    - !<View> {name: P3D65 ST2084 108 nits, colorspace: Output - P3D65 ST2084 (108 nits)}
-    - !<View> {name: Rec.2020, colorspace: Output - Rec.2020}
-    - !<View> {name: Rec.2020 P3D65 Limited, colorspace: Output - Rec.2020 (P3D65 Limited)}
-    - !<View> {name: Rec.2020 Rec.709 Limited, colorspace: Output - Rec.2020 (Rec.709 Limited)}
-    - !<View> {name: Rec.2020 HLG 1000 nits, colorspace: Output - Rec.2020 HLG (1000 nits)}
-    - !<View> {name: Rec.2020 ST2084 1000 nits, colorspace: Output - Rec.2020 ST2084 (1000 nits)}
-    - !<View> {name: Rec.2020 ST2084 2000 nits, colorspace: Output - Rec.2020 ST2084 (2000 nits)}
-    - !<View> {name: Rec.2020 ST2084 4000 nits, colorspace: Output - Rec.2020 ST2084 (4000 nits)}
     - !<View> {name: Rec.709, colorspace: Output - Rec.709}
-    - !<View> {name: Rec.709 D60 sim., colorspace: Output - Rec.709 (D60 sim.)}
-    - !<View> {name: sRGB D60 sim., colorspace: Output - sRGB (D60 sim.)}
-    - !<View> {name: Raw, colorspace: Utility - Raw}
-    - !<View> {name: Log, colorspace: Input - ADX - ADX10}
+
 
 active_displays: [ACES]
 active_views: [sRGB, DCDM, DCDM P3D60 Limited, DCDM P3D65 Limited, P3-D60, P3-D65 ST2084 1000 nits, P3-D65 ST2084 2000 nits, P3-D65 ST2084 4000 nits, P3-DCI D60 simulation, P3-DCI D65 simulation, P3D65, P3D65 D60 simulation, P3D65 Rec.709 Limited, P3D65 ST2084 108 nits, Rec.2020, Rec.2020 P3D65 Limited, Rec.2020 Rec.709 Limited, Rec.2020 HLG 1000 nits, Rec.2020 ST2084 1000 nits, Rec.2020 ST2084 2000 nits, Rec.2020 ST2084 4000 nits, Rec.709, Rec.709 D60 sim., sRGB D60 sim., Raw, Log]
