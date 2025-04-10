@@ -1,7 +1,3 @@
-#This file was tranformed from the render_layer_selector.py so there is probably some parts of the code that aren't necessary.
-
-
-
 import nuke
 from Qt import QtWidgets, QtCore, QtGui
 import os
@@ -38,7 +34,7 @@ class CascadingComboBox(QtWidgets.QWidget):
             "I only know 25 letters of the alphabet. I don't know y.",
             "What has five toes and isn't your foot? My foot.",
             "Why do bees have sticky hair? Because they use a honeycomb.",
-            "I can tolerate algebra, maybe even a little calculus, but geometry is where I draw the line."
+            "I can tolerate algebra, maybe even a little calculus, but geometry is where I draw the line.",
         ]
         self.title_label = QtWidgets.QLabel(random.choice(random_sentences), self)
         self.title_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -58,10 +54,14 @@ class CascadingComboBox(QtWidgets.QWidget):
         if not re.match(r"^[A-Za-z]_", self.default_shot):
             self.default_shot = "A_010"
 
-        self.current_shot_label = QtWidgets.QLabel(f"Selected Shot: {self.default_shot}", self)
+        self.current_shot_label = QtWidgets.QLabel(
+            f"Selected Shot: {self.default_shot}", self
+        )
         self.current_shot_label.setAlignment(QtCore.Qt.AlignLeft)
 
-        self.instructions = QtWidgets.QLabel("Select the render you want the camera for:", self)
+        self.instructions = QtWidgets.QLabel(
+            "Select the render you want the camera for:", self
+        )
         instructions_font = QtGui.QFont()
         instructions_font.setPointSize(10)
         self.instructions.setFont(instructions_font)
@@ -71,7 +71,9 @@ class CascadingComboBox(QtWidgets.QWidget):
         self.thumbnail_list.setViewMode(QtWidgets.QListWidget.ListMode)
         self.thumbnail_list.setIconSize(QtCore.QSize(60, 60))
         self.thumbnail_list.setResizeMode(QtWidgets.QListWidget.Adjust)
-        self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.thumbnail_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
 
         self.update_renders(self.default_shot)
 
@@ -125,13 +127,13 @@ class CascadingComboBox(QtWidgets.QWidget):
         base_path = "/groups/dungeons/production/shot"
         render_dir = os.path.join(base_path, self.default_shot, "render", render_folder)
 
-        # First, try the beauty folder.
-        beauty_path = os.path.join(render_dir, "beauty", "render.usd")
         camera_path = ""
+        # 1. Check for the 'beauty' folder first.
+        beauty_path = os.path.join(render_dir, "beauty", "render.usd")
         if os.path.exists(beauty_path):
             camera_path = beauty_path
         else:
-            # If the beauty folder is missing, scan for render.usd in other subfolders.
+            # 2. Check subfolders (ignoring .backup and beauty) for render.usd.
             for subfolder_name in os.listdir(render_dir):
                 if subfolder_name.lower() in [".backup", "beauty"]:
                     continue
@@ -141,6 +143,12 @@ class CascadingComboBox(QtWidgets.QWidget):
                     if os.path.exists(candidate):
                         camera_path = candidate
                         break
+
+        # 3. If still not found, check if render.usd exists directly in render_dir.
+        if not camera_path:
+            candidate = os.path.join(render_dir, "render.usd")
+            if os.path.exists(candidate):
+                camera_path = candidate
 
         if not camera_path:
             QtWidgets.QMessageBox.warning(
@@ -155,7 +163,9 @@ class CascadingComboBox(QtWidgets.QWidget):
             cam["read_from_file"].setValue(True)
             cam["file"].setValue(camera_path)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Import Failed", f"Could not import camera:\n{e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Import Failed", f"Could not import camera:\n{e}"
+            )
 
         self.close()
 
@@ -169,7 +179,9 @@ class CascadingComboBox(QtWidgets.QWidget):
                 categorized_data["Other"].append(item)
         for key in categorized_data:
             categorized_data[key] = sorted(categorized_data[key])
-        sorted_categories = {k: categorized_data[k] for k in sorted(categorized_data) if k != "Other"}
+        sorted_categories = {
+            k: categorized_data[k] for k in sorted(categorized_data) if k != "Other"
+        }
         if "Other" in categorized_data:
             sorted_categories["Other"] = categorized_data["Other"]
         return sorted_categories
@@ -194,7 +206,9 @@ class CascadingComboBox(QtWidgets.QWidget):
 
         self.current_mode = "renders"
         self.current_render = None
-        self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.thumbnail_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
         self.action_button.setText("Select Render")
         self.back_button.hide()
         self.update_renders(shot)
@@ -218,7 +232,11 @@ class CascadingComboBox(QtWidgets.QWidget):
                             for f in os.listdir(images_folder_path)
                             if f.lower().endswith((".png", ".jpg", ".jpeg", ".exr"))
                         ]
-                        creation_time = min(file_times) if file_times else os.path.getmtime(folder_path)
+                        creation_time = (
+                            min(file_times)
+                            if file_times
+                            else os.path.getmtime(folder_path)
+                        )
                     except Exception:
                         creation_time = os.path.getmtime(folder_path)
 
@@ -229,10 +247,16 @@ class CascadingComboBox(QtWidgets.QWidget):
                     layout.setContentsMargins(10, 4, 10, 4)
 
                     name_label = QtWidgets.QLabel(folder_name)
-                    name_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-                    creation_date = time.strftime("%m-%d-%Y", time.localtime(creation_time))
+                    name_label.setAlignment(
+                        QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+                    )
+                    creation_date = time.strftime(
+                        "%m-%d-%Y", time.localtime(creation_time)
+                    )
                     date_label = QtWidgets.QLabel(creation_date)
-                    date_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                    date_label.setAlignment(
+                        QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
+                    )
 
                     layout.addWidget(name_label)
                     layout.addStretch()
@@ -251,7 +275,9 @@ class CascadingComboBox(QtWidgets.QWidget):
     def load_layers(self):
         selected_items = self.thumbnail_list.selectedItems()
         if not selected_items:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a render folder.")
+            QtWidgets.QMessageBox.warning(
+                self, "No Selection", "Please select a render folder."
+            )
             return
 
         item = selected_items[0]
@@ -265,7 +291,9 @@ class CascadingComboBox(QtWidgets.QWidget):
 
         if os.path.exists(shot_path):
             layer_items = []
-            self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+            self.thumbnail_list.setSelectionMode(
+                QtWidgets.QAbstractItemView.ExtendedSelection
+            )
 
             for layer_name in os.listdir(shot_path):
                 if layer_name.lower() == ".backup":
@@ -287,7 +315,9 @@ class CascadingComboBox(QtWidgets.QWidget):
     def go_back(self):
         self.current_mode = "renders"
         self.current_render = None
-        self.thumbnail_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.thumbnail_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
         self.action_button.setText("Select Render")
         self.back_button.hide()
         self.update_renders(self.default_shot)
@@ -315,10 +345,14 @@ class CascadingComboBox(QtWidgets.QWidget):
             )
 
             if os.path.exists(images_dn_path):
-                exr_files = [f for f in os.listdir(images_dn_path) if f.lower().endswith(".exr")]
+                exr_files = [
+                    f for f in os.listdir(images_dn_path) if f.lower().endswith(".exr")
+                ]
                 if exr_files:
                     try:
-                        exr_files.sort(key=lambda x: int(os.path.splitext(x)[0].split(".")[-1]))
+                        exr_files.sort(
+                            key=lambda x: int(os.path.splitext(x)[0].split(".")[-1])
+                        )
                     except Exception as e:
                         print("Error sorting EXR files:", e)
 
@@ -353,4 +387,5 @@ def run():
     show_simple_window()
 
 
-run()
+#run()
+
