@@ -23,6 +23,10 @@ def import_render_layers():
 
     render_layer_selector.run()
 
+def import_USD_cam():
+    import import_usd_camera  # type: ignore[import-not-found]
+    import_usd_camera.py.run()
+
 
 def choose_shot():
     import open_shot  # type: ignore[import-not-found]
@@ -83,4 +87,5 @@ m.addCommand("L&D Write Node", "make_ld_write_node()", icon="nungeonIcon.png")
 menu = nuke.menu("Nuke")
 menu.addCommand("[Choose Shot]", "choose_shot()")
 menu.addCommand("[Import Render Layers]", "import_render_layers()")
+menu.addCommand("[Import USD Camera]", "import_USD_cam()")
 menu.addCommand("[Set Project Settings]", "set_frameRange_and_aspectRatio()")
