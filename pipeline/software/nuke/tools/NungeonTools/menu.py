@@ -23,9 +23,11 @@ def import_render_layers():
 
     render_layer_selector.run()
 
+
 def import_USD_cam():
     import import_usd_camera  # type: ignore[import-not-found]
-    import_usd_camera.py.run()
+
+    import_usd_camera.run()
 
 
 def choose_shot():
