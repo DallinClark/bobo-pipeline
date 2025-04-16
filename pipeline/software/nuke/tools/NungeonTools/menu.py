@@ -63,6 +63,11 @@ m.addCommand(
     icon="nungeonIcon.png",
 )
 m.addCommand(
+    "Fix Snow Flashes",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_snow_glitter_clamp.nk")}")',
+    icon="nungeonIcon.png",
+)
+m.addCommand(
     "Relight",
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/relight_template.nk")}")',
     icon="nungeonIcon.png",
