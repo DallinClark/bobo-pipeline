@@ -279,7 +279,7 @@ def make_MOV_node():
         "    data = json.load(f)\n"
         'data["{shot_code}"] = "{version_num}"\n'
         'with open(json_path, "w") as f:\n'
-        "    json.dump(data, f, indent=4)"
+        "    json.dump(data, f, indent=4)\n"
     ).format(json_path=json_path, shot_code=shot_code, version_num=version_num)
     write_node["afterRender"].setValue(command)
 
@@ -295,6 +295,32 @@ def update_mov_node(write_node):
         0
     )  # option 1 should be 4:4:4 12 bit
 
+
+def make_demoReel_mov_node():
+    shot_code = get_shot_code() + ".mov"
+    folder_path = "/groups/dungeons/edit/Reel_Shots"
+
+    # Create the full file path.
+    full_path = os.path.join(folder_path, shot_code)
+    print(str(full_path))
+
+    reel_write_node = nuke.createNode("Write")
+    reel_write_node.setName("MOV_write_noText")
+
+    # Set file and file type.
+    reel_write_node["file"].setValue(full_path)
+    reel_write_node["file_type"].setValue("mov64")
+
+    # Create directories automatically.
+    reel_write_node["create_directories"].setValue(1)
+
+    # Other write node settings.
+    reel_write_node["colorspace"].setValue(6)  # Data (linear-rawr)
+    reel_write_node["transformType"].setValue(1)  # Display transform tried: 2,
+    reel_write_node["mov64_codec"].setValue('appr')  # Avid DnxHr (integer value 12 for some reason) #don't try 2!!
+    reel_write_node["mov_prores_codec_profile"].setValue(2)  # DNxHD 422 10-bit 220Mbit
+
+    return reel_write_node
 
 def make_EXR_node():
     # folder_path = get_output_file_info_exr()[0]
@@ -334,17 +360,27 @@ group = nuke.thisNode()
 first_frame = int(group["export_frame_in"].value())
 last_frame  = int(group["export_frame_out"].value())
 
-group.begin()  # Enter the group's internal node graph.
+group.begin()
 write_node = nuke.toNode("MOV_write")
+demo_node = nuke.toNode("MOV_write_noText")
+
 if write_node:
     nuke.execute(write_node.name(), first_frame, last_frame, 1)
 else:
     nuke.message("MOV_write node not found inside the group!")
-group.end()  # Exit the group.
+
+if demo_node:
+    nuke.execute(demo_node.name(), first_frame, last_frame, 1)
+else:
+    nuke.message("MOV_write_noText node not found inside the group!")
+
+group.end()
 """
 
     # render button
-    mov_export_button = nuke.PyScript_Knob("mov_export", "Export MOV", mov_export_script)
+    mov_export_button = nuke.PyScript_Knob(
+        "mov_export", "Export MOV", mov_export_script
+    )
 
     new_file_name = get_output_file_info_mov()[0]
     folder_path = get_output_file_info_mov()[1]
@@ -364,7 +400,9 @@ else:
     os.system("xdg-open '" + folder + "'")
 """
 
-    open_folder_button = nuke.PyScript_Knob("open_folder", "Open Folder", button_script_open_file)
+    open_folder_button = nuke.PyScript_Knob(
+        "open_folder", "Open Folder", button_script_open_file
+    )
     open_folder_button.clearFlag(nuke.STARTLINE)
 
     # frame range label
@@ -389,7 +427,9 @@ group['export_frame_in'].setValue(new_in)
 group['export_frame_out'].setValue(new_out)
 nuke.message("This render will have 5 frames added to beginning and end of shot. Adjusted frame range = " + str(new_in) + "-" + str(new_out))
 """
-    add_handles_button = nuke.PyScript_Knob("add_shot_handles", "add shot handles", add_handles_script)
+    add_handles_button = nuke.PyScript_Knob(
+        "add_shot_handles", "add shot handles", add_handles_script
+    )
     add_handles_button.clearFlag(nuke.STARTLINE)
 
     # checkboxes
@@ -401,7 +441,9 @@ nuke.message("This render will have 5 frames added to beginning and end of shot.
     divider3 = nuke.Text_Knob("divider3", "")
 
     # dropdown
-    department_dropdown = nuke.Enumeration_Knob("departmentDropdown", "", ["Lighting", "Compositing"])
+    department_dropdown = nuke.Enumeration_Knob(
+        "departmentDropdown", "", ["Lighting", "Compositing"]
+    )
 
     # Add all knobs
     groupNode.addKnob(mov_export_button)
@@ -435,7 +477,9 @@ else:
 group.end()
 """
 
-    exr_export_button = nuke.PyScript_Knob("exr_export", "Export EXR", exr_export_script)
+    exr_export_button = nuke.PyScript_Knob(
+        "exr_export", "Export EXR", exr_export_script
+    )
 
     frame_range_exr = nuke.Text_Knob("frame_range_exr", "")
     frame_range_exr.setValue("Frame range is currently set to:")
@@ -465,7 +509,9 @@ else:
     os.system("xdg-open '" + folder + "'")
 """
 
-    open_folder_button_exr = nuke.PyScript_Knob("open_folder", "Open Folder", button_script_open_exr)
+    open_folder_button_exr = nuke.PyScript_Knob(
+        "open_folder", "Open Folder", button_script_open_exr
+    )
     open_folder_button_exr.clearFlag(nuke.STARTLINE)
 
     # Add EXR UI knobs
@@ -477,6 +523,7 @@ else:
     groupNode.addKnob(divider3)
     groupNode.addKnob(exr_export_path)
     groupNode.addKnob(open_folder_button_exr)
+
 
 def createLinks(groupNode, text_nodes, mov_node, exr_node, switch):
     # mov export tab:
@@ -556,6 +603,13 @@ def main():
         exr_node = make_EXR_node()
         exr_node.setInput(0, reformat_node)
         exr_node.setXYpos(mov_node_pos_x + 100, mov_node_pos_y)
+
+        #another mov node for demo reels
+        exr_node_pos_x = exr_node.xpos()
+        exr_node_pos_y = exr_node.ypos()
+        demo_write_node = make_demoReel_mov_node()
+        demo_write_node.setInput(0, reformat_node)
+        demo_write_node.setXYpos(exr_node_pos_x + 100, exr_node_pos_y)
 
         makeUI(groupNode)
         createLinks(groupNode, text_nodes, mov_node, exr_node, switcheroo)
