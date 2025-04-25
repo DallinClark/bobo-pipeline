@@ -82,6 +82,11 @@ m.addCommand(
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_skydome_basic.nk")}")',
     icon="nungeonIcon.png",
 )
+m.addCommand(
+    "Fix Snow Sparkles in fog layer",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_snow_glitter_clamp.nk")}")',
+    icon="nungeonIcon.png",
+)
 
 # m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
 m.addCommand("Grade_AOV", "nuke.createNode('grade_AOV')", icon="nungeonIcon.png")
