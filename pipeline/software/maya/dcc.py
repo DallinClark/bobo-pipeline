@@ -48,7 +48,7 @@ class MayaDCC(DCC):
         #adding the preexisting path, if it exists
         existing_module_path = os.environ.get("MAYA_MODULE_PATH")
         if existing_module_path:
-            module_paths.extend(existing_module_path.split(os.pahtsep))
+            module_paths.extend(existing_module_path.split(os.pathsep))
 
         ############         End Poste Driver Code (see line 66 also)      ##############
         #################################################################################
