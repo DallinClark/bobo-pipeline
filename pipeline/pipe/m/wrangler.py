@@ -1,5 +1,5 @@
-from epic_pose_wrangler import main
+from epic_pose_wrangler import main # type:ignore[import-not-found]
 
 def run():
-    pose_wrangler = main.PoseWrangler()
+    main.PoseWrangler()
     

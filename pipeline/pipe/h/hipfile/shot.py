@@ -23,11 +23,15 @@ class HShotFileManager(HFileManager):
         CFX = "cfx"
         FX = "fx"
         LIGHTING = "lighting"
+        ENVFX = "envfx"
 
     def __init__(self):
         department_dialog = FilteredListDialog(
             pipe.h.local.get_main_qt_window(),
-            [self.DEPARTMENT.CFX, self.DEPARTMENT.FX, self.DEPARTMENT.LIGHTING],
+            [self.DEPARTMENT.CFX, 
+             self.DEPARTMENT.FX, 
+             self.DEPARTMENT.ENVFX, 
+             self.DEPARTMENT.LIGHTING],
             "Department Select",
             include_filter_field=False,
             accept_button_name="Select",
@@ -59,15 +63,17 @@ class HShotFileManager(HFileManager):
 
         stage: hou.Node = hou.node("/stage")  # type: ignore[assignment]
 
-        load_layer = stage.createNode("sdm223::main::LnD_Load_Layers::1.0")
+        load_layer = stage.createNode("dbclark::main::Bobo_Load_Layers::1.0")
         load_layer.setUserData("nodeshape", "bulge_down")
         load_layer.parm("shot").set("$JOB/`@SHOT`")  # type: ignore[union-attr]
 
         muted_deps: list[str] = []
         if self._department == self.DEPARTMENT.CFX:
-            muted_deps = ["cfx", "fx", "layout", "lighting"]
+            muted_deps = ["cfx", "fx","envfx", "layout", "lighting"]
         elif self._department == self.DEPARTMENT.FX:
             muted_deps = ["fx"]
+        elif self._department == self.DEPARTMENT.ENVFX:
+            muted_deps = ["envfx"]
         elif self._department == self.DEPARTMENT.LIGHTING:
             muted_deps = ["lighting"]
 
