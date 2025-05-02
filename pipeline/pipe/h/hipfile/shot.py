@@ -79,7 +79,10 @@ class HShotFileManager(HFileManager):
         if self._department == HShotFileManager.DEPARTMENT.CFX:
             shot_in = 940
             shot_out = shot.cut_out + 5
-        elif self._department == HShotFileManager.DEPARTMENT.RENDER:
+        elif self._department in (
+            HShotFileManager.DEPARTMENT.LIGHTING,
+            HShotFileManager.DEPARTMENT.RENDER,
+        ):
             shot_in = shot.cut_in
             shot_out = shot.cut_out
         else:

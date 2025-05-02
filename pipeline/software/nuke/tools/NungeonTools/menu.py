@@ -24,6 +24,12 @@ def import_render_layers():
     render_layer_selector.run()
 
 
+def import_USD_cam():
+    import import_usd_camera  # type: ignore[import-not-found]
+
+    import_usd_camera.run()
+
+
 def choose_shot():
     import open_shot  # type: ignore[import-not-found]
 
@@ -40,11 +46,7 @@ def set_frameRange_and_aspectRatio():
 toolbar = nuke.menu("Nodes")
 m = toolbar.addMenu("Nungeon", icon="nungeonIcon.png")
 
-# lens node
-m.addCommand("Lens", "nuke.createNode('Lens')", icon="nungeonIcon.png")
-print(
-    f"nuke.nodePaste({str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk')})"
-)
+
 m.addCommand(
     "Template",
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk")}")',
@@ -61,6 +63,11 @@ m.addCommand(
     icon="nungeonIcon.png",
 )
 m.addCommand(
+    "Fix Snow Flashes",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_snow_glitter_clamp.nk")}")',
+    icon="nungeonIcon.png",
+)
+m.addCommand(
     "Relight",
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/relight_template.nk")}")',
     icon="nungeonIcon.png",
@@ -70,12 +77,26 @@ m.addCommand(
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/eyelights.nk")}")',
     icon="nungeonIcon.png",
 )
+m.addCommand(
+    "Sky Dome (Basic)",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_skydome_basic.nk")}")',
+    icon="nungeonIcon.png",
+)
+m.addCommand(
+    "Fix Snow Sparkles in fog layer",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_snow_glitter_clamp.nk")}")',
+    icon="nungeonIcon.png",
+)
 
-m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
+# m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
 m.addCommand("Grade_AOV", "nuke.createNode('grade_AOV')", icon="nungeonIcon.png")
 m.addCommand("luma Distort", "nuke.createNode('lumaDistort')", icon="nungeonIcon.png")
 m.addCommand("Roughen Edges", "nuke.createNode('roughenEdges')", icon="nungeonIcon.png")
-
+# lens node
+m.addCommand("Lens", "nuke.createNode('Lens')", icon="nungeonIcon.png")
+print(
+    f"nuke.nodePaste({str(get_pipe_path() / 'software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk')})"
+)
 m.addCommand("L&D Write Node", "make_ld_write_node()", icon="nungeonIcon.png")
 
 
@@ -83,4 +104,5 @@ m.addCommand("L&D Write Node", "make_ld_write_node()", icon="nungeonIcon.png")
 menu = nuke.menu("Nuke")
 menu.addCommand("[Choose Shot]", "choose_shot()")
 menu.addCommand("[Import Render Layers]", "import_render_layers()")
+menu.addCommand("[Import USD Camera]", "import_USD_cam()")
 menu.addCommand("[Set Project Settings]", "set_frameRange_and_aspectRatio()")
