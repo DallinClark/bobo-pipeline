@@ -4,7 +4,7 @@
 	ignore = dirty
 [submodule "pipeline/software/maya/scripts/rjg"]
 	path = pipeline/software/maya/scripts/rjg
-	url = https://github.com/jgashler/rjg
+	url = https://github.com/SteveDunn720/rjg.git
 	ignore = dirty
 [submodule "pipeline/software/maya/scripts/dwpicker_git"]
 	path = pipeline/software/maya/scripts/dwpicker_git
