@@ -40,12 +40,14 @@ class MayaDCC(DCC):
         ################################################################################
         ################################################################################
         #############                   Pose Driver Code                   #############
-        
-        module_paths = [] # Initialie an empty list for module paths
 
-        module_paths.append(str(get_production_path() / "maya/module")) #add the production path plus the folder where we put our module
+        module_paths = []  # Initialie an empty list for module paths
 
-        #adding the preexisting path, if it exists
+        module_paths.append(
+            str(get_production_path() / "maya/module")
+        )  # add the production path plus the folder where we put our module
+
+        # adding the preexisting path, if it exists
         existing_module_path = os.environ.get("MAYA_MODULE_PATH")
         if existing_module_path:
             module_paths.extend(existing_module_path.split(os.pathsep))
@@ -53,9 +55,6 @@ class MayaDCC(DCC):
         ############         End Poste Driver Code (see line 66 also)      ##############
         #################################################################################
         #################################################################################
-
-
-
 
         env_vars = {
             "DCC": str(this_path.parent.name),
