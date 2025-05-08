@@ -68,10 +68,16 @@ m.addCommand(
     icon="nungeonIcon.png",
 )
 m.addCommand(
+    "Lightwrap (upper matrix)",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/ld_lightwrap.nk")}")',
+    icon="nungeonIcon.png",
+)
+m.addCommand(
     "Relight",
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/relight_template.nk")}")',
     icon="nungeonIcon.png",
 )
+
 m.addCommand(
     "Eye Light",
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/eyelights.nk")}")',
