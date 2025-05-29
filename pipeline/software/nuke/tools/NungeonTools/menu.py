@@ -46,7 +46,11 @@ def set_frameRange_and_aspectRatio():
 toolbar = nuke.menu("Nodes")
 m = toolbar.addMenu("Nungeon", icon="nungeonIcon.png")
 
-
+m.addCommand(
+    "Wireframe Breakdown",
+    f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/wireframe_breakdown.nk")}")',
+    icon="nungeonIcon.png",
+)
 m.addCommand(
     "Template",
     f'nuke.nodePaste("{str(get_pipe_path() / "software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk")}")',
