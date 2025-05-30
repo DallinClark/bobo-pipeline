@@ -9,10 +9,6 @@ nuke.pluginAddPath("./toolsets")
 nuke.pluginAddPath("./scripts")
 
 
-
-
-
-
 def make_bobo_write_node():
     import bobo_write_node_v2  # type: ignore[import-not-found]
 

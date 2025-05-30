@@ -1,5 +1,6 @@
 import maya.cmds as cmds
 
+
 def get_next_index(base_name):
     i = 1
     while True:
@@ -7,6 +8,7 @@ def get_next_index(base_name):
         if not cmds.objExists(name):
             return str(i).zfill(2)
         i += 1
+
 
 def create_point_light_control():
     # Determine next available index
@@ -55,6 +57,7 @@ def create_point_light_control():
 
     print(f"✅ Created: {ctrl} → {offset_grp} → {light_name}")
     return ctrl, offset_grp, light_name
+
 
 # Run it
 create_point_light_control()

@@ -5,6 +5,7 @@ import os
 WINDOWS_RIG_PATH = "G:/bobo/previs/Rigs/boboShotCam_v01.mb"
 LINUX_RIG_PATH = "/groups/bobo/previs/Rigs/boboShotCam_v01.mb"
 
+
 def reference_and_match_rig():
     def get_rigs_with_cam_namespace():
         rigs = []
@@ -15,7 +16,11 @@ def reference_and_match_rig():
         return rigs
 
     def get_top_level_transforms(namespace):
-        return [obj for obj in cmds.ls(f"{namespace}:*", transforms=True) if ":" not in obj.split("|")[-1]]
+        return [
+            obj
+            for obj in cmds.ls(f"{namespace}:*", transforms=True)
+            if ":" not in obj.split("|")[-1]
+        ]
 
     def generate_new_namespace(base_ns):
         base_name = f"{base_ns}_ALT"
@@ -25,7 +30,14 @@ def reference_and_match_rig():
         return f"{base_name}{i:02}"
 
     def match_transforms(source_ns, target_ns):
-        control_names = ['world_CTRL', 'main_CTRL', 'dolly_CTRL', 'tilt_pan_CTRL', 'ClippingPlane_CTRL', 'focusDistance_CTRL']
+        control_names = [
+            "world_CTRL",
+            "main_CTRL",
+            "dolly_CTRL",
+            "tilt_pan_CTRL",
+            "ClippingPlane_CTRL",
+            "focusDistance_CTRL",
+        ]
 
         for ctrl in control_names:
             source_ctrl = f"{source_ns}:{ctrl}"
@@ -56,7 +68,11 @@ def reference_and_match_rig():
 
         # Match transforms
         match_transforms(f"{new_ns}", f"{selected_rig_ns}")
-        cmds.confirmDialog(title="Success", message=f"Rig referenced and matched as {new_ns}", button=["OK"])
+        cmds.confirmDialog(
+            title="Success",
+            message=f"Rig referenced and matched as {new_ns}",
+            button=["OK"],
+        )
 
     # UI
     if cmds.window("rigMatchUI", exists=True):
@@ -67,13 +83,15 @@ def reference_and_match_rig():
         cmds.warning("No rigs with 'CAM' in namespace found.")
         return
 
-    window = cmds.window("rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150))
-    cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign='center')
-    
+    window = cmds.window(
+        "rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150)
+    )
+    cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
+
     cmds.text(label="Select Your OS:")
     os_option_menu = cmds.optionMenu()
-    cmds.menuItem(label='Windows')
-    cmds.menuItem(label='Linux')
+    cmds.menuItem(label="Windows")
+    cmds.menuItem(label="Linux")
 
     cmds.text(label="Select Target Rig (CAM):")
     rig_option_menu = cmds.optionMenu()
@@ -83,5 +101,6 @@ def reference_and_match_rig():
     cmds.button(label="Reference and Match Rig", command=on_apply)
 
     cmds.showWindow(window)
+
 
 reference_and_match_rig()

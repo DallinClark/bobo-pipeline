@@ -1,5 +1,6 @@
 import maya.cmds as cmds
 
+
 def assign_texture_with_dropdown():
     # Get all materials in the scene
     materials = cmds.ls(materials=True)
@@ -13,7 +14,9 @@ def assign_texture_with_dropdown():
         cmds.deleteUI("shaderAssignWin")
 
     # Create window
-    window = cmds.window("shaderAssignWin", title="Assign Texture to Shader", sizeable=False)
+    window = cmds.window(
+        "shaderAssignWin", title="Assign Texture to Shader", sizeable=False
+    )
     cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
 
     cmds.text(label="Select a shader:")
@@ -21,10 +24,15 @@ def assign_texture_with_dropdown():
     for mat in materials:
         cmds.menuItem(label=mat)
 
-    cmds.button(label="Select Texture and Apply", command=lambda *_: continue_with_texture())
-    cmds.button(label="Cancel", command=lambda *_: cmds.deleteUI("shaderAssignWin", window=True))
+    cmds.button(
+        label="Select Texture and Apply", command=lambda *_: continue_with_texture()
+    )
+    cmds.button(
+        label="Cancel", command=lambda *_: cmds.deleteUI("shaderAssignWin", window=True)
+    )
 
     cmds.showWindow(window)
+
 
 def continue_with_texture():
     selected_shader = cmds.optionMenu("shaderDropdown", query=True, value=True)
@@ -33,7 +41,7 @@ def continue_with_texture():
     file_path = cmds.fileDialog2(
         fileFilter="Image Files (*.png *.jpg *.exr *.tga *.tiff)",
         dialogStyle=2,
-        fileMode=1
+        fileMode=1,
     )
 
     if not file_path:
@@ -49,19 +57,18 @@ def continue_with_texture():
         button=["Yes", "No"],
         defaultButton="Yes",
         cancelButton="No",
-        dismissString="No"
+        dismissString="No",
     )
 
     # Find an existing file node connected to the selected shader
     file_nodes = cmds.listConnections(
-        f"{selected_shader}.outColor",
-        source=True,
-        destination=False,
-        type="file"
+        f"{selected_shader}.outColor", source=True, destination=False, type="file"
     )
 
     if not file_nodes:
-        cmds.warning(f"No file texture found for '{selected_shader}'. Cannot assign texture.")
+        cmds.warning(
+            f"No file texture found for '{selected_shader}'. Cannot assign texture."
+        )
         return
 
     file_node = file_nodes[0]
@@ -71,10 +78,18 @@ def continue_with_texture():
 
     # Connect to transparency if requested
     if apply_transparency == "Yes":
-        cmds.connectAttr(f"{file_node}.outTransparency", f"{selected_shader}.outTransparency", force=True)
-        print(f"🎨 File '{file_path}' assigned to both outColor and outTransparency of '{selected_shader}'.")
+        cmds.connectAttr(
+            f"{file_node}.outTransparency",
+            f"{selected_shader}.outTransparency",
+            force=True,
+        )
+        print(
+            f"🎨 File '{file_path}' assigned to both outColor and outTransparency of '{selected_shader}'."
+        )
     else:
-        print(f"🎨 File '{file_path}' assigned only to outColor of '{selected_shader}'.")
+        print(
+            f"🎨 File '{file_path}' assigned only to outColor of '{selected_shader}'."
+        )
 
     # Close the window
     if cmds.window("shaderAssignWin", exists=True):

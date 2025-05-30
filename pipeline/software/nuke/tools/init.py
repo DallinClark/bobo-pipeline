@@ -8,5 +8,5 @@ nuke.addFormat("16 9 Bobo_aspect_ratio")
 
 nuke.knobDefault("Root.format", "Bobo_aspect_ratio")
 
-#color management
+# color management
 nuke.knobDefault("Root.colorManagement", "OCIO")
