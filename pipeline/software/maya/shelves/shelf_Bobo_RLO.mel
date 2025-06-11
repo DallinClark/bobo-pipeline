@@ -9,7 +9,7 @@ global proc shelf_Bobo_RLO () {
         -flexibleWidthType 3
         -flexibleWidthValue 32
         -enable 1
-        -width 39
+        -width 35
         -height 34
         -manage 1
         -visible 1
@@ -177,7 +177,7 @@ global proc shelf_Bobo_RLO () {
     shelfButton
         -enableCommandRepeat 1
         -flexibleWidthType 3
-        -flexibleWidthValue 32
+        -flexibleWidthValue 38
         -enable 1
         -width 41
         -height 34
@@ -211,7 +211,7 @@ global proc shelf_Bobo_RLO () {
     shelfButton
         -enableCommandRepeat 1
         -flexibleWidthType 3
-        -flexibleWidthValue 32
+        -flexibleWidthValue 38
         -enable 1
         -width 41
         -height 34
@@ -408,6 +408,40 @@ global proc shelf_Bobo_RLO () {
         -marginWidth 0
         -marginHeight 1
         -command "from pipe.m.scripts.Spotlight_Rig import create_spotlight_rig_auto_index; create_spotlight_rig_auto_index();" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "from pipe.m.publish import PrevisAssetPublisher\n\nPrevisAssetPublisher().publish()" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Asset Publish" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -imageOverlayLabel "Asset Publish" 
+        -overlayLabelColor 0.8 0.8 0.8 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "publishAttributes.png" 
+        -image1 "publishAttributes.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "from pipe.m.publish import PrevisAssetPublisher\n\nPrevisAssetPublisher().publish()" 
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
