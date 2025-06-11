@@ -4,8 +4,9 @@ import os
 # Define your rig paths for each OS
 RIG_PATHS = {
     "Windows": "G:/bobo/previs/Rigs/FX_card_rig_v02.ma",
-    "Linux": "/groups/bobo/previs/Rigs/FX_card_rig_v02.ma"
+    "Linux": "/groups/bobo/previs/Rigs/FX_card_rig_v02.ma",
 }
+
 
 def reference_rig_with_namespace(rig_path, base_namespace):
     # Generate a unique namespace
@@ -18,9 +19,14 @@ def reference_rig_with_namespace(rig_path, base_namespace):
     # Reference the file
     try:
         cmds.file(rig_path, reference=True, namespace=namespace)
-        cmds.inViewMessage(amg=f'Referenced <hl>{rig_path}</hl> as <hl>{namespace}</hl>', pos='topCenter', fade=True)
+        cmds.inViewMessage(
+            amg=f"Referenced <hl>{rig_path}</hl> as <hl>{namespace}</hl>",
+            pos="topCenter",
+            fade=True,
+        )
     except Exception as e:
         cmds.error(f"Failed to reference rig: {e}")
+
 
 def open_reference_ui():
     # Close previous window if open
@@ -34,7 +40,7 @@ def open_reference_ui():
     ref_name_field = cmds.textField(placeholderText="e.g., myCharacter")
 
     cmds.text(label="Select your OS:")
-    os_menu = cmds.optionMenuGrp(label='Operating System')
+    os_menu = cmds.optionMenuGrp(label="Operating System")
     cmds.menuItem(label="Windows")
     cmds.menuItem(label="Linux")
 

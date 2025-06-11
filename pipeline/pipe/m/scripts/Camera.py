@@ -5,15 +5,8 @@ import re
 cameraFilePath = None
 
 # Dictionary to track the last used shot number for each sequence
-sequence_shot_tracker = {
-    'A': 0,
-    'B': 0,
-    'C': 0,
-    'D': 0,
-    'E': 0,
-    'F': 0,
-    'G': 0
-}
+sequence_shot_tracker = {"A": 0, "B": 0, "C": 0, "D": 0, "E": 0, "F": 0, "G": 0}
+
 
 # Function to get the last shot number from existing references for a specific sequence
 def get_last_shot_num_for_sequence(sequence):
@@ -21,7 +14,7 @@ def get_last_shot_num_for_sequence(sequence):
     shot_nums = []
 
     # Regex to match shot code format: "SequenceName_###"
-    pattern = re.compile(rf'^{sequence}_(\d{{3}})_CAM$')
+    pattern = re.compile(rf"^{sequence}_(\d{{3}})_CAM$")
 
     for ref in refs:
         ns = cmds.file(ref, q=True, namespace=True)
@@ -33,7 +26,10 @@ def get_last_shot_num_for_sequence(sequence):
     if shot_nums:
         return max(shot_nums)
     else:
-        return sequence_shot_tracker[sequence]  # Default from tracker if no existing references
+        return sequence_shot_tracker[
+            sequence
+        ]  # Default from tracker if no existing references
+
 
 def reference_camera():
     global cameraFilePath, sequence_shot_tracker
@@ -44,7 +40,7 @@ def reference_camera():
         return
 
     # Get the selected sequence name
-    seqName = cmds.optionMenu('seqMenu', query=True, value=True)
+    seqName = cmds.optionMenu("seqMenu", query=True, value=True)
 
     # Get the last used shot number for the current sequence
     last_shot_num = get_last_shot_num_for_sequence(seqName)
@@ -59,10 +55,11 @@ def reference_camera():
     sequence_shot_tracker[seqName] = shotNum
 
     # Create the shot code
-    shotCode = seqName + '_' + '{:03d}'.format(shotNum) + '_CAM'
+    shotCode = seqName + "_" + "{:03d}".format(shotNum) + "_CAM"
 
     # Reference the camera file with the selected file path
     cmds.file(cameraFilePath, r=True, namespace=shotCode)
+
 
 # Create a function to set the camera file path based on the OS choice
 def set_file_path(os_choice):
@@ -75,35 +72,46 @@ def set_file_path(os_choice):
         cmds.error("Invalid OS selection!")
     reference_camera()  # Call the function to reference the camera after OS selection
 
+
 # Create the main UI for selecting the operating system and sequence name
 def show_camera_reference_ui():
     if cmds.window("CameraReferenceUI", exists=True):
         cmds.deleteUI("CameraReferenceUI")
 
-    camera_window = cmds.window("CameraReferenceUI", title="Select Operating System and Sequence", widthHeight=(300, 150))
+    camera_window = cmds.window(
+        "CameraReferenceUI",
+        title="Select Operating System and Sequence",
+        widthHeight=(300, 150),
+    )
     cmds.columnLayout(adjustableColumn=True)
 
     # OS selection
-    cmds.text(label='Select Operating System:')
-    cmds.optionMenu('osMenu', label='Operating System')
-    cmds.menuItem(label='Windows')
-    cmds.menuItem(label='Linux')
+    cmds.text(label="Select Operating System:")
+    cmds.optionMenu("osMenu", label="Operating System")
+    cmds.menuItem(label="Windows")
+    cmds.menuItem(label="Linux")
 
     # Sequence selection
-    cmds.text(label='Select Sequence Name:')
-    cmds.optionMenu('seqMenu', label='Sequence Name')
-    cmds.menuItem(label='A')
-    cmds.menuItem(label='B')
-    cmds.menuItem(label='C')
-    cmds.menuItem(label='D')
-    cmds.menuItem(label='E')
-    cmds.menuItem(label='F')
-    cmds.menuItem(label='G')
+    cmds.text(label="Select Sequence Name:")
+    cmds.optionMenu("seqMenu", label="Sequence Name")
+    cmds.menuItem(label="A")
+    cmds.menuItem(label="B")
+    cmds.menuItem(label="C")
+    cmds.menuItem(label="D")
+    cmds.menuItem(label="E")
+    cmds.menuItem(label="F")
+    cmds.menuItem(label="G")
 
     # Button to apply the selection and reference the camera
-    cmds.button(label='Reference Camera', command=lambda x: set_file_path(cmds.optionMenu('osMenu', query=True, value=True)))
+    cmds.button(
+        label="Reference Camera",
+        command=lambda x: set_file_path(
+            cmds.optionMenu("osMenu", query=True, value=True)
+        ),
+    )
 
     cmds.showWindow(camera_window)
+
 
 # Call the UI to show the window
 show_camera_reference_ui()

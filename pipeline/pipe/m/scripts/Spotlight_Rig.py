@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 
-def get_next_unique_index(base_name='spotlight', start=1):
+
+def get_next_unique_index(base_name="spotlight", start=1):
     index = start
     while True:
         # Check if the main spotlight transform exists with this index
@@ -9,8 +10,9 @@ def get_next_unique_index(base_name='spotlight', start=1):
             return index
         index += 1
 
+
 def create_spotlight_rig_auto_index():
-    base_name = 'spotlight'
+    base_name = "spotlight"
     index = get_next_unique_index(base_name)
     index_str = str(index).zfill(2)
 
@@ -24,25 +26,27 @@ def create_spotlight_rig_auto_index():
     tumble_offset_name = f"{base_name}_tumble_OFFSET_{index_str}"
 
     # --- Create spotlight transform and shape ---
-    light_transform = cmds.createNode('transform', name=light_transform_name)
-    light_shape = cmds.createNode('spotLight', name=light_shape_name, parent=light_transform)
+    light_transform = cmds.createNode("transform", name=light_transform_name)
+    light_shape = cmds.createNode(
+        "spotLight", name=light_shape_name, parent=light_transform
+    )
 
-    cmds.setAttr(f'{light_shape}.decayRate', 2)  # Quadratic decay
-    cmds.setAttr(f'{light_shape}.intensity', 100000)
-    cmds.setAttr(f'{light_shape}.useDepthMapShadows', 1)
-    cmds.setAttr(f'{light_shape}.dmapResolution', 16384)
-    cmds.setAttr(f'{light_transform}.scale', 72, 72, 72, type='double3')
+    cmds.setAttr(f"{light_shape}.decayRate", 2)  # Quadratic decay
+    cmds.setAttr(f"{light_shape}.intensity", 100000)
+    cmds.setAttr(f"{light_shape}.useDepthMapShadows", 1)
+    cmds.setAttr(f"{light_shape}.dmapResolution", 16384)
+    cmds.setAttr(f"{light_transform}.scale", 72, 72, 72, type="double3")
 
     # --- Create root control ---
     root_ctrl = cmds.circle(name=root_ctrl_name, normal=(0, 1, 0))[0]
-    cmds.setAttr(f'{root_ctrl}.scale', 67, 67, 67, type='double3')
-    cmds.setAttr(f'{root_ctrl}.translateY', -8)
+    cmds.setAttr(f"{root_ctrl}.scale", 67, 67, 67, type="double3")
+    cmds.setAttr(f"{root_ctrl}.translateY", -8)
     cmds.makeIdentity(root_ctrl, apply=True, t=1, r=1, s=1)
 
     # --- Create tumble control ---
     tumble_ctrl = cmds.circle(name=tumble_ctrl_name, normal=(0, 1, 0))[0]
-    cmds.setAttr(f'{tumble_ctrl}.scale', 34, 34, 34, type='double3')
-    cmds.setAttr(f'{tumble_ctrl}.rotateX', 90)
+    cmds.setAttr(f"{tumble_ctrl}.scale", 34, 34, 34, type="double3")
+    cmds.setAttr(f"{tumble_ctrl}.rotateX", 90)
     cmds.makeIdentity(tumble_ctrl, apply=True, t=1, r=1, s=1)
 
     # --- Create offset groups ---
@@ -51,12 +55,13 @@ def create_spotlight_rig_auto_index():
     root_offset = cmds.group(root_ctrl, name=root_offset_name)
 
     # --- Build hierarchy using variables only ---
-    cmds.parent(light_offset, tumble_ctrl)       # spotlight_OFFSET_## under tumble_CTRL
-    cmds.parent(tumble_offset, root_ctrl)        # tumble_OFFSET_## under root_CTRL
-    cmds.parent(tumble_ctrl, tumble_offset)      # tumble_CTRL under tumble_OFFSET
-    cmds.parent(root_ctrl, root_offset)          # root_CTRL under root_OFFSET
+    cmds.parent(light_offset, tumble_ctrl)  # spotlight_OFFSET_## under tumble_CTRL
+    cmds.parent(tumble_offset, root_ctrl)  # tumble_OFFSET_## under root_CTRL
+    cmds.parent(tumble_ctrl, tumble_offset)  # tumble_CTRL under tumble_OFFSET
+    cmds.parent(root_ctrl, root_offset)  # root_CTRL under root_OFFSET
 
     print(f"✅ Created spotlight rig '{light_transform_name}' successfully.")
+
 
 # Example usage — just run this to create one rig with unique naming:
 create_spotlight_rig_auto_index()
