@@ -58,5 +58,3 @@ def create_spotlight_rig_auto_index():
 
     print(f"✅ Created spotlight rig '{light_transform_name}' successfully.")
 
-# Example usage — just run this to create one rig with unique naming:
-create_spotlight_rig_auto_index()

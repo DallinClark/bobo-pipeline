@@ -1,12 +1,36 @@
 import maya.cmds as cmds
 import os
 
-# Corrected rig paths
-WINDOWS_RIG_PATH = "G:/bobo/previs/Rigs/boboShotCam_v01.mb"
-LINUX_RIG_PATH = "/groups/bobo/previs/Rigs/boboShotCam_v01.mb"
+from shared.util import get_groups_path
 
-def reference_and_match_rig():
-    def get_rigs_with_cam_namespace():
+# Corrected rig paths
+RIG_PATH = get_groups_path() / "previs/Rigs/boboShotCam_v01.mb"
+
+class ReferenceAndMatchRig:
+    
+    def launch(self):
+        # UI
+        if cmds.window("rigMatchUI", exists=True):
+            cmds.deleteUI("rigMatchUI")
+
+        rigs = self.get_rigs_with_cam_namespace()
+        if not rigs:
+            cmds.warning("No rigs with 'CAM' in namespace found.")
+            return
+
+        window = cmds.window("rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150))
+        cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign='center')
+
+        cmds.text(label="Select Target Rig (CAM):")
+        self.rig_option_menu = cmds.optionMenu()
+        for rig in rigs:
+            cmds.menuItem(label=rig)
+
+        cmds.button(label="Reference and Match Rig", command=self.on_apply)
+
+        cmds.showWindow(window)
+        
+    def get_rigs_with_cam_namespace(self):
         rigs = []
         for ref in cmds.file(query=True, reference=True) or []:
             namespace = cmds.referenceQuery(ref, namespace=True).replace(":", "")
@@ -14,17 +38,17 @@ def reference_and_match_rig():
                 rigs.append(namespace)
         return rigs
 
-    def get_top_level_transforms(namespace):
+    def get_top_level_transforms(self, namespace):
         return [obj for obj in cmds.ls(f"{namespace}:*", transforms=True) if ":" not in obj.split("|")[-1]]
 
-    def generate_new_namespace(base_ns):
+    def generate_new_namespace(self, base_ns):
         base_name = f"{base_ns}_ALT"
         i = 1
         while cmds.namespace(exists=f"{base_name}{i:02}"):
             i += 1
         return f"{base_name}{i:02}"
 
-    def match_transforms(source_ns, target_ns):
+    def match_transforms(self, source_ns, target_ns):
         control_names = ['world_CTRL', 'main_CTRL', 'dolly_CTRL', 'tilt_pan_CTRL', 'ClippingPlane_CTRL', 'focusDistance_CTRL']
 
         for ctrl in control_names:
@@ -40,48 +64,21 @@ def reference_and_match_rig():
             else:
                 print(f"Skipping '{ctrl}' — not found in one of the rigs.")
 
-    def on_apply(*args):
-        os_type = cmds.optionMenu(os_option_menu, query=True, value=True)
-        rig_path = WINDOWS_RIG_PATH if os_type == "Windows" else LINUX_RIG_PATH
+    def on_apply(self, *args):
+        rig_path = RIG_PATH
 
         if not os.path.exists(rig_path):
             cmds.warning(f"Rig file not found: {rig_path}")
             return
 
-        selected_rig_ns = cmds.optionMenu(rig_option_menu, query=True, value=True)
-        new_ns = generate_new_namespace(selected_rig_ns)
+        selected_rig_ns = cmds.optionMenu(self.rig_option_menu, query=True, value=True)
+        new_ns = self.generate_new_namespace(selected_rig_ns)
 
         # Reference rig
         cmds.file(rig_path, reference=True, namespace=new_ns)
 
         # Match transforms
-        match_transforms(f"{new_ns}", f"{selected_rig_ns}")
+        self.match_transforms(f"{new_ns}", f"{selected_rig_ns}")
         cmds.confirmDialog(title="Success", message=f"Rig referenced and matched as {new_ns}", button=["OK"])
 
-    # UI
-    if cmds.window("rigMatchUI", exists=True):
-        cmds.deleteUI("rigMatchUI")
 
-    rigs = get_rigs_with_cam_namespace()
-    if not rigs:
-        cmds.warning("No rigs with 'CAM' in namespace found.")
-        return
-
-    window = cmds.window("rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150))
-    cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign='center')
-    
-    cmds.text(label="Select Your OS:")
-    os_option_menu = cmds.optionMenu()
-    cmds.menuItem(label='Windows')
-    cmds.menuItem(label='Linux')
-
-    cmds.text(label="Select Target Rig (CAM):")
-    rig_option_menu = cmds.optionMenu()
-    for rig in rigs:
-        cmds.menuItem(label=rig)
-
-    cmds.button(label="Reference and Match Rig", command=on_apply)
-
-    cmds.showWindow(window)
-
-reference_and_match_rig()

@@ -12,3 +12,4 @@ def run():
     print("Picker filepaths", picker_filepaths)
 
     dwpicker.show(pickers=picker_filepaths)
+

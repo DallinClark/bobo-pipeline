@@ -75,6 +75,10 @@ def get_asset_path() -> Path:
     return get_production_path() / "asset"
 
 
+def get_groups_path() -> Path:
+    return get_production_path() / ".."
+
+
 def get_character_path() -> Path:
     return get_production_path().parent / "character"
 
