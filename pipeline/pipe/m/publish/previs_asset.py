@@ -16,10 +16,7 @@ from pxr import Gf, Vt
 
 if TYPE_CHECKING:
     from typing import Any, Sequence
-from pipe.glui.dialogs import (
-    FilteredListDialog,
-    MessageDialog
-)
+from pipe.glui.dialogs import FilteredListDialog, MessageDialog
 from pipe.struct.db import Asset, SGEntity
 from shared.util import get_production_path
 
@@ -70,10 +67,7 @@ class PrevisAssetPublisher(Publisher):
         asset = cast(Asset, self._entity)
         try:
             assert asset.path is not None
-            return Path(
-                get_production_path() /
-                asset.path / 
-                "previs.usd")
+            return Path(get_production_path() / asset.path / "previs.usd")
 
         except AssertionError:
             error = MessageDialog(
@@ -83,7 +77,6 @@ class PrevisAssetPublisher(Publisher):
             )
             error.exec_()
             return None
-        
 
     def _presave(self) -> bool:
         return True
@@ -92,11 +85,11 @@ class PrevisAssetPublisher(Publisher):
         return {
             "shadingMode": "useRegistry",
         }
-    
+
     @staticmethod
     def fill_mesh_from_selection(usd_mesh):
         selection = cmds.ls(selection=True, dag=True, type="mesh")
-        #cmds.scale(0.01, 0.01, 0.01)
+        # cmds.scale(0.01, 0.01, 0.01)
         if not selection:
             raise RuntimeError("No mesh selected in Maya.")
 
@@ -127,22 +120,24 @@ class PrevisAssetPublisher(Publisher):
             u_array, v_array = mesh_fn.getUVs()
             uv_indices = mesh_fn.getAssignedUVs()[1]
             uv_coords = [Gf.Vec2f(u_array[i], v_array[i]) for i in uv_indices]
-            usd_mesh.CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, "faceVarying").Set(Vt.Vec2fArray(uv_coords))
+            usd_mesh.CreatePrimvar(
+                "st", Sdf.ValueTypeNames.TexCoord2fArray, "faceVarying"
+            ).Set(Vt.Vec2fArray(uv_coords))
         except Exception as e:
             print(f"No UVs found, skipping. {e}")
-
 
     # Needed to add previs variant to usd, if it already exists
     def publish(self):
         super().publish()
         asset = cast(Asset, self._entity)
-        
+
         try:
-            check_path = os.path.join(get_production_path(), asset.path, "export", "payload.usdc")
+            check_path = os.path.join(
+                get_production_path(), asset.path, "export", "payload.usdc"
+            )
             print(check_path)
             assert not os.path.exists(check_path)
-            
-                
+
         except AssertionError:
             error = MessageDialog(
                 self._window,
@@ -151,17 +146,16 @@ class PrevisAssetPublisher(Publisher):
             )
             error.exec_()
             return None
-                
-        stage_path = Path(get_production_path() /
-                          asset.path /
-                          "export" / 
-                          (asset.name + ".usd"))
-        
+
+        stage_path = Path(
+            get_production_path() / asset.path / "export" / (asset.name + ".usd")
+        )
+
         print(f"STAGE PATH: {stage_path}")
-        
+
         if os.path.exists(stage_path):
             os.remove(stage_path)
-            
+
         layer = Sdf.Layer.Find(str(stage_path))
 
         if not layer:
@@ -171,14 +165,13 @@ class PrevisAssetPublisher(Publisher):
             layer.Save()
 
         stage = Usd.Stage.Open(layer)
-        
 
         # Root prim
         root_xform = UsdGeom.Xform.Define(stage, f"/{asset.name}")
 
         # geo
         UsdGeom.Scope.Define(stage, f"/{asset.name}/geo")
-        
+
         UsdGeom.Scope.Define(stage, f"/{asset.name}/mtl")
 
         # proxy

@@ -1,10 +1,10 @@
 import maya.cmds as cmds
-import mayaUsd.lib as mayaUsdLib # type: ignore[import-not-found]
-from mayaUsd.lib import proxyAccessor as pa # type: ignore[import-not-found]
+import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
+from mayaUsd.lib import proxyAccessor as pa  # type: ignore[import-not-found]
 from pxr import UsdGeom
-from PySide6 import QtWidgets # type: ignore[import-not-found]
+from PySide6 import QtWidgets  # type: ignore[import-not-found]
 import maya.OpenMayaUI as omui
-from shiboken6 import wrapInstance # type: ignore[import-not-found]
+from shiboken6 import wrapInstance  # type: ignore[import-not-found]
 from env_sg import DB_Config
 from pipe.glui.dialogs import FilteredListDialog
 from pipe.db import DB
@@ -14,13 +14,12 @@ from shared.util import get_production_path
 class SelectFromGroup(FilteredListDialog):
     def __init__(self, items, title, command, parent=None):
         super().__init__(
-            parent or SelectFromGroup.get_maya_main_window(), 
-            items, 
-            title, 
-            command, 
-            accept_button_name="Select"
-            )
-            
+            parent or SelectFromGroup.get_maya_main_window(),
+            items,
+            title,
+            command,
+            accept_button_name="Select",
+        )
 
     @staticmethod
     def get_maya_main_window():
@@ -28,22 +27,27 @@ class SelectFromGroup(FilteredListDialog):
         if ptr is not None:
             return wrapInstance(int(ptr), QtWidgets.QWidget)
         return None
-        
+
     def get_selected_item(self):
         selected_items = self._list_widget.selectedItems()
         if selected_items:
             return selected_items[0].text()
         return None
-   
+
+
 # Methods for creating layouts for previs
+
 
 def ask_for_name(label):
     """Show a Qt input dialog asking for environment name."""
     parent = SelectFromGroup.get_maya_main_window()
-    text, ok = QtWidgets.QInputDialog.getText(parent, f"{label} Name", f"Enter {label} name:")
+    text, ok = QtWidgets.QInputDialog.getText(
+        parent, f"{label} Name", f"Enter {label} name:"
+    )
     if ok and text.strip():
         return text.strip()
     return None
+
 
 def get_usd_selection():
     # Get current selection
@@ -76,14 +80,17 @@ def get_usd_selection():
     else:
         print("Grandparent prim not found or invalid.")
 
+
 def create_environment_xform():
     # Ensure mayaUsdPlugin is loaded
-    if not cmds.pluginInfo('mayaUsdPlugin', q=True, loaded=True):
-        cmds.loadPlugin('mayaUsdPlugin')
+    if not cmds.pluginInfo("mayaUsdPlugin", q=True, loaded=True):
+        cmds.loadPlugin("mayaUsdPlugin")
 
     # Create transform and proxyShape nodes
-    proxy_transform = cmds.createNode('transform', name='environment')
-    proxy_shape = cmds.createNode('mayaUsdProxyShape', name='environmentShape', parent=proxy_transform)
+    proxy_transform = cmds.createNode("transform", name="environment")
+    proxy_shape = cmds.createNode(
+        "mayaUsdProxyShape", name="environmentShape", parent=proxy_transform
+    )
 
     # Select the proxy shape
     cmds.select(proxy_shape)
@@ -111,14 +118,15 @@ def create_environment_xform():
     cmds.scriptJob(event=["SelectionChanged", get_usd_selection], protected=True)
 
     print(f"Created Xform prim at {new_xform_path}")
-    
+
+
 def create_layout_group():
     # Ensure USD plugin is loaded
     if not cmds.pluginInfo("mayaUsdPlugin", q=True, loaded=True):
         cmds.loadPlugin("mayaUsdPlugin")
 
     # Get the stage from a proxy shape named "environment"
-    proxy_shapes = cmds.ls(type='mayaUsdProxyShape')
+    proxy_shapes = cmds.ls(type="mayaUsdProxyShape")
     environment_stage = None
 
     for shape in proxy_shapes:
@@ -154,14 +162,14 @@ def create_layout_group():
 
     UsdGeom.Xform.Define(environment_stage, xform_path)
 
-    
+
 def add_reference():
     # Ensure USD plugin is loaded
     if not cmds.pluginInfo("mayaUsdPlugin", q=True, loaded=True):
         cmds.loadPlugin("mayaUsdPlugin")
 
     # Get the stage from a proxy shape named "environment"
-    proxy_shapes = cmds.ls(type='mayaUsdProxyShape')
+    proxy_shapes = cmds.ls(type="mayaUsdProxyShape")
     environment_stage = None
 
     for shape in proxy_shapes:
@@ -203,38 +211,41 @@ def add_reference():
 
     conn = DB.Get(DB_Config)
     asset_list = conn.get_asset_name_list(sorted=True)
-    
+
     asset_dialog = SelectFromGroup(asset_list, "Reference Asset", "Select your asset")
     if not asset_dialog.exec_():
         return  # User cancelled
-    
+
     selected_asset_name = asset_dialog.get_selected_item()
     if not selected_asset_name:
         cmds.warning("No asset selected.")
         return
-    
-    selected_asset = conn.get_asset_by_name(selected_asset_name)
-    
-    print(f"SELECTED ASSET: {selected_asset.name}")
-    
-    # Define the reference prim under the selected layout group
-    reference_path = f"/{environment_prim.GetName()}/{selected_layout}/{selected_asset.name}"
-    reference_prim = UsdGeom.Xform.Define(environment_stage, reference_path)
-    #reference_prim.AddScaleOp().Set((100.0, 100.0, 100.0))  
 
-    
+    selected_asset = conn.get_asset_by_name(selected_asset_name)
+
+    print(f"SELECTED ASSET: {selected_asset.name}")
+
+    # Define the reference prim under the selected layout group
+    reference_path = (
+        f"/{environment_prim.GetName()}/{selected_layout}/{selected_asset.name}"
+    )
+    reference_prim = UsdGeom.Xform.Define(environment_stage, reference_path)
+    # reference_prim.AddScaleOp().Set((100.0, 100.0, 100.0))
+
     # Add a reference to the prim
-    reference_file = str(get_production_path()) + f"/{selected_asset.path}/export/{selected_asset.name}.usd"
+    reference_file = (
+        str(get_production_path())
+        + f"/{selected_asset.path}/export/{selected_asset.name}.usd"
+    )
     print(f"REFERENCE PATH: {reference_file}")
     reference_prim.GetPrim().GetReferences().AddReference(reference_file)
-    
 
     print(f"Added reference to {reference_path}")
-    
-def export_environment_to_usd():
 
+
+def export_environment_to_usd():
     # Find the environment proxy shape
-    proxy_shapes = cmds.ls(type='mayaUsdProxyShape')
+    proxy_shapes = cmds.ls(type="mayaUsdProxyShape")
     environment_stage = None
 
     for shape in proxy_shapes:
@@ -271,4 +282,3 @@ def export_environment_to_usd():
         print(f"Environment USD successfully exported to {selected_path}")
     except Exception as e:
         cmds.error(f"Failed to export USD: {str(e)}")
-

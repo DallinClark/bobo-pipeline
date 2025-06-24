@@ -6,8 +6,8 @@ from shared.util import get_groups_path
 # Corrected rig paths
 RIG_PATH = get_groups_path() / "previs/Rigs/boboShotCam_v01.mb"
 
+
 class ReferenceAndMatchRig:
-    
     def launch(self):
         # UI
         if cmds.window("rigMatchUI", exists=True):
@@ -18,8 +18,10 @@ class ReferenceAndMatchRig:
             cmds.warning("No rigs with 'CAM' in namespace found.")
             return
 
-        window = cmds.window("rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150))
-        cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign='center')
+        window = cmds.window(
+            "rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150)
+        )
+        cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
 
         cmds.text(label="Select Target Rig (CAM):")
         self.rig_option_menu = cmds.optionMenu()
@@ -29,7 +31,7 @@ class ReferenceAndMatchRig:
         cmds.button(label="Reference and Match Rig", command=self.on_apply)
 
         cmds.showWindow(window)
-        
+
     def get_rigs_with_cam_namespace(self):
         rigs = []
         for ref in cmds.file(query=True, reference=True) or []:
@@ -39,7 +41,11 @@ class ReferenceAndMatchRig:
         return rigs
 
     def get_top_level_transforms(self, namespace):
-        return [obj for obj in cmds.ls(f"{namespace}:*", transforms=True) if ":" not in obj.split("|")[-1]]
+        return [
+            obj
+            for obj in cmds.ls(f"{namespace}:*", transforms=True)
+            if ":" not in obj.split("|")[-1]
+        ]
 
     def generate_new_namespace(self, base_ns):
         base_name = f"{base_ns}_ALT"
@@ -49,7 +55,14 @@ class ReferenceAndMatchRig:
         return f"{base_name}{i:02}"
 
     def match_transforms(self, source_ns, target_ns):
-        control_names = ['world_CTRL', 'main_CTRL', 'dolly_CTRL', 'tilt_pan_CTRL', 'ClippingPlane_CTRL', 'focusDistance_CTRL']
+        control_names = [
+            "world_CTRL",
+            "main_CTRL",
+            "dolly_CTRL",
+            "tilt_pan_CTRL",
+            "ClippingPlane_CTRL",
+            "focusDistance_CTRL",
+        ]
 
         for ctrl in control_names:
             source_ctrl = f"{source_ns}:{ctrl}"
@@ -79,6 +92,8 @@ class ReferenceAndMatchRig:
 
         # Match transforms
         self.match_transforms(f"{new_ns}", f"{selected_rig_ns}")
-        cmds.confirmDialog(title="Success", message=f"Rig referenced and matched as {new_ns}", button=["OK"])
-
-
+        cmds.confirmDialog(
+            title="Success",
+            message=f"Rig referenced and matched as {new_ns}",
+            button=["OK"],
+        )

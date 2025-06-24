@@ -49,9 +49,8 @@ class HoudiniDCC(DCC):
             "DCC": str(this_path.parent.name),
             # Asset Gallery sqlite db (set in 456.py)
             "HOUDINI_ASSETGALLERY_DATA_SOURCE": _PROD_DB,
-
             "HOUDINI_ASSETGALLERY_DB_FILE": _PROD_DB,
-            #(
+            # (
             #     self._assetdb_path
             #     if platform.system() == "Linux"
             #     else self._assetdb_path.replace("\\", "/")

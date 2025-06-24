@@ -123,7 +123,10 @@ class Publisher:
                 from pipe.m.publish.asset import PublishAssetDialog
                 from pipe.m.publish.previs_asset import PublishPrevisAssetDialog
 
-                if self._dialog_T == PublishAssetDialog or self._dialog_T == PublishPrevisAssetDialog:
+                if (
+                    self._dialog_T == PublishAssetDialog
+                    or self._dialog_T == PublishPrevisAssetDialog
+                ):
                     # Pass extra parameter (conn) if it's PublishAssetDialog
                     self._dialog = self._dialog_T(self._window, entity_list, self._conn)
                 else:
