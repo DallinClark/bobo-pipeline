@@ -3,6 +3,7 @@ global proc shelf_Bobo_Animation () {
     global string $gBuffStr0;
     global string $gBuffStr1;
 
+
     shelfButton
         -enableCommandRepeat 1
         -flexibleWidthType 3
@@ -58,7 +59,6 @@ global proc shelf_Bobo_Animation () {
         -flipX 0
         -flipY 0
         -useAlpha 1
-        -font "plainLabelFont" 
         -imageOverlayLabel "Pickers" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -93,11 +93,11 @@ global proc shelf_Bobo_Animation () {
         -flipX 0
         -flipY 0
         -useAlpha 1
-        -font "plainLabelFont" 
         -imageOverlayLabel "Studio Library" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
         -image "logo_high.png" 
+        -image1 "logo_high.png" 
         -style "iconOnly" 
         -marginWidth 0
         -marginHeight 1
@@ -127,7 +127,6 @@ global proc shelf_Bobo_Animation () {
         -flipX 0
         -flipY 0
         -useAlpha 1
-        -font "plainLabelFont" 
         -imageOverlayLabel "Sp Sw" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -162,7 +161,6 @@ global proc shelf_Bobo_Animation () {
         -flipX 0
         -flipY 0
         -useAlpha 1
-        -font "plainLabelFont" 
         -imageOverlayLabel "Textures" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -215,7 +213,7 @@ global proc shelf_Bobo_Animation () {
         -flexibleWidthType 3
         -flexibleWidthValue 32
         -enable 1
-        -width 35
+        -width 39
         -height 34
         -manage 1
         -visible 1
@@ -244,8 +242,6 @@ global proc shelf_Bobo_Animation () {
         -commandRepeatable 1
         -flat 1
     ;
-
-
     shelfButton
         -enableCommandRepeat 1
         -flexibleWidthType 3
@@ -267,7 +263,6 @@ global proc shelf_Bobo_Animation () {
         -flipX 0
         -flipY 0
         -useAlpha 1
-        -font "plainLabelFont" 
         -imageOverlayLabel "Wrangler" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -281,4 +276,73 @@ global proc shelf_Bobo_Animation () {
         -commandRepeatable 1
         -flat 1
     ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "from rjg.libs.softMod import *; from rjg.libs.softMod import ui as smui; smui();" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "SoftMod" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -imageOverlayLabel "SofMod" 
+        -overlayLabelColor 2.6281 0.7848 0.0125001 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "softMod.png" 
+        -image1 "softMod.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "from rjg.libs.softMod import *; from rjg.libs.softMod import ui as smui; smui();" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "import rjg.libs.shotSculpt as ss; ss.setupMenu();import rjg.libs.shotSculpt as ss; ss.setupMenu();\n" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "ShotSculpt" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -imageOverlayLabel "ShotSculpt" 
+        -overlayLabelColor 2.6281 0.7848 0.0125001 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "sculpt.png" 
+        -image1 "sculpt.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "import rjg.libs.shotSculpt as ss; ss.setupMenu();import rjg.libs.shotSculpt as ss; ss.setupMenu();\n" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+
 } 

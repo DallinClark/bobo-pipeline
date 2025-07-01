@@ -25,10 +25,10 @@ class AnimPostProcessor:
 
         stage_ctx: hou.Node = hou.node("/stage")  # type: ignore[assignment]
 
-        load_layer = stage_ctx.createNode("sdm223::main::LnD_Load_Layers::1.0")
+        load_layer = stage_ctx.createNode("dbclark::main::Bobo_Load_Layers::1.0")
         load_layer.parm("shot").set(f"$JOB/{shot.path}")  # type: ignore[union-attr]
 
-        for dep in ["cfx", "fx", "flo", "lighting"]:
+        for dep in ["cfx", "fx", "envfx", "lighting"]:
             load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
 
         if env_stub := (shot.set or self._conn.get_sequence_by_stub(shot.sequence).set):  # type: ignore[arg-type]
