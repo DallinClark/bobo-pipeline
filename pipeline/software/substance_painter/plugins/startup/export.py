@@ -23,16 +23,6 @@ def start_plugin():
     # Store the widget for proper cleanup later
     plugin_widgets.append(action)
 
-    # Create text widget for menu
-    action = QtWidgets.QAction("Bobo — Publish Batch")
-    action.triggered.connect(launch_batch_exporter)
-
-    # Add widget to the File menu
-    sp.ui.add_action(sp.ui.ApplicationMenu.File, action)
-
-    # Store the widget for proper cleanup later
-    plugin_widgets.append(action)
-
 
 def close_plugin():
     for widget in plugin_widgets:
@@ -45,12 +35,7 @@ if __name__ == "__main__":
     window = start_plugin()
 
 
-def launch_batch_exporter():
-    launch_exporter(is_batch=True)
-    print("Launching Batch Exporter")
-
-
-def launch_exporter(is_batch: bool = False):
+def launch_exporter():
     if not sp.project.is_open():
         MessageDialog(
             pipe.sp.local.get_main_qt_window(),
@@ -69,7 +54,7 @@ def launch_exporter(is_batch: bool = False):
 
     # launch window
     global window
-    window = SubstanceExportWindow(is_batch=is_batch)
+    window = SubstanceExportWindow()
     window.show()
 
     print("Launching Substance Exporter")

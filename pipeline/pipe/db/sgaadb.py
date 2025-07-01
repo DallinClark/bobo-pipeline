@@ -364,6 +364,7 @@ class _AssetListQuery(_Query):
             "shots",  # shots asset present in
             "sg_material_variants",  # material variants
             "sg_geometry_variants",  # geometry variants
+            "sg_render_variants",    # variants for renderman shaders
         ]
 
     # Override
