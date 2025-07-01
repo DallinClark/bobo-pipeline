@@ -73,7 +73,7 @@ def lnd_clustersetup(kwargs: dict, parent: Optional[hou.Node] = None) -> hou.Nod
     return out
 
 
-def lnd_componentgeometry(kwargs: dict, parent: Optional[hou.Node] = None) -> hou.Node:
+def bobo_componentgeometry(kwargs: dict, parent: Optional[hou.Node] = None) -> hou.Node:
     if parent:
         cgeo = parent.createNode("componentgeometry")
     else:
@@ -128,15 +128,15 @@ def lnd_componentmaterial(kwargs: dict, parent: Optional[hou.Node] = None) -> ho
     return cmat
 
 
-def lnd_componentsetup(kwargs: dict) -> hou.Node:
+def bobo_componentsetup(kwargs: dict) -> hou.Node:
     out: hou.LopNode = loptoolutils.genericTool(kwargs, "componentoutput")
     out.setColor(hou.Color((0.616, 0.871, 0.769)))
 
     out_pos = out.position()
     p = out.parent()
-    geo = lnd_componentgeometry(kwargs, parent=p)
+    geo = bobo_componentgeometry(kwargs, parent=p)
     mtl = lnd_componentmaterial(kwargs, parent=p)
-    lib = p.createNode("sdm223::main::LnD_MatLib")
+    lib = p.createNode("dbclark::main::Bobo_MatLib")
     cnf = p.createNode("sdm223::lnd_componentconfig")
     ldv = p.createNode("sdm223::dev::LnD_Lookdev")
     env = p.createNode("fetch")

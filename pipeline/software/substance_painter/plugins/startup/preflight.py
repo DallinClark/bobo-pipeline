@@ -2,7 +2,6 @@
 
 import substance_painter as sp
 
-import pipe.sp
 from pipe.db import DB
 from env_sg import DB_Config
 
@@ -18,10 +17,7 @@ def close_plugin():
 
 
 def do_preflight(event: sp.event.Event) -> None:
-    metaUpdater = pipe.sp.metadata.MetadataUpdater()
-    # srgbChecker = pipe.sp.channels.sRGBChecker()
-    metaUpdater.check() or metaUpdater.prompt_update()
-    # srgbChecker.check() or srgbChecker.prompt_srgb_fix()
+    print("preflight")
 
 
 if __name__ == "__main__":

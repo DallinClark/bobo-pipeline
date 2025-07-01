@@ -20,7 +20,7 @@ class sRGBChecker:
             except ValueError:
                 MessageDialog(
                     get_main_qt_window(),
-                    "Warning! sRGB Checker could not get stack! You are doing something cool with material layering. Please show this to Scott so he can fix it.",
+                    "Warning! sRGB Checker could not get stack! You are doing something cool with material layering. Please show this to Dallin so he can fix it.",
                 ).exec_()
                 return False
 
@@ -32,21 +32,3 @@ class sRGBChecker:
                     self.srgb_channels.append(ch)
 
         return not bool(self.srgb_channels)
-
-    # def prompt_srgb_fix(self) -> bool:
-    #     """Return True if fix is successful"""
-    #     fix_channels = MessageDialog(
-    #         get_main_qt_window(),
-    #         "Warning! Some of your color channels do not have a high enough bit depth for this color space! (sRGB8, RGB8). Would you like to convert them to RGB16 now?",
-    #         "Color Bit Depth Issue",
-    #         has_cancel_button=True,
-    #     ).exec_()
-
-    #     if not fix_channels:
-    #         return False
-
-    #     for ch in self.srgb_channels:
-    #         ch.edit(sp.textureset.ChannelFormat.RGB16)
-
-    #     MessageDialog(get_main_qt_window(), "Color bit depth has been updated.").exec_()
-    #     return True
