@@ -53,22 +53,19 @@ class Exporter:
     _src_path: Path
     _tex_path: Path
 
-    def __init__(self, a=None) -> None:
+    def __init__(self, asset: Asset) -> None:
+        self._asset = asset
         self._conn = DB.Get(DB_Config)
-        id = sp.project.Metadata("Bobo").get("asset_id")
-        if a is None:
-            assert (a := self._conn.get_asset_by_id(id)) is not None
-        self._asset = a
 
-    def _init_paths(self, mat_var: str, geo_var: str) -> None:
+    def _init_paths(self, mat_var: str, geo_var: str, renderman_var: str) -> None:
         # initialize paths, pulling from SG database
         assert self._asset.tex_path is not None
         base_path = (
             get_production_path()
             / self._asset.tex_path
             / geo_var
-            / "variants"
             / mat_var
+            / renderman_var
         )
 
         self._out_path = resolve_mapped_path(base_path)
@@ -86,9 +83,10 @@ class Exporter:
         exp_setting_arr: typing.Sequence[TexSetExportSettings],
         mat_var: str,
         geo_var: str,
+        renderman_var: str
     ) -> bool:
         """Export all the textures of the given Texture Sets"""
-        self._init_paths(mat_var, geo_var)
+        self._init_paths(mat_var, geo_var, renderman_var)
 
         try:
             [tss.tex_set.get_stack() for tss in exp_setting_arr]

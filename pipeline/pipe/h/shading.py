@@ -1,25 +1,12 @@
 from __future__ import annotations
 
-from itertools import count
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
-
-if TYPE_CHECKING:
-    import typing
 
 import hou
+import os
 
-from pipe.h.local import get_main_qt_window
 from pipe.db import DB
 from pipe.struct.db import Asset
-from pipe.struct.material import (
-    DisplacementSource,
-    MaterialInfo,
-    NormalSource,
-    NormalType,
-    TexSetInfo,
-)
-from pipe.glui.dialogs import MessageDialog
 
 from env_sg import DB_Config
 
@@ -27,8 +14,6 @@ _MATLIB_NAME = "Material_Library"
 _MATNAME = "matname"
 _NO_TEXTURES = "NO_EXPORTED_TEXTURES"
 
-
-# https://github.com/Student-Accomplice-Pipeline-Team/accomplice_pipe/blob/prod/pipe/accomplice/software/houdini/pipe/tools/shading/edit_shader.py
 class MatlibManager:
     _conn: DB
 
@@ -43,8 +28,6 @@ class MatlibManager:
         node is passed in as an arg"""
         self._update_default_mat_var(node=node)
         self._update_default_geo_var(node=node)
-
-        self.update_base_path(node=node)
 
     @property
     def _asset(self) -> Asset:
@@ -64,24 +47,6 @@ class MatlibManager:
         return Path(hou.hscriptStringExpression("$HSITE"))
 
     @property
-    def material_info(self) -> MaterialInfo | None:
-        """Attempt to get mat.json file for selected variant"""
-        print(self.variant_name)
-        try:
-            with open(
-                self._hip
-                / "tex"
-                / self.variant_name
-                / "variants"
-                / self.mat_variant_name
-                / "mat.json",
-                "r",
-            ) as f:
-                return MaterialInfo.from_json(f.read())
-        except Exception:
-            return None
-
-    @property
     def matlib(self) -> hou.LopNode:
         """Get Material Library node inside of current node"""
         node = hou.node(f"./{_MATLIB_NAME}")
@@ -96,17 +61,15 @@ class MatlibManager:
         return node
 
     @property
-    def variant_name(self) -> str:
-        var_name = self.node.parm("geo_var")
-        if var_name:
-            return var_name.unexpandedString()
-        return "main"
+    def geo_variant_name(self) -> str:
+        geo_var_name = self.node.parm("geo_var")
+        assert geo_var_name is not None
+        return geo_var_name.unexpandedString()
 
     @property
     def mat_variant_name(self) -> str:
         mat_var_name = self.node.parm("mat_var")
         assert mat_var_name is not None
-        print(mat_var_name.unexpandedString())
         return mat_var_name.unexpandedString()
 
     def _update_default_geo_var(self, node: hou.LopNode | None = None) -> None:
@@ -126,164 +89,54 @@ class MatlibManager:
         mat_var = node.parm("mat_var")
         assert mat_var is not None
         mat_var.set(next(iter(self._asset.material_variants), _NO_TEXTURES))
+        
 
-    def update_base_path(self, node: hou.LopNode | None = None) -> None:
-        if not node:
-            # this lets us call update_base_path from inside self._init_hda
-            node = self.node
+    def create_layered_material(self, node: hou.Node, layer_mixer: hou.Node, layer_name: str, offset: float):
+        """Creates a PxrTexture, PxrNormalMap, and PxrLayer inside this node."""
 
-        base_path = node.parm("base_path")
-        assert base_path is not None
+        # Create nodes
+        roughness = node.createNode("pxrtexture::3.0", f"SpecularRoughness_{layer_name}")
+        roughness_remap = node.createNode("pxrremap::3.0", f"RoughnessRemap_{layer_name}")
+        color = node.createNode("pxrtexture::3.0", f"BaseColor_{layer_name}")
+        normal = node.createNode("pxrnormalmap::3.0", f"Normal_{layer_name}")
+        layer = node.createNode("pxrlayer::3.0", f"Layer_{layer_name}")
 
-        var_name = node.parm("geo_var")
-        assert var_name is not None
+        # Position them
+        roughness.setPosition(hou.Vector2(-2, 0 - offset * 7))
+        roughness_remap.setPosition(hou.Vector2(0, 0 - offset * 7))
+        color.setPosition(hou.Vector2(0, 2 - offset * 7))
+        normal.setPosition(hou.Vector2(0, -2 - offset * 7))
+        layer.setPosition(hou.Vector2(2,0 - offset * 7))
 
-        mat_var_name = node.parm("mat_var")
-        assert mat_var_name is not None
+        # Connect them
+        roughness_remap.setNamedInput("inputRGB", roughness, "resultRGB")
+        layer.setNamedInput("diffuseColor", color, "resultRGB")
+        layer.setNamedInput("specularFaceColor", roughness_remap, "resultR")
+        layer.setNamedInput("bumpNormal", normal, "resultN")
+        if offset != 0:
+            layer_mixer.setNamedInput(f"layer{offset}", layer, "pxrMaterialOut")
+        else:
+            layer_mixer.setNamedInput("baselayer", layer, "pxrMaterialOut")
 
-        base_path.set(
-            f"tex/{var_name.unexpandedString()}/variants/{mat_var_name.unexpandedString()}"
-        )
+        # set parameters
+        color_file = color.parm("filename")
+        if color_file is not None:
+            color_file.set(f"$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs(\"../../textureset\")`_BaseColor_ACES - ACEScg.<UDIM>.tex")
 
-    @staticmethod
-    def _get_map_paths(
-        node: hou.Node, parm: str = "filename"
-    ) -> typing.Generator[Path, None, None]:
-        """Helper function to get all the maps referred to by a <UDIM>
-        wildcard as Path objects"""
-        filename_parm = node.parm(parm)
-        assert filename_parm is not None
-        dir, filename = filename_parm.evalAsString().rsplit("/", 1)
-        return Path(dir).glob(filename.replace("<UDIM>", "*"))
+        roughness_file = roughness.parm("filename")
+        if roughness_file is not None:
+            roughness_file.set(f"$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs(\"../../textureset\")`_SpecularRoughness_Utility - Raw.<UDIM>.tex")
 
-    def _cleanup_matnet(
-        self,
-        new_items: typing.Iterable[hou.NetworkMovableItem],
-        tex_set_info: TexSetInfo,
-    ) -> None:
-        """Clean up a matnet after it has been imported from cpio"""
+        normal_file = normal.parm("filename")
+        if normal_file is not None:
+            normal_file.set(f"$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs(\"../../textureset\")`_Normal_Utility - Raw.<UDIM>.tex")
 
-        # locate relevant nodes
-        control_node: hou.Node
-        displacement_map: hou.Node
-        displacement_nodes: list[hou.Node] = []
-        emissive_node: hou.Node
-        ior_node: hou.Node
-        normal_node: hou.Node
-        presence_node: hou.Node
-        preview_node: hou.Node
-        pvwemissive_node: hou.Node
-        for item in new_items:
-            if item.networkItemType() != hou.networkItemType.Node:
-                continue
-            item = cast(hou.Node, item)
-            name = item.name().lower()
-            if "disp" in name:
-                if name.startswith("disp"):
-                    displacement_map = item
-                else:
-                    displacement_nodes.append(item)
-            elif name.startswith("ior"):
-                ior_node = item
-            elif name.startswith("emissive"):
-                emissive_node = item
-            elif name.startswith("presence"):
-                presence_node = item
-            elif name.startswith("control"):
-                control_node = item
-            elif name.startswith("normal_"):
-                normal_node = item
-            elif name.startswith("usdpreview"):
-                preview_node = item
-            elif name.startswith("pvwemissive"):
-                pvwemissive_node = item
+        color_space = color.parm("filename_colorspace")
+        if color_space is not None:
+            color_space.set("srgb_texture")
 
-        # Remove optional maps
-        if not next(self._get_map_paths(ior_node), None):
-            ior_node.destroy()
 
-        if not next(self._get_map_paths(emissive_node), None):
-            emissive_node.destroy()
-
-        if not next(self._get_map_paths(presence_node), None):
-            preview_node.setInput(8, None)
-            presence_node.destroy()
-
-        if not next(self._get_map_paths(pvwemissive_node, parm="file"), None):
-            pvwemissive_node.destroy()
-
-        # Remove unused displacement nodes
-        if not next(self._get_map_paths(displacement_map), None):
-            displacement_map.destroy()
-            for node in displacement_nodes:
-                node.destroy()
-            for parm in ["disp_depth", "disp_height"]:
-                p = control_node.parm(parm)
-                assert p is not None
-                p.hide(True)
-
-        # Set bump roughness undisplaced bool
-        if (
-            (tex_set_info.normal_source == NormalSource.NORMAL_HEIGHT)
-            and (tex_set_info.displacement_source == DisplacementSource.HEIGHT)
-            and (tex_set_info.normal_type == NormalType.BUMP_ROUGHNESS)
-        ):
-            undisplaced_parm = normal_node.parm("useUndisplacedPosition")
-            assert undisplaced_parm is not None
-            undisplaced_parm.set(True)
-
-    def load_items_from_file(
-        self, dest_node: hou.LopNode, file_path: str
-    ) -> list[hou.NetworkMovableItem]:
-        """Loads a VOP network into a LOP node. Returns list of added items"""
-        before = dest_node.allItems()
-        dest_node.loadItemsFromFile(file_path)
-        after = dest_node.allItems()
-
-        return list(set(after) - set(before))
-
-    def _move_matnet(
-        self, new_items: typing.Iterable[hou.NetworkMovableItem], x_pos: int
-    ) -> None:
-        # find the master netbox
-        master_box = next(
-            (
-                cast(hou.NetworkBox, i)
-                for i in new_items
-                if (i.networkItemType() == hou.networkItemType.NetworkBox)
-                and (cast(hou.NetworkBox, i).comment() == _MATNAME)
-            ),
-            None,
-        )
-        if not master_box:
-            return
-        master_box.setPosition((x_pos, 0))
-
-    def _rename_matnet(
-        self,
-        new_items: typing.Iterable[hou.NetworkMovableItem],
-        name: str,
-        name_placeholder: str = _MATNAME,
-    ) -> None:
-        # iterate over new nodes and swap placeholder names for the shading group name
-        for item in new_items:
-            if item.networkItemType() == hou.networkItemType.Node:
-                new_name = item.name().replace(name_placeholder, name)
-                item.setName(new_name)
-
-                # update "Shading Group Name" on control null
-                if new_name == f"CONTROLS_{name}":
-                    node = hou.node(item.path())
-                    assert node is not None
-                    node_name = node.parm("name")
-                    assert node_name is not None
-                    node_name.set(name)
-            elif item.networkItemType() == hou.networkItemType.NetworkBox:
-                item = cast(hou.NetworkBox, item)
-                if item.comment() == name_placeholder:
-                    item.setComment(name)
-
-    def get_variant_list(self) -> list[str]:
+    def get_geo_variant_list(self) -> list[str]:
         """Gets list of variants in the way that the HDA interface expects:
         [id1, label1, id2, label2, ...]"""
         mvs = list(self._asset.geometry_variants)
@@ -295,45 +148,67 @@ class MatlibManager:
         mvs = list(self._asset.material_variants) or [_NO_TEXTURES]
         return [s for v in mvs for s in (v, v)]
 
-    def export_selected_to_path(
-        self, path: str, curr_name: str = _MATNAME, new_name: str = _MATNAME
-    ) -> None:
-        """Export selected items as a cpio file to the path given. For
-        convenience, rename their suffixes to _MATNAME before exporting,
-        then change their names back"""
-        items = hou.selectedItems()
-        self._rename_matnet(items, new_name, curr_name)
-        items[0].parent().saveItemsToFile(items, path)
-        self._rename_matnet(items, curr_name, new_name)
+    def create_matnet(self, houdini_filepath: str, node: hou.LopNode | None = None) -> None:
+        if not node:
+            node = self.node
 
-    def import_matnets(self) -> None:
-        """Import a material network for each shading group in the export"""
-        if not (mat_info := self.material_info):
-            MessageDialog(
-                get_main_qt_window(),
-                "Error! Could not get material info. Make sure that textures "
-                "have been exported for the currently selected variant.",
-            ).exec_()
+        # Make sure we're inside a VOP network
+        vopnet = None
+        for child in node.children():
+            if child.type().name() == "materiallibrary":
+                vopnet = child
+                break
+
+        if vopnet is None:
             return
 
-        pos = count(start=0, step=20)
-        for name, shading_group in mat_info.tex_sets.items():
-            if shading_group.normal_type == NormalType.STANDARD:
-                template_name = "standard"
-            elif shading_group.normal_type == NormalType.BUMP_ROUGHNESS:
-                template_name = "b2r"
-            else:
-                raise ValueError(
-                    f"Unimplemented NormalType: {shading_group.normal_type}"
-                )
+        tex_path = f"{houdini_filepath}/tex/{self.geo_variant_name}/{self.mat_variant_name}"
+        if not os.path.exists(tex_path):
+            print(f"Path does not exist: {tex_path}")
+            return 
 
-            nodes = self.load_items_from_file(
-                self.matlib, str(self._hsite / f"matl/{template_name}.cpio")
-            )
-            self._move_matnet(nodes, next(pos))
-            self._rename_matnet(nodes, name)
-            self._cleanup_matnet(nodes, shading_group)
+        layers = [
+            name for name in os.listdir(tex_path)
+            if os.path.isdir(os.path.join(tex_path, name))
+        ]
 
+
+        layer_mixer = vopnet.createNode("pxrlayermixer::3.0", "Layer_Mixer")
+        if layer_mixer is None:
+            return
+
+        layer_mixer.setPosition(hou.Vector2(6, 0))
+
+        layer_surface = vopnet.createNode("pxrlayersurface::3.0", "Layer_Surface")
+        if layer_surface is None:
+            return
+
+        layer_surface.setPosition(hou.Vector2(9,0))
+
+        collect = vopnet.createNode("collect", "collect")
+        if collect is None:
+            return
+
+        collect.setPosition(hou.Vector2(12,0))
+
+        layer_surface.setInput(0, layer_mixer, 0)
+        collect.setInput(0, layer_surface, 0)
+
+        for i, layer in enumerate(layers):
+            self.create_layered_material(vopnet, layer_mixer, layer, i)
+
+    # def export_selected_to_path(
+    #     self, path: str, curr_name: str = _MATNAME, new_name: str = _MATNAME
+    # ) -> None:
+    #     """Export selected items as a cpio file to the path given. For
+    #     convenience, rename their suffixes to _MATNAME before exporting,
+    #     then change their names back"""
+    #     items = hou.selectedItems()
+    #     self._rename_matnet(items, new_name, curr_name)
+    #     items[0].parent().saveItemsToFile(items, path)
+    #     self._rename_matnet(items, curr_name, new_name)
+
+        
 
 class MatlibErrorChecker:
     @staticmethod

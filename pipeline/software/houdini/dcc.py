@@ -4,7 +4,6 @@ import atexit
 import filecmp
 import logging
 import os
-import platform
 import shutil
 import sqlite3
 
@@ -50,7 +49,6 @@ class HoudiniDCC(DCC):
             "DCC": str(this_path.parent.name),
             # Asset Gallery sqlite db (set in 456.py)
             "HOUDINI_ASSETGALLERY_DATA_SOURCE": _PROD_DB,
-
             "HOUDINI_ASSETGALLERY_DB_FILE": _PROD_DB,
             # Backup directory
             "HOUDINI_BACKUP_DIR": "./.backup",
