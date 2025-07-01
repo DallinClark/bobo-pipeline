@@ -111,3 +111,6 @@ def show_camera_reference_ui():
     )
 
     cmds.showWindow(camera_window)
+
+# Call the UI to show the window
+show_camera_reference_ui()
