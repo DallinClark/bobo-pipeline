@@ -230,7 +230,7 @@ def add_reference():
         f"/{environment_prim.GetName()}/{selected_layout}/{selected_asset.name}"
     )
     reference_prim = UsdGeom.Xform.Define(environment_stage, reference_path)
-    # reference_prim.AddScaleOp().Set((100.0, 100.0, 100.0))
+    reference_prim.AddScaleOp().Set((100.0, 100.0, 100.0))
 
     # Add a reference to the prim
     reference_file = (
