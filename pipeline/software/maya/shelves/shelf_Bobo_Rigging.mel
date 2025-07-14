@@ -184,6 +184,40 @@ global proc shelf_Bobo_Rigging () {
         -manage 1
         -visible 1
         -preventOverride 0
+        -annotation "Flip Guides Left to Right" 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "GuideFlip" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -imageOverlayLabel "GuideFlip" 
+        -overlayLabelColor 0.383 2.085 0.1407 
+        -overlayLabelBackColor 0 0 0 0.5 
+        -image "flipU.png" 
+        -image1 "flipU.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "import rjg.build_scripts.SteveUtils.guide_flip as rib \nrib.launch_ui()" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
         -annotation "import rjg.build_scripts.SteveUtils.RibbonUtilsMenu as rib \nrib.show_ribbon_utils()" 
         -enableBackground 0
         -backgroundColor 0 0 0 

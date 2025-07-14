@@ -15,6 +15,7 @@ exclude = [
     'shotgun_api3',
     'studiolibrary',
     'timeline_marker',
+    'houdini/scripts'
 ]
 files = 'pipeline'
 

@@ -83,7 +83,7 @@ class MLayoutFileManager(FileManager):
         mc.setAttr("defaultResolution.pixelAspect", 1.0)  # type: ignore[arg-type]
         mc.setAttr("defaultResolution.deviceAspectRatio", 1920 / 1080)  # type: ignore[arg-type]
 
-        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection],protected=True)  # type: ignore[arg-type]
+        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection],protected=True,)  # type: ignore[arg-type]
 
     def _check_unsaved_changes(self) -> bool:
         if mc.file(query=True, modified=True):
@@ -187,4 +187,4 @@ class MLayoutFileManager(FileManager):
             proxy_shape + ".filePath", f"{entity_path}/maya_layout.usd", type="string"
         )
 
-        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection],protected=True)  # type: ignore[arg-type]
+        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection],protected=True,)  # type: ignore[arg-type]
