@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 import mayaUsd  # type: ignore[import-not-found]
 import maya.cmds as mc
-import mayaUsd.lib as mayaUsdLib # type: ignore[import-not-found]
+import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 
 from pathlib import Path
 from pxr import Usd, UsdGeom, Gf
-from mayaUsd.lib import proxyAccessor as pa 
+from mayaUsd.lib import proxyAccessor as pa
 
 from pipe.db import DB
 from pipe.m.local import get_main_qt_window
@@ -22,6 +22,7 @@ from env_sg import DB_Config
 log = logging.getLogger(__name__)
 
 HOUDINI_TO_MAYA_SCALE = Gf.Vec3d(100.0, 100.0, 100.0)
+
 
 class MLayoutFileManager(FileManager):
     set: Environment
@@ -82,7 +83,7 @@ class MLayoutFileManager(FileManager):
         mc.setAttr("defaultResolution.pixelAspect", 1.0)  # type: ignore[arg-type]
         mc.setAttr("defaultResolution.deviceAspectRatio", 1920 / 1080)  # type: ignore[arg-type]
 
-        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection], protected=True) # type: ignore[arg-type]
+        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection],protected=True)  # type: ignore[arg-type]
 
     def _check_unsaved_changes(self) -> bool:
         if mc.file(query=True, modified=True):
@@ -113,7 +114,7 @@ class MLayoutFileManager(FileManager):
             mc.error("entity has no file path")
             return
 
-        entity_path = get_production_path() / entity.path 
+        entity_path = get_production_path() / entity.path
         filename, ext = self._generate_filename_ext(entity)
         file_path = entity_path / f"{filename}.{ext}"
         mc.file(rename=str(file_path))
@@ -138,19 +139,21 @@ class MLayoutFileManager(FileManager):
     def _setup_file(self, path: Path, entity) -> None:
         mc.file(newFile=True, force=True)
         # set save path
-        entity_path = get_production_path() / entity.path 
+        entity_path = get_production_path() / entity.path
         filename, ext = self._generate_filename_ext(entity)
         file_path = entity_path / f"{filename}.{ext}"
         mc.file(rename=str(file_path))
         mc.file(save=True, type="mayaBinary")
-        
+
         # Ensure mayaUsdPlugin is loaded
         if not mc.pluginInfo("mayaUsdPlugin", loaded=True):
             mc.loadPlugin("mayaUsdPlugin")
 
         # Create transform and proxyShape nodes
         proxy_transform = mc.createNode("transform", name="main")
-        proxy_shape = mc.createNode("mayaUsdProxyShape", name="mainShape", parent=proxy_transform)
+        proxy_shape = mc.createNode(
+            "mayaUsdProxyShape", name="mainShape", parent=proxy_transform
+        )
 
         stage = self.get_stage()
         if not stage:
@@ -173,12 +176,15 @@ class MLayoutFileManager(FileManager):
         mc.file(newFile=True, force=True)
         mc.file(rename=str(file_path))
         mc.file(save=True, type="mayaBinary")
-        
+
         proxy_transform = mc.createNode("transform", name="main")
-        proxy_shape = mc.createNode("mayaUsdProxyShape", name="mainShape", parent=proxy_transform)
+        proxy_shape = mc.createNode(
+            "mayaUsdProxyShape", name="mainShape", parent=proxy_transform
+        )
 
         # Set the file path attribute of the proxyShape node
-        mc.setAttr(proxy_shape + ".filePath", f"{entity_path}/maya_layout.usd", type="string")
+        mc.setAttr(
+            proxy_shape + ".filePath", f"{entity_path}/maya_layout.usd", type="string"
+        )
 
-        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection], protected=True) # type: ignore[arg-type]
-
+        mc.scriptJob(event=["SelectionChanged", MLayoutFileManager.change_usd_selection],protected=True)  # type: ignore[arg-type]

@@ -42,10 +42,10 @@ class MLayoutPublisher:
         if not scene_path:
             mc.error("Scene must be saved before exporting USD.")
             return
-            
+
         scene_path_str = cast(str, scene_path)
         scene_dir = os.path.dirname(scene_path_str)
-        save_path = os.path.join(scene_dir, "maya_layout.usd") 
+        save_path = os.path.join(scene_dir, "maya_layout.usd")
 
         # Get the root layer and export
         try:
@@ -58,7 +58,7 @@ class MLayoutPublisher:
                     message=f"Layout successfully published to {save_path}",
                     button=["OK"],
                     defaultButton="OK",
-                    dismissString="OK"
+                    dismissString="OK",
                 )
 
         except Exception as e:
@@ -66,7 +66,6 @@ class MLayoutPublisher:
                 title="Publish Failed",
                 message=f"An error occurred:\n{e}",
                 button=["OK"],
-                defaultButton="OK"
+                defaultButton="OK",
             )
             raise
-

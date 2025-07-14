@@ -40,7 +40,6 @@ def reference_and_match_rig():
                 rigs.append(namespace)
         return rigs
 
-
     def get_top_level_transforms(namespace):
         return [
             obj
@@ -90,7 +89,6 @@ def reference_and_match_rig():
 
         # Reference rig
         cmds.file(rig_path, reference=True, namespace=new_ns)
-
 
         match_transforms(f"{new_ns}", f"{selected_rig_ns}")
         cmds.confirmDialog(

@@ -12,9 +12,8 @@ from pipe.struct.db import Environment
 import os
 
 
-
 class SelectFromGroup(FilteredListDialog):
-    """ Helper Class that gives a window to select from a list """
+    """Helper Class that gives a window to select from a list"""
 
     def __init__(self, items, title, command, parent=None):
         super().__init__(
@@ -38,11 +37,12 @@ class SelectFromGroup(FilteredListDialog):
             return selected_items[0].text()
         return None
 
-class LayoutMaker():
-    """ Different methods for making layouts in maya
-        which allow them to be made in the same way
-        Houdini makes layouts """
-    
+
+class LayoutMaker:
+    """Different methods for making layouts in maya
+    which allow them to be made in the same way
+    Houdini makes layouts"""
+
     @staticmethod
     def get_stage():
         proxy_shapes = mc.ls(type="mayaUsdProxyShape", long=True)
@@ -94,7 +94,9 @@ class LayoutMaker():
             mc.error("No prim under /environment to use as set!")
             return
         elif len(children) > 1:
-            mc.warning("Warning: More than one prim under /environment, using the first one.")
+            mc.warning(
+                "Warning: More than one prim under /environment, using the first one."
+            )
 
         set_prim = children[0]
         set_prim_path = set_prim.GetPath()
@@ -109,7 +111,6 @@ class LayoutMaker():
         except Exception as e:
             mc.error(f"Failed to make layer: {str(e)}")
             return
-
 
     @staticmethod
     def add_reference():
@@ -145,7 +146,9 @@ class LayoutMaker():
         layout_names = [prim.GetName() for prim in layout_groups]
 
         # Create and show UI
-        layout_dialog = SelectFromGroup(layout_names, "Layout Group", "Select your group")
+        layout_dialog = SelectFromGroup(
+            layout_names, "Layout Group", "Select your group"
+        )
         if not layout_dialog.exec_():
             return  # User cancelled
 
@@ -154,7 +157,9 @@ class LayoutMaker():
         conn = DB.Get(DB_Config)
         asset_list = conn.get_asset_name_list(sorted=True)
 
-        asset_dialog = SelectFromGroup(asset_list, "Reference Asset", "Select your asset")
+        asset_dialog = SelectFromGroup(
+            asset_list, "Reference Asset", "Select your asset"
+        )
         if not asset_dialog.exec_():
             return  # User cancelled
 
@@ -169,7 +174,7 @@ class LayoutMaker():
         base_path = f"/{env_prim.GetName()}/{set_prim.GetName()}/{selected_layout}"
         base_name = selected_asset.name
         reference_path = f"{base_path}/{base_name}_0"
-        
+
         i = 1
         while stage.GetPrimAtPath(reference_path).IsValid():
             reference_path = f"{base_path}/{base_name}_{i}"
@@ -190,7 +195,9 @@ class LayoutMaker():
 
         file_path = mc.getAttr(f"{proxy_shape}.filePath")
         # Convert to relative path
-        reference_file_rel = os.path.relpath(reference_file_abs, start=os.path.dirname(file_path))
+        reference_file_rel = os.path.relpath(
+            reference_file_abs, start=os.path.dirname(file_path)
+        )
         print("File path:", file_path)
         print("Reference file abs:", reference_file_abs)
 
@@ -204,22 +211,24 @@ class LayoutMaker():
         result = mc.confirmDialog(
             title="Confirm Match",
             message="Are you sure? This will overwrite your current file.",
-            button=['Cancel', 'Continue'],
+            button=["Cancel", "Continue"],
             defaultButton="Continue",
-            cancelButton='Cancel',
-            dismissString='Cancel'
+            cancelButton="Cancel",
+            dismissString="Cancel",
         )
 
-        if result == 'Cancel':
+        if result == "Cancel":
             return
 
         conn = DB.Get(DB_Config)
         set_list = conn.get_entity_code_list(
-                Environment,
-                sorted=True,
-            )
+            Environment,
+            sorted=True,
+        )
 
-        set_dialog = SelectFromGroup(set_list, "Match Houdini", "Choose layout to match")
+        set_dialog = SelectFromGroup(
+            set_list, "Match Houdini", "Choose layout to match"
+        )
         if not set_dialog.exec_():
             return  # User cancelled
 
@@ -241,7 +250,9 @@ class LayoutMaker():
 
         # Step 3: Create stage
         transform = mc.createNode("transform", name="main")
-        proxy_shape = mc.createNode("mayaUsdProxyShape", name="mainShape", parent=transform)
+        proxy_shape = mc.createNode(
+            "mayaUsdProxyShape", name="mainShape", parent=transform
+        )
         mc.setAttr(f"{proxy_shape}.filePath", str(houdini_set_path), type="string")
 
         if current_file:
@@ -249,5 +260,3 @@ class LayoutMaker():
             mc.file(save=True, type="mayaBinary")
         else:
             mc.error("No original Maya file path found. Scene not saved.")
-
-
