@@ -1,4 +1,5 @@
-
+# type: ignore
+import hou
 node = hou.pwd()
 
 # Add code to modify the stage.

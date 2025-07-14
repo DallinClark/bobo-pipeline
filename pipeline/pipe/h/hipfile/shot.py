@@ -57,7 +57,8 @@ class HShotFileManager(HFileManager):
         hou.playbar.setPlaybackRange(shot.cut_in - 5, shot.cut_out + 5)
         if env_stub := (shot.set or self._conn.get_sequence_by_stub(shot.sequence).set):  # type: ignore[arg-type]
             layout = self._conn.get_env_by_stub(env_stub)
-            hou.putenv("SET_PATH", layout.path)
+            if layout and layout.path:
+                hou.putenv("SET_PATH", layout.path)
 
     def _setup_file(self, path: Path, entity: SGEntity) -> None:
         super(HShotFileManager, HShotFileManager)._setup_file(self, path, entity)

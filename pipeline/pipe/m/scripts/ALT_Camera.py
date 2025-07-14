@@ -18,7 +18,7 @@ class ReferenceAndMatchRig:
             cmds.warning("No rigs with 'CAM' in namespace found.")
             return
 
-        window = cmds.window(
+        cmds.window(
             "rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150)
         )
         cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
@@ -39,7 +39,6 @@ def reference_and_match_rig():
             if "CAM" in namespace:
                 rigs.append(namespace)
         return rigs
-
 
     def get_top_level_transforms(namespace):
         return [
@@ -91,7 +90,6 @@ def reference_and_match_rig():
         # Reference rig
         cmds.file(rig_path, reference=True, namespace=new_ns)
 
-
         match_transforms(f"{new_ns}", f"{selected_rig_ns}")
         cmds.confirmDialog(
             title="Success",
@@ -114,12 +112,12 @@ def reference_and_match_rig():
     cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
 
     cmds.text(label="Select Your OS:")
-    os_option_menu = cmds.optionMenu()
+    cmds.optionMenu()
     cmds.menuItem(label="Windows")
     cmds.menuItem(label="Linux")
 
     cmds.text(label="Select Target Rig (CAM):")
-    rig_option_menu = cmds.optionMenu()
+    cmds.optionMenu()
     for rig in rigs:
         cmds.menuItem(label=rig)
 
