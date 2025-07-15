@@ -187,7 +187,7 @@ def _hide_contextoptions_folders(node: hou.Node) -> None:
     node.setParmTemplateGroup(ptg)
 
 
-def lnd_layoutgroup(kwargs: dict) -> hou.Node:
+def bobo_layoutgroup(kwargs: dict) -> hou.Node:
     contextoptions: hou.LopNode = loptoolutils.genericTool(kwargs, "editcontextoptions")
 
     pos = contextoptions.position()
@@ -239,7 +239,7 @@ def lnd_layoutgroup(kwargs: dict) -> hou.Node:
     return contextoptions
 
 
-def lnd_layout(kwargs: dict) -> hou.Node:
+def bobo_layout(kwargs: dict) -> hou.Node:
     contextoptions: hou.Node = loptoolutils.genericTool(kwargs, "editcontextoptions")
 
     pos = contextoptions.position()
@@ -247,16 +247,24 @@ def lnd_layout(kwargs: dict) -> hou.Node:
     envprim = p.createNode("primitive")
     layoutprim = p.createNode("primitive")
     merge = p.createNode("merge")
+    rop = p.createNode("usd_rop")
+    load = p.createNode("loadlayer")
+    edit = p.createNode("dbclark::bobo_edit_properties")
 
     contextoptions.setInput(0, merge)
     merge.setInput(0, layoutprim)
     layoutprim.setInput(0, envprim)
+    rop.setInput(0, contextoptions)
+    merge.setInput(1, edit)
+    edit.setInput(0, load)
 
     contextoptions.setName("layout_name", True)
     envprim.setName("environment_xform", True)
     layoutprim.setName("assembly_prim", True)
+    rop.setName("PUBLISH", True)
+    load.setName("Maya_Import", True)
 
-    for n in (contextoptions, envprim, layoutprim, merge):
+    for n in (contextoptions, envprim, layoutprim, merge, rop, load, edit):
         n.setColor(hou.Color(0.188, 0.529, 0.45))
 
     envprim.setUserData("nodeshape", "chevron_down")
@@ -288,11 +296,23 @@ def lnd_layout(kwargs: dict) -> hou.Node:
     contextoptions.parm("createoptionsblock").hide(True)
     _hide_contextoptions_folders(contextoptions)
 
+    rop.parm("lopoutput").set("$HIP/main.usd")
+
+    load.parm("filepath").set("$HIP/maya_layout.usd")
+
     envprim_move = hou.Vector2(0, 6.7)
     layoutprim_move = hou.Vector2(0, 6.0)
     merge_move = hou.Vector2(0, 1.0)
+    rop_move = hou.Vector2(0, -2.0)
+    load_move = hou.Vector2(3, 1)
+    edit_move = hou.Vector2(3,0)
     envprim.setPosition(envprim_move + pos)
     layoutprim.setPosition(layoutprim_move + pos)
     merge.setPosition(merge_move + pos)
+    rop.setPosition(rop_move + pos)
+    load.setPosition(load_move + pos)
+    edit.setPosition(edit_move + pos)
+
+
 
     return contextoptions
