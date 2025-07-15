@@ -1,6 +1,6 @@
 import maya.cmds as mc
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
-from pxr import UsdGeom
+from pxr import UsdGeom, Usd, Kind
 from PySide6 import QtWidgets  # type: ignore[import-not-found]
 import maya.OpenMayaUI as omui
 from shiboken6 import wrapInstance  # type: ignore[import-not-found]
@@ -9,6 +9,9 @@ from pipe.glui.dialogs import FilteredListDialog
 from pipe.db import DB
 from shared.util import get_production_path
 from pipe.struct.db import Environment
+from .file_manager import HOUDINI_TO_MAYA_SCALE
+import shutil
+
 import os
 
 
@@ -107,7 +110,8 @@ class LayoutMaker:
 
         # Define new Xform under the set prim
         try:
-            UsdGeom.Xform.Define(stage, new_xform_path)
+            new_group = UsdGeom.Xform.Define(stage, new_xform_path)
+            Usd.ModelAPI(new_group).SetKind(Kind.Tokens.group)
         except Exception as e:
             mc.error(f"Failed to make layer: {str(e)}")
             return
@@ -198,11 +202,6 @@ class LayoutMaker:
         reference_file_rel = os.path.relpath(
             reference_file_abs, start=os.path.dirname(file_path)
         )
-        print("File path:", file_path)
-        print("Reference file abs:", reference_file_abs)
-
-        print(reference_file_rel)
-
         stage.SetEditTarget(stage.GetRootLayer())
         reference_prim.GetPrim().GetReferences().AddReference(reference_file_rel)
 
@@ -210,7 +209,7 @@ class LayoutMaker:
     def match_houdini():
         result = mc.confirmDialog(
             title="Confirm Match",
-            message="Are you sure? This will overwrite your current file.",
+            message="Are you sure? This will overwrite the current maya layout.",
             button=["Cancel", "Continue"],
             defaultButton="Continue",
             cancelButton="Cancel",
@@ -240,23 +239,41 @@ class LayoutMaker:
         set = conn.get_entity_by_code(Environment, selected_set_name)
 
         houdini_set_path = get_production_path() / set.path / "main.usd"
+        maya_set_path    = get_production_path() / set.path / "maya_layout.usd"
 
-        # Wipe the file
-        current_file = mc.file(q=True, sn=True)
-        mc.file(new=True, force=True)
+        #Copy file
+        shutil.copyfile(houdini_set_path, maya_set_path)
 
-        if not mc.pluginInfo("mayaUsdPlugin", q=True, loaded=True):
-            mc.loadPlugin("mayaUsdPlugin")
+        stage = Usd.Stage.Open(str(maya_set_path), load=Usd.Stage.LoadAll)
+        root_layer = stage.GetRootLayer()
 
-        # Step 3: Create stage
-        transform = mc.createNode("transform", name="main")
+        prim = stage.GetPrimAtPath("/environment")
+        if not prim or not prim.IsValid() or not UsdGeom.Xform(prim):
+            mc.error("Houdini layout is not set up properly")
+            return
+
+        environment_xform = UsdGeom.Xform(prim)
+        if not environment_xform:
+            mc.error("Houdini layout is not set up properly")
+            return
+
+        scale_op = environment_xform.GetScaleOp()
+
+        if not scale_op:
+            scale_op = environment_xform.AddScaleOp()
+
+        # Now set the scale
+        scale_op.Set(HOUDINI_TO_MAYA_SCALE)
+
+        root_layer.Save()
+
+        # Import the new file
+        proxy_transform = mc.createNode("transform", name="main")
         proxy_shape = mc.createNode(
-            "mayaUsdProxyShape", name="mainShape", parent=transform
+            "mayaUsdProxyShape", name="mainShape", parent=proxy_transform
         )
-        mc.setAttr(f"{proxy_shape}.filePath", str(houdini_set_path), type="string")
 
-        if current_file:
-            mc.file(rename=current_file)
-            mc.file(save=True, type="mayaBinary")
-        else:
-            mc.error("No original Maya file path found. Scene not saved.")
+        # Set the file path attribute of the proxyShape node
+        mc.setAttr(
+            proxy_shape + ".filePath", maya_set_path, type="string"
+        )        

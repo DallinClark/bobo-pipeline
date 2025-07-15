@@ -146,7 +146,7 @@ class MLayoutFileManager(FileManager):
         mc.file(save=True, type="mayaBinary")
 
         # Ensure mayaUsdPlugin is loaded
-        if not mc.pluginInfo("mayaUsdPlugin", loaded=True):
+        if not mc.pluginInfo("mayaUsdPlugin", q=True, loaded=True): #type: ignore[call-arg]
             mc.loadPlugin("mayaUsdPlugin")
 
         # Create transform and proxyShape nodes
