@@ -83,7 +83,7 @@ class Exporter:
         exp_setting_arr: typing.Sequence[TexSetExportSettings],
         mat_var: str,
         geo_var: str,
-        renderman_var: str
+        renderman_var: str,
     ) -> bool:
         """Export all the textures of the given Texture Sets"""
         self._init_paths(mat_var, geo_var, renderman_var)

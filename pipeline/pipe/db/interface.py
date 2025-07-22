@@ -161,6 +161,12 @@ class DBInterface(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
+    def get_asset_name_list_by_type(self, types: list[str], sorted: bool) -> list[str]:
+        """Get a list of asset names given asset types"""
+        raise NotImplementedError
+
+
+    @abstractmethod
     def update_asset(self, asset: Asset) -> bool:
         """Update an asset in the DB"""
         raise NotImplementedError

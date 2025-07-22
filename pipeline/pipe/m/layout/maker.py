@@ -239,9 +239,9 @@ class LayoutMaker:
         set = conn.get_entity_by_code(Environment, selected_set_name)
 
         houdini_set_path = get_production_path() / set.path / "main.usd"
-        maya_set_path    = get_production_path() / set.path / "maya_layout.usd"
+        maya_set_path = get_production_path() / set.path / "maya_layout.usd"
 
-        #Copy file
+        # Copy file
         shutil.copyfile(houdini_set_path, maya_set_path)
 
         stage = Usd.Stage.Open(str(maya_set_path), load=Usd.Stage.LoadAll)
@@ -274,6 +274,4 @@ class LayoutMaker:
         )
 
         # Set the file path attribute of the proxyShape node
-        mc.setAttr(
-            proxy_shape + ".filePath", maya_set_path, type="string"
-        )        
+        mc.setAttr(proxy_shape + ".filePath", maya_set_path, type="string")

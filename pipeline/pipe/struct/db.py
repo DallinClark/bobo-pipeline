@@ -96,6 +96,7 @@ class AssetStub(SGEntityStub):
 @attrs.define
 class Asset(SGEntity):
     name: str = field(metadata={_SG_NAME: "sg_pipe_name"})
+    type: str = field(metadata={_SG_NAME: "sg_asset_type"})
     material_variants: set[str] = field(
         metadata={
             _SG_NAME: "sg_material_variants",
@@ -111,11 +112,11 @@ class Asset(SGEntity):
         }
     )
     render_variants: set[str] = field(
-    metadata={
-        _SG_NAME: "sg_render_variants",
-        _STRUCT_HOOK: lambda mv, _: set(mv.split(",") if mv else []),
-        _UNSTRUCT_HOOK: lambda mv, _: ",".join(mv) if mv else "",
-    }
+        metadata={
+            _SG_NAME: "sg_render_variants",
+            _STRUCT_HOOK: lambda mv, _: set(mv.split(",") if mv else []),
+            _UNSTRUCT_HOOK: lambda mv, _: ",".join(mv) if mv else "",
+        }
     )
     parent: Optional[AssetStub] = (
         field(  # TODO see if we still need this for the new way of tracking variants
