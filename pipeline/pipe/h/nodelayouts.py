@@ -305,14 +305,12 @@ def bobo_layout(kwargs: dict) -> hou.Node:
     merge_move = hou.Vector2(0, 1.0)
     rop_move = hou.Vector2(0, -2.0)
     load_move = hou.Vector2(3, 1)
-    edit_move = hou.Vector2(3,0)
+    edit_move = hou.Vector2(3, 0)
     envprim.setPosition(envprim_move + pos)
     layoutprim.setPosition(layoutprim_move + pos)
     merge.setPosition(merge_move + pos)
     rop.setPosition(rop_move + pos)
     load.setPosition(load_move + pos)
     edit.setPosition(edit_move + pos)
-
-
 
     return contextoptions

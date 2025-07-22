@@ -6,8 +6,18 @@ from math import log2
 from Qt import QtCore, QtWidgets
 from Qt.QtGui import QIcon, QPixmap, QRegExpValidator
 from Qt.QtCore import QRegExp
-from PySide6.QtCore import QEventLoop #type: ignore[import-not-found]
-from Qt.QtWidgets import QComboBox, QLabel, QLayout, QMainWindow, QWidget, QVBoxLayout, QScrollArea, QPushButton, QLineEdit
+from PySide6.QtCore import QEventLoop  # type: ignore[import-not-found]
+from Qt.QtWidgets import (
+    QComboBox,
+    QLabel,
+    QLayout,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QScrollArea,
+    QPushButton,
+    QLineEdit,
+)
 from re import findall
 from typing import TYPE_CHECKING
 
@@ -29,7 +39,7 @@ from env_sg import DB_Config
 log = logging.getLogger(__name__)
 
 
-class SubstanceExportWindow(QMainWindow, ButtonPair):  
+class SubstanceExportWindow(QMainWindow, ButtonPair):
     _curr_asset: Asset
     _central_widget: QtWidgets.QWidget
     _conn: DB
@@ -43,12 +53,11 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
     _tex_set_dict: dict[sp.textureset.TextureSet, "TexSetWidget"]
     _tex_set_widgets: list["TexSetWidget"]
     _tex_set_dropdowns: dict[sp.textureset.TextureSet, QComboBox]
-    _tex_set_asset_dict: dict[str, list[sp.textureset.TextureSet]] # links assets to lists of texture sets
+    _tex_set_asset_dict: dict[
+        str, list[sp.textureset.TextureSet]
+    ]  # links assets to lists of texture sets
 
-    def __init__(
-        self,
-        flags: QtCore.Qt.WindowFlags | None = None
-        ) -> None:
+    def __init__(self, flags: QtCore.Qt.WindowFlags | None = None) -> None:
         super(SubstanceExportWindow, self).__init__(get_main_qt_window())
 
         self._tex_set_dict = {}
@@ -59,7 +68,6 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._conn = DB.Get(DB_Config)
 
         self.setup_choose_assets_ui()
-
 
     def setup_choose_assets_ui(self):
         self.setWindowTitle("Choose Assets")
@@ -91,12 +99,14 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             # Search box for filtering assets
             search_box = QLineEdit()
             search_box.setPlaceholderText("Search assets...")
-            search_box.textChanged.connect(lambda text, ts=ts: self.filter_assets(text, ts))
+            search_box.textChanged.connect(
+                lambda text, ts=ts: self.filter_assets(text, ts)
+            )
             texture_set_layout.addWidget(search_box)
 
             # Dropdown to select asset
             asset_dropdown = QComboBox()
-            asset_dropdown.addItems(asset_names)  
+            asset_dropdown.addItems(asset_names)
 
             # Store dropdown in a dictionary
             self._tex_set_dropdowns[ts] = asset_dropdown
@@ -109,7 +119,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
 
         # Scroll area to handle large content
         texture_set_scroll_area = QScrollArea()
-        texture_set_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        texture_set_scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
         texture_set_scroll_area.setWidget(texture_set_widget)
         texture_set_scroll_area.setWidgetResizable(True)
 
@@ -121,8 +133,6 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         confirm_button.clicked.connect(self.on_confirm_button_clicked)
         self._main_layout.addWidget(confirm_button)
 
-
-
     def filter_assets(self, text: str, texture_set) -> None:
         """
         Filters the assets in the dropdown based on the search text.
@@ -130,7 +140,11 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         asset_dropdown = self._tex_set_dropdowns.get(texture_set)
         if asset_dropdown:
             # Filter the items based on the text
-            filtered_assets = [asset for asset in self._conn.get_asset_name_list() if text.lower() in asset.lower()]
+            filtered_assets = [
+                asset
+                for asset in self._conn.get_asset_name_list()
+                if text.lower() in asset.lower()
+            ]
             asset_dropdown.clear()  # Clear existing items
             asset_dropdown.addItems(filtered_assets)  # Add filtered items
 
@@ -173,7 +187,6 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self.resize(400, 600)
 
     def _setup_asset_ui(self):
-
         # loops though every asset that was selected in the first prompt, and lets them set export options per texture set
         for i, curr_asset_name in enumerate(self._tex_set_asset_dict.keys()):
             self.clear_layout()
@@ -200,7 +213,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             )
             lock_warning.setWordWrap(True)
             self._main_layout.addWidget(lock_warning)
-            
+
             self._curr_asset = self._conn.get_asset_by_name(curr_asset_name)
 
             # Texture set widgets
@@ -267,7 +280,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             render_var_layout.setContentsMargins(0, 0, 0, 0)
             render_var_layout.setSpacing(0)
             render_var_settings_widget = QtWidgets.QWidget()
-            render_var_settings_layout = QtWidgets.QHBoxLayout(render_var_settings_widget)
+            render_var_settings_layout = QtWidgets.QHBoxLayout(
+                render_var_settings_widget
+            )
             render_var_label = QLabel("Renderman Variant:")
             render_var_settings_layout.addWidget(render_var_label, 30)
             self._render_var_dropdown = QComboBox()
@@ -280,7 +295,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             self._render_var_dropdown.setEditable(True)
             pattern = QRegExp("[a-z][a-z_\d]*")
             render_var_validator = QRegExpValidator(pattern)
-            self._render_var_dropdown.setValidator(render_var_validator) # TODO rename this
+            self._render_var_dropdown.setValidator(
+                render_var_validator
+            )  # TODO rename this
             render_var_settings_layout.addWidget(self._render_var_dropdown, 70)
             render_var_layout.addWidget(render_var_settings_widget, 90)
             self._main_layout.addWidget(render_var_widget)
@@ -298,11 +315,9 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
 
             self._main_layout.addWidget(self.buttons)
 
-
             event_loop.exec_()
 
         self.close()
-
 
     def _preflight(self) -> bool:
         """Check for asset metadata and correct channel types before running
@@ -353,7 +368,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             ],
             self.mat_var,
             self.geo_var,
-            self.render_var
+            self.render_var,
         ):
             MessageDialog(
                 get_main_qt_window(),

@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 CACHE_SET = "cache_SET"
 PROP_SET = "prop_SET"
+RIG_SET = "rig_SET"
 
 
 class RigPublisher(Publisher):
@@ -23,8 +24,7 @@ class RigPublisher(Publisher):
         super().__init__(use_sg_entity=False)
 
     def _get_entity_list(self) -> list[str]:
-        cache_sets = mc.ls("::" + CACHE_SET, sets=True)
-        return [s.split(":")[0] for s in cache_sets]
+        return self._conn.get_asset_name_list(sorted=True)
 
     def _get_mayausd_kwargs(self) -> dict[str, Any]:
         kwargs = {

@@ -238,6 +238,7 @@ class SGaaDB(DBInterface):
                 ]
             )
         ]
+    
 
     def update_asset(self, asset: Asset) -> bool:
         try:
@@ -249,6 +250,21 @@ class SGaaDB(DBInterface):
         finally:
             self.expire_cache()
         return True
+
+
+    def get_asset_name_list_by_type(self, types: list[str], sorted: bool = False) -> list[str]:
+        mapper = self._entity_attr_custom_mappers.get(
+            Asset.__name__, self._default_entity_attr_mapper
+        )
+        internal_attr = Asset.map_sg_field_names("code")
+        asset_list = self._sg_entity_lists[Asset.__name__]
+        filtered_assets = [a for a in asset_list if a.get("sg_asset_type") in types]
+
+        arr = mapper(filtered_assets, internal_attr, child_mode=DBInterface.ChildQueryMode.ALL)
+
+        if sorted:
+            arr.sort()
+        return arr
 
     get_env_attr_list: T_GetAttrList = pm(get_entity_attr_list, Environment)  # type: ignore[assignment] # noqa: F405
     get_env_by_attr: T_GetEnvByAttr = pm(get_entity_by_attr, Environment)  # type: ignore[assignment] # noqa: F405
@@ -364,7 +380,8 @@ class _AssetListQuery(_Query):
             "shots",  # shots asset present in
             "sg_material_variants",  # material variants
             "sg_geometry_variants",  # geometry variants
-            "sg_render_variants",    # variants for renderman shaders
+            "sg_render_variants",  # variants for renderman shaders
+            "sg_asset_type", # asset type in shotgrid
         ]
 
     # Override

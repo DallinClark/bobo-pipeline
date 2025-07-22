@@ -14,6 +14,7 @@ _MATLIB_NAME = "Material_Library"
 _MATNAME = "matname"
 _NO_TEXTURES = "NO_EXPORTED_TEXTURES"
 
+
 class MatlibManager:
     _conn: DB
 
@@ -89,14 +90,19 @@ class MatlibManager:
         mat_var = node.parm("mat_var")
         assert mat_var is not None
         mat_var.set(next(iter(self._asset.material_variants), _NO_TEXTURES))
-        
 
-    def create_layered_material(self, node: hou.Node, layer_mixer: hou.Node, layer_name: str, offset: float):
+    def create_layered_material(
+        self, node: hou.Node, layer_mixer: hou.Node, layer_name: str, offset: float
+    ):
         """Creates a PxrTexture, PxrNormalMap, and PxrLayer inside this node."""
 
         # Create nodes
-        roughness = node.createNode("pxrtexture::3.0", f"SpecularRoughness_{layer_name}")
-        roughness_remap = node.createNode("pxrremap::3.0", f"RoughnessRemap_{layer_name}")
+        roughness = node.createNode(
+            "pxrtexture::3.0", f"SpecularRoughness_{layer_name}"
+        )
+        roughness_remap = node.createNode(
+            "pxrremap::3.0", f"RoughnessRemap_{layer_name}"
+        )
         color = node.createNode("pxrtexture::3.0", f"BaseColor_{layer_name}")
         normal = node.createNode("pxrnormalmap::3.0", f"Normal_{layer_name}")
         layer = node.createNode("pxrlayer::3.0", f"Layer_{layer_name}")
@@ -106,7 +112,7 @@ class MatlibManager:
         roughness_remap.setPosition(hou.Vector2(0, 0 - offset * 7))
         color.setPosition(hou.Vector2(0, 2 - offset * 7))
         normal.setPosition(hou.Vector2(0, -2 - offset * 7))
-        layer.setPosition(hou.Vector2(2,0 - offset * 7))
+        layer.setPosition(hou.Vector2(2, 0 - offset * 7))
 
         # Connect them
         roughness_remap.setNamedInput("inputRGB", roughness, "resultRGB")
@@ -121,20 +127,25 @@ class MatlibManager:
         # set parameters
         color_file = color.parm("filename")
         if color_file is not None:
-            color_file.set(f"$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs(\"../../textureset\")`_BaseColor_ACES - ACEScg.<UDIM>.tex")
+            color_file.set(
+                f'$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs("../../textureset")`_BaseColor_ACES - ACEScg.<UDIM>.tex'
+            )
 
         roughness_file = roughness.parm("filename")
         if roughness_file is not None:
-            roughness_file.set(f"$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs(\"../../textureset\")`_SpecularRoughness_Utility - Raw.<UDIM>.tex")
+            roughness_file.set(
+                f'$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs("../../textureset")`_SpecularRoughness_Utility - Raw.<UDIM>.tex'
+            )
 
         normal_file = normal.parm("filename")
         if normal_file is not None:
-            normal_file.set(f"$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs(\"../../textureset\")`_Normal_Utility - Raw.<UDIM>.tex")
+            normal_file.set(
+                f'$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs("../../textureset")`_Normal_Utility - Raw.<UDIM>.tex'
+            )
 
         color_space = color.parm("filename_colorspace")
         if color_space is not None:
             color_space.set("srgb_texture")
-
 
     def get_geo_variant_list(self) -> list[str]:
         """Gets list of variants in the way that the HDA interface expects:
@@ -148,7 +159,9 @@ class MatlibManager:
         mvs = list(self._asset.material_variants) or [_NO_TEXTURES]
         return [s for v in mvs for s in (v, v)]
 
-    def create_matnet(self, houdini_filepath: str, node: hou.LopNode | None = None) -> None:
+    def create_matnet(
+        self, houdini_filepath: str, node: hou.LopNode | None = None
+    ) -> None:
         if not node:
             node = self.node
 
@@ -162,16 +175,18 @@ class MatlibManager:
         if vopnet is None:
             return
 
-        tex_path = f"{houdini_filepath}/tex/{self.geo_variant_name}/{self.mat_variant_name}"
+        tex_path = (
+            f"{houdini_filepath}/tex/{self.geo_variant_name}/{self.mat_variant_name}"
+        )
         if not os.path.exists(tex_path):
             print(f"Path does not exist: {tex_path}")
-            return 
+            return
 
         layers = [
-            name for name in os.listdir(tex_path)
+            name
+            for name in os.listdir(tex_path)
             if os.path.isdir(os.path.join(tex_path, name))
         ]
-
 
         layer_mixer = vopnet.createNode("pxrlayermixer::3.0", "Layer_Mixer")
         if layer_mixer is None:
@@ -183,13 +198,13 @@ class MatlibManager:
         if layer_surface is None:
             return
 
-        layer_surface.setPosition(hou.Vector2(9,0))
+        layer_surface.setPosition(hou.Vector2(9, 0))
 
         collect = vopnet.createNode("collect", "collect")
         if collect is None:
             return
 
-        collect.setPosition(hou.Vector2(12,0))
+        collect.setPosition(hou.Vector2(12, 0))
 
         layer_surface.setInput(0, layer_mixer, 0)
         collect.setInput(0, layer_surface, 0)
@@ -208,7 +223,6 @@ class MatlibManager:
     #     items[0].parent().saveItemsToFile(items, path)
     #     self._rename_matnet(items, curr_name, new_name)
 
-        
 
 class MatlibErrorChecker:
     @staticmethod
