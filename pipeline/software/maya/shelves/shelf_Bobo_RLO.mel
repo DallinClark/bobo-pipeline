@@ -9,7 +9,7 @@ global proc shelf_Bobo_RLO () {
         -flexibleWidthType 3
         -flexibleWidthValue 32
         -enable 1
-        -width 39
+        -width 35
         -height 34
         -manage 1
         -visible 1
@@ -177,7 +177,7 @@ global proc shelf_Bobo_RLO () {
     shelfButton
         -enableCommandRepeat 1
         -flexibleWidthType 3
-        -flexibleWidthValue 38
+        -flexibleWidthValue 32
         -enable 1
         -width 41
         -height 34
@@ -203,7 +203,7 @@ global proc shelf_Bobo_RLO () {
         -style "iconOnly" 
         -marginWidth 0
         -marginHeight 1
-        -command "from pipe.m.scripts.ALT_Camera import reference_and_match_rig; reference_and_match_rig();\n" 
+        -command "from pipe.m.scripts.ALT_Camera import ReferenceAndMatchRig; ReferenceAndMatchRig().launch();\n" 
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
