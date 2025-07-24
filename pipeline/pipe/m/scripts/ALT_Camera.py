@@ -18,7 +18,7 @@ class ReferenceAndMatchRig:
             cmds.warning("No rigs with 'CAM' in namespace found.")
             return
 
-        cmds.window(
+        window = cmds.window(
             "rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150)
         )
         cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
@@ -30,9 +30,9 @@ class ReferenceAndMatchRig:
 
         cmds.button(label="Reference and Match Rig", command=self.on_apply)
 
+        cmds.showWindow(window)
 
-def reference_and_match_rig():
-    def get_rigs_with_cam_namespace():
+    def get_rigs_with_cam_namespace(self):
         rigs = []
         for ref in cmds.file(query=True, reference=True) or []:
             namespace = cmds.referenceQuery(ref, namespace=True).replace(":", "")
@@ -54,7 +54,7 @@ def reference_and_match_rig():
             i += 1
         return f"{base_name}{i:02}"
 
-    def match_transforms(source_ns, target_ns):
+    def match_transforms(self, source_ns, target_ns):
         control_names = [
             "world_CTRL",
             "main_CTRL",
@@ -90,40 +90,11 @@ def reference_and_match_rig():
         # Reference rig
         cmds.file(rig_path, reference=True, namespace=new_ns)
 
-        match_transforms(f"{new_ns}", f"{selected_rig_ns}")
+        self.match_transforms(f"{new_ns}", f"{selected_rig_ns}")
         cmds.confirmDialog(
             title="Success",
             message=f"Rig referenced and matched as {new_ns}",
             button=["OK"],
         )
 
-    # UI
-    if cmds.window("rigMatchUI", exists=True):
-        cmds.deleteUI("rigMatchUI")
 
-    rigs = get_rigs_with_cam_namespace()
-    if not rigs:
-        cmds.warning("No rigs with 'CAM' in namespace found.")
-        return
-
-    window = cmds.window(
-        "rigMatchUI", title="Rig Reference and Match", widthHeight=(400, 150)
-    )
-    cmds.columnLayout(adjustableColumn=True, rowSpacing=10, columnAlign="center")
-
-    cmds.text(label="Select Your OS:")
-    cmds.optionMenu()
-    cmds.menuItem(label="Windows")
-    cmds.menuItem(label="Linux")
-
-    cmds.text(label="Select Target Rig (CAM):")
-    cmds.optionMenu()
-    for rig in rigs:
-        cmds.menuItem(label=rig)
-
-    cmds.button(label="Reference and Match Rig", command=on_apply)
-
-    cmds.showWindow(window)
-
-
-reference_and_match_rig()
