@@ -44,6 +44,24 @@ class SGDiffable(Diffable):
             raise TypeError(f"Cannot create {cls.__name__} from empty dict")
         return _con.structure(sg_dict, cls)
 
+    def to_sg(self, exclude: list[str] = []) -> dict[str, Any]:
+        '''return dict in shotgun format from object''' 
+        data = _con.unstructure(self)
+        result = {}
+
+        for f in attrs.fields(self.__class__):
+            if f.name in exclude:
+                continue
+            sg_key = f.metadata.get(_SG_NAME, f.name)
+            val = data.get(f.name)
+            if val is not None:
+                # If there's an unstruct hook, apply it
+                if (hook := f.metadata.get(_UNSTRUCT_HOOK)):
+                    val = hook(val, None)
+                result[sg_key] = val
+
+        return result
+
     @classmethod
     def map_sg_field_names(cls: Type[attrs.AttrsInstance], name: str) -> str:
         """take SG name and map it to the field name on this class"""
@@ -72,7 +90,7 @@ class SGDiffable(Diffable):
 
 @attrs.define
 class SGEntity(SGDiffable):
-    code: str
+    code: Optional[str]
     id: int = field(on_setattr=attrs.setters.frozen)
     path: Optional[str] = field(
         default=None, kw_only=True, metadata={_SG_NAME: "sg_path"}
@@ -191,6 +209,13 @@ class ShotStub(SGEntityStub):
 
     code: str = field(metadata={_SG_NAME: "name"})
 
+    @property
+    def sg_ref(self) -> dict[str, Any]:
+        return {
+            "type": "Shot",
+            "id": self.id
+        }
+
 
 @attrs.define
 class Shot(SGEntity):
@@ -213,3 +238,67 @@ class Shot(SGEntity):
             _STRUCT_HOOK: lambda e, _: EnvironmentStub.from_sg(e) if e else None,
         }
     )
+
+@attrs.frozen
+class UserStub(SGEntityStub):
+    """Represent user "stubs" that come from ShotGrid"""
+
+    name: str = field(metadata={_SG_NAME: "login"})
+
+@attrs.define
+class User(SGEntity):
+    code: Optional[str] = field(init=False, repr=False, default=None)
+
+    name: str = field(on_setattr=attrs.setters.frozen)
+
+    login: Optional[str] = field(metadata={_SG_NAME: "login"}) 
+
+
+@attrs.frozen
+class TaskStub(SGEntityStub):
+    """Represent shot "stubs" that come from ShotGrid"""
+    id: int
+
+@attrs.define
+class Task(SGEntity):
+    code: Optional[str] = field(init=False, repr=False, default=None)
+
+    entity: ShotStub = field(metadata={_SG_NAME: "entity"})
+
+    status: str = field(metadata={_SG_NAME: "sg_status_list"})
+
+    content: str = field(metadata={_SG_NAME: "content"})
+
+
+@attrs.define
+class Version(SGEntity):
+    code: str = field(on_setattr=attrs.setters.frozen)
+
+    shot: ShotStub = field(
+        metadata={
+            _SG_NAME: "entity",
+            _UNSTRUCT_HOOK: lambda val, _: ({"type": "Shot", "id": val["id"]} if isinstance(val, dict) else {"type": "Shot", "id": val.id})
+        }
+    )
+
+    task: Task = field(
+        metadata={
+            _SG_NAME: "sg_task",
+            _UNSTRUCT_HOOK: lambda val, _: ({"type": "Task", 'id': val["id"]}  if isinstance(val, dict) else {"type": "Task", "id": val.id})
+        }
+    )
+
+    user: User = field(
+        metadata={
+            _SG_NAME: "user",
+            _STRUCT_HOOK: lambda val, _: User.from_sg(val),
+            _UNSTRUCT_HOOK: lambda val, _: ({"type": "HumanUser", 'id': val["id"]}  if isinstance(val, dict) else {"type": "HumanUser", "id": val.id}),
+        }
+    )
+
+    video_path: Optional[str] = field(metadata={_SG_NAME: "sg_path_to_frames"})
+
+    description: Optional[str] = field(metadata={_SG_NAME: "description"})
+
+
+

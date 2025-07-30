@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from pipe.struct.db import (
     Asset,
     AssetStub,
+    User,
     Environment,
     EnvironmentStub,
     SGEntity,
@@ -165,6 +166,27 @@ class DBInterface(metaclass=ABCMeta):
         """Get a list of asset names given asset types"""
         raise NotImplementedError
 
+    @abstractmethod
+    def get_user_attr_list(self, attr: str, *, sorted: bool) -> list[str]:
+        """Get a list of user attributes"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_user_by_attr(self, attr: str, attr_val: str | int) -> User:
+        """Get a user based off an attribute"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_user_name_list(
+        self, child_mode: DBInterface.ChildQueryMode, sorted: bool
+    ) -> list[str]:
+        """Get a list of user names"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_user_by_name(self, attr_val: str | int) -> User:
+        """Get a user by its name"""
+        raise NotImplementedError
 
     @abstractmethod
     def update_asset(self, asset: Asset) -> bool:

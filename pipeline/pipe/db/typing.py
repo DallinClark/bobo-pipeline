@@ -13,6 +13,7 @@ from pipe.struct.db import (
     SGEntity,
     Shot,
     ShotStub,
+    User,
 )
 
 from .interface import DBInterface
@@ -119,6 +120,15 @@ class T_GetEntityCodeList(Protocol):
         sorted: bool = False,
         **kwargs: Unpack[AttrMappingKwargs],
     ) -> list[str]: ...
+
+class T_GetUserByAttr(Protocol):
+    def __call__(self, attr: str, attr_val: str | int) -> User: ...
+
+class T_GetUserNameList(Protocol):
+    def __call__(self) -> list[str]: ...
+
+class T_GetUserByName(Protocol):
+    def __call__(self, name: str) -> User: ...
 
 
 class T_GetEnvByAttr(Protocol):

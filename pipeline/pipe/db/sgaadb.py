@@ -15,6 +15,9 @@ from pipe.struct.db import (
     SGEntity,
     SGEntityStub,
     Shot,
+    Version,
+    User,
+    Task,
 )
 
 if TYPE_CHECKING:
@@ -73,6 +76,7 @@ class SGaaDB(DBInterface):
 
         self._sg_entity_lists = {}
         self._load_sg_asset_list()
+        self._load_sg_user_list()
         self._load_sg_env_list()
         self._load_sg_sequence_list()
         self._load_sg_shot_list()
@@ -102,6 +106,12 @@ class SGaaDB(DBInterface):
         with self._cache_lock:
             query = _AssetListQuery(self._id)
             self._sg_entity_lists[Asset.__name__] = query.exec(self._sg)
+
+    def _load_sg_user_list(self) -> None:
+        """Load the list of assets from SG to local cache"""
+        with self._cache_lock:
+            query = _UserListQuery(self._id)
+            self._sg_entity_lists[User.__name__] = query.exec(self._sg)
 
     def _load_sg_env_list(self) -> None:
         """Load the list of environments from SG to local cache"""
@@ -238,7 +248,6 @@ class SGaaDB(DBInterface):
                 ]
             )
         ]
-    
 
     def update_asset(self, asset: Asset) -> bool:
         try:
@@ -251,8 +260,62 @@ class SGaaDB(DBInterface):
             self.expire_cache()
         return True
 
+    def create_version_for_shot(
+        self,
+        shot: ShotStub,
+        code: str,
+        user: User,
+        task: Task,
+        video_path: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> None:
 
-    def get_asset_name_list_by_type(self, types: list[str], sorted: bool = False) -> list[str]:
+        # Create Version instance
+        version = Version(
+            id=-1,
+            code=code,
+            shot=shot,
+            video_path=video_path,
+            user=user,
+            description=description,
+            task=task,
+        )
+
+        # Push to ShotGrid
+        sg_dict = version.to_sg(exclude=["id"])
+        sg_dict["project"] = {"type": "Project", "id": self._id}
+        new_version = self._sg.create('Version', sg_dict)
+
+        # Return structured object
+        return
+
+    def get_tasks(self, shot: Shot, user: User) -> list[Task]:
+        filters = [
+            ["entity", "is", {"type": "Shot", "id": shot.id}],
+            ["task_assignees", "in", [{"type": "HumanUser", "id": user.id}]],
+        ]
+
+        fields = [
+            "id",
+            "content",
+            "step",
+            "task_assignees",
+            "versions",
+            "sg_status_list",
+            "due_date",
+            "entity",
+            "task_type",       
+        ]
+
+        raw_tasks = self._sg.find("Task", filters, fields)
+        print(raw_tasks)
+        return [Task.from_sg(task) for task in raw_tasks]
+
+
+
+    def get_asset_name_list_by_type(
+        self, types: list[str], sorted: bool = False
+    ) -> list[str]:
         mapper = self._entity_attr_custom_mappers.get(
             Asset.__name__, self._default_entity_attr_mapper
         )
@@ -260,11 +323,18 @@ class SGaaDB(DBInterface):
         asset_list = self._sg_entity_lists[Asset.__name__]
         filtered_assets = [a for a in asset_list if a.get("sg_asset_type") in types]
 
-        arr = mapper(filtered_assets, internal_attr, child_mode=DBInterface.ChildQueryMode.ALL)
+        arr = mapper(
+            filtered_assets, internal_attr, child_mode=DBInterface.ChildQueryMode.ALL
+        )
 
         if sorted:
             arr.sort()
         return arr
+    
+    get_user_attr_list: T_GetAttrList = pm(get_entity_attr_list, User) # type: ignore[assignment] # noqa: F405
+    get_user_by_attr: T_GetUserByAttr = pm(get_entity_by_attr, User)  # type: ignore[assignment] # noqa: F405
+    get_user_name_list: T_GetUserNameList = pm(get_user_attr_list, "name")  # type: ignore[assignment] # noqa: F405
+    get_user_by_name: T_GetUserByName = pm(get_user_by_attr, "name")  # type: ignore[assignment] # noqa: F405
 
     get_env_attr_list: T_GetAttrList = pm(get_entity_attr_list, Environment)  # type: ignore[assignment] # noqa: F405
     get_env_by_attr: T_GetEnvByAttr = pm(get_entity_by_attr, Environment)  # type: ignore[assignment] # noqa: F405
@@ -381,7 +451,7 @@ class _AssetListQuery(_Query):
             "sg_material_variants",  # material variants
             "sg_geometry_variants",  # geometry variants
             "sg_render_variants",  # variants for renderman shaders
-            "sg_asset_type", # asset type in shotgrid
+            "sg_asset_type",  # asset type in shotgrid
         ]
 
     # Override
@@ -398,6 +468,34 @@ class _AssetListQuery(_Query):
         ]
 
         return filters
+
+class _UserListQuery(_Query):
+    """Helper class for making queries about users to a SG connection instance"""
+
+    # Override
+    def exec(self, sg: shotgun_api3.Shotgun) -> list[dict]:
+        return sg.find("HumanUser", self.filters, self.fields)
+
+    # Override
+    @property
+    def _base_fields(self) -> list[str]:
+        return [
+            "id", # user id
+            "name", # User's name
+            "login", # email
+        ]
+
+    # Override
+    @property
+    def _base_filters(self) -> list[Filter]:
+        filters: list[Filter] = [("sg_status_list", "is_not", "dis")]
+        return filters
+
+    # Override
+    def _construct_filters(self) -> list[Filter]:
+        """Construct the list of filters needed for the ShotGrid query"""
+        base_filters = self._base_filters
+        return base_filters
 
 
 class _EnvironmentListQuery(_Query):
