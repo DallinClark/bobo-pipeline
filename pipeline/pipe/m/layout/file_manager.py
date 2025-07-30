@@ -83,7 +83,7 @@ class MLayoutFileManager(FileManager):
         mc.setAttr("defaultResolution.pixelAspect", 1.0)  # type: ignore[arg-type]
         mc.setAttr("defaultResolution.deviceAspectRatio", 1920 / 1080)  # type: ignore[arg-type]
 
-        mc.scriptJob( 
+        mc.scriptJob(
             event=("SelectionChanged", MLayoutFileManager.change_usd_selection),
             protected=True,
         )
@@ -190,7 +190,7 @@ class MLayoutFileManager(FileManager):
             proxy_shape + ".filePath", f"{entity_path}/maya_layout.usd", type="string"
         )
 
-        mc.scriptJob(  
+        mc.scriptJob(
             event=("SelectionChanged", MLayoutFileManager.change_usd_selection),
             protected=True,
         )

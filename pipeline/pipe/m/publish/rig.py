@@ -72,7 +72,11 @@ class RigPublisher(Publisher):
             existing_versions = [
                 int(match.group(1))
                 for file in asset_dir.glob(f"{asset.name}_v*.usd")
-                if (match := re.match(fr"{re.escape(asset.name)}_v(\d+)\.usd", file.name))
+                if (
+                    match := re.match(
+                        rf"{re.escape(asset.name)}_v(\d+)\.usd", file.name
+                    )
+                )
             ]
             next_version = max(existing_versions, default=0) + 1
             versioned_name = f"{asset.name}_v{next_version}.usd"
