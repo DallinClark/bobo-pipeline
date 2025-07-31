@@ -9,6 +9,12 @@ nuke.pluginAddPath("./toolsets")
 nuke.pluginAddPath("./scripts")
 
 
+def make_bobo_read_node():
+    import bobo_read_node  # type: ignore[import-not-found]
+
+    bobo_read_node.main()
+
+
 def make_bobo_write_node():
     import bobo_write_node_v2  # type: ignore[import-not-found]
 
@@ -93,6 +99,8 @@ print(
     f"nuke.nodePaste({str(get_pipe_path() / 'software/nuke/tools/BobukeTools/toolsets/shotTemplate.nk')})"
 )
 m.addCommand("Bobo Write Node", "make_bobo_write_node()", icon="BobukeIcon.png")
+m.addCommand("Bobo Open Shot Node", "choose_shot()", icon="BobukeIcon.png")
+m.addCommand("Bobo Read Node", "make_bobo_read_node()", icon="BobukeIcon.png")
 
 
 ################################### Nungeon Shelf Tool Buttons ###################################
