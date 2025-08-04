@@ -227,6 +227,23 @@ class SGaaDB(DBInterface):
     ) -> list[str]:
         return self.get_entity_attr_list(entity_type, attr, **kwargs)
 
+    def update_entity(self, entity: SGEntity) -> bool:
+        """
+        General-purpose updater for any SGEntity subclass.
+        Calls sg.update using the entity's type, ID, and computed diff.
+        """
+        try:
+            assert entity.id, "Entity must have a valid ID to be updated"
+            entity_type = entity.__class__.__name__  # e.g., 'Asset', 'Shot'
+            sg_payload = entity.sg_diff()
+            self._sg.update(entity_type, entity.id, sg_payload)
+        except Exception as e:
+            log.error(f"Failed to update {entity_type} (ID {entity.id}): {e}")
+            return False
+        finally:
+            self.expire_cache()
+        return True
+
     get_entity_code_list: T_GetEntityCodeList = pm(_get_entity_attr_list_swap, "code")  # type: ignore[assignment] # noqa: F405
     get_entity_by_code: T_GetEntityByCode = pm(_get_entity_by_attr_swap, "code")  # type: ignore[assignment] # noqa: F405
 
@@ -286,7 +303,6 @@ class SGaaDB(DBInterface):
         sg_dict["project"] = {"type": "Project", "id": self._id}
         self._sg.create("Version", sg_dict)
 
-        # Return structured object
         return
 
     def get_tasks(self, shot: Shot, user: User) -> list[Task]:
