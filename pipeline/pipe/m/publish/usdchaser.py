@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 from pipe.db import DB
 from pipe.struct.timeline import Timeline
+from pipe.struct.db import Asset
 from pipe.util import log_errors
 from shared.util import get_production_path
 
@@ -381,6 +382,69 @@ def split_preroll(
     return stiched_layer
 
 
+def bind_materials_new_variant(stage: Usd.Stage, mat_path: Sdf.Path, new_path: Sdf.Path) -> None:
+    # Get the material prim and resolve the bound material
+    mat_prim = stage.GetPrimAtPath(mat_path)
+    if not mat_prim:
+        raise RuntimeError(f"Material path {mat_path} does not exist.")
+
+    bound_material = UsdShade.MaterialBindingAPI(mat_prim).ComputeBoundMaterial()[0]
+    if not bound_material:
+        raise RuntimeError(f"No material bound to {mat_path}")
+
+    # Get the new prim to bind to
+    new_prim = stage.OverridePrim(new_path)
+    if not new_prim:
+        raise RuntimeError(f"Target prim {new_path} does not exist.")
+
+
+    # Bind the material to the new prim
+    new_api = UsdShade.MaterialBindingAPI.Apply(new_prim)
+    new_api.Bind(bound_material)
+
+    stage.GetRootLayer().Save()
+
+    
+
+def add_variant_to_model(asset: Asset, variant: str) -> None:
+    # Construct the full path to geo.usd
+    if asset.path is None:
+    raise ValueError("asset.path is None, cannot construct usd_path")
+
+    usd_path = get_production_path() / asset.path / "usd" / "geo.usd"
+
+    # Open the USD stage
+    stage = Usd.Stage.Open(str(usd_path))
+    layer = stage.GetRootLayer()
+
+    # Edit the usd so the new variant will be inside of it
+    with Usd.EditContext(stage, layer):
+        new_class_path = Sdf.Path(f"/__class__/character/{variant}")
+        new_class_spec = Sdf.CreatePrimInLayer(layer, new_class_path)
+        new_class_spec.SetInfo(new_class_spec.SpecifierKey, Sdf.SpecifierClass)
+
+        original_geo_path = Sdf.Path(f"/character/{asset.name}")
+        new_geo_path = Sdf.Path(f"/character/{variant}")
+
+        Sdf.CopySpec(layer, original_geo_path, layer, new_geo_path)
+        new_prim = stage.GetPrimAtPath(new_geo_path)
+
+        # Set the inherits to the new path
+        inherits = new_prim.GetInherits()
+        inherits.ClearInherits()            # remove old ones
+        inherits.AddInherit(new_class_path)  # add new one
+
+    cfx_usd_path = get_production_path() / asset.path / "usd" / "cfx.usd"
+
+    cfx_stage = Usd.Stage.Open(str(cfx_usd_path))
+    old_mat_bind_path: Sdf.Path = Sdf.Path(f"/character/{asset.name}/{asset.name}")
+    new_mat_bind_path: Sdf.Path = Sdf.Path(f"/character/{variant}/{asset.name}")
+    bind_materials_new_variant(cfx_stage, old_mat_bind_path, new_mat_bind_path)
+
+    # Save the layer after editing
+    layer.Save()
+
+
 @attrs.define
 class ChaserArgs:
     mode: ChaserMode = attrs.field(converter=int)
@@ -433,7 +497,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     base_name = name[:-1]
                 else:
                     base_name = name
-                print(name)
+                print(base_name)
 
                 # the rigs that need the controls exported instead of the mesh
                 if base_name in [
@@ -458,25 +522,33 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 )
                 char_prim_spec.specifier = Sdf.SpecifierOver
 
+
                 reference = Sdf.Reference(
                     f"./{Path(stitched_layer.realPath).relative_to(root_layer_path.parent)}",
                     character_root_path,
                 )
+                print("HEIHISHIHSIHSI")
 
                 char_prim_spec.referenceList.appendedItems = [reference]
 
                 try:
                     asset = conn.get_asset_by_attr("name", base_name)
-                    print(asset.path)
+                    if base_name != name:
+                        print(f"I GOT HERE variant: {name}")
+                        add_variant_to_model(asset, name)
+
                     assert asset.path is not None
                     rig_path = f"{asset.path}/usd/main.usd"
                     walk_up_len = (
                         len(root_layer_path.relative_to(get_production_path()).parts)
                         - 1
                     )
-                    root_layer.subLayerPaths.append("../" * walk_up_len + rig_path)
-                except Exception:
-                    print(f"Warning! Could not find asset matching namespace {name}")
+                    relative_path = Sdf.Path("../" * walk_up_len + rig_path)
+                    if relative_path not in root_layer.subLayerPaths:
+                        root_layer.subLayerPaths.append(relative_path)
+
+                except Exception as e:
+                    print(f"Warning! Could not find asset matching namespace {name}: {e}")
 
         elif self._chaser_args.mode == ChaserMode.CHAR:
             scale_down_geo(self._stage)
