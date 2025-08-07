@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 r"""
 Name : skinner.window.py
 Author : Eric Pavey - warpcat@gmail.com - www.akeric.com

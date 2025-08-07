@@ -409,7 +409,7 @@ def bind_materials_new_variant(stage: Usd.Stage, mat_path: Sdf.Path, new_path: S
 def add_variant_to_model(asset: Asset, variant: str) -> None:
     # Construct the full path to geo.usd
     if asset.path is None:
-    raise ValueError("asset.path is None, cannot construct usd_path")
+        raise ValueError("asset.path is None, cannot construct usd_path")
 
     usd_path = get_production_path() / asset.path / "usd" / "geo.usd"
 
