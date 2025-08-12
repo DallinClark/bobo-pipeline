@@ -116,7 +116,7 @@ class MyWindow(QtWidgets.QWidget):
             # continue
             if not shot:
                 continue
-            letter = shot[0].upper()
+            letter = shot[:2].upper()
             if letter == "A_":
                 self.a_shots.append(shot)
             elif letter == "B_":
