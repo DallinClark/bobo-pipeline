@@ -65,7 +65,7 @@ def get_latest_exr_sequence(render_root):
     return pattern, first_frame, last_frame
 
 
-def make_read_node():
+def make_read_node(render_subdir="render", node_name="EXR_read"):
     """
     Create a Read node pointing at the full sequence (from first_frame to last_frame).
     """
@@ -75,15 +75,15 @@ def make_read_node():
         return None
 
     shot_dir = os.path.dirname(os.path.dirname(script_path))
-    render_dir = os.path.join(shot_dir, "render")
+    render_dir = os.path.join(shot_dir, render_subdir)
 
     seq_pattern, first, last = get_latest_exr_sequence(render_dir)
     if not seq_pattern:
         return None
     for n in nuke.allNodes("Read"):
-        if n.name() == "EXR_read":
+        if n.name() == node_name:
             nuke.delete(n)
-    read = nuke.nodes.Read(name="EXR_read", file=seq_pattern, on_error="black")
+    read = nuke.nodes.Read(name=node_name, file=seq_pattern, on_error="black")
     # set both the sequence's native range and the playback range
     read["origfirst"].setValue(first)
     read["origlast"].setValue(last)
@@ -94,6 +94,17 @@ def make_read_node():
     nuke.root()["last_frame"].setValue(last)
 
     return read
+
+
+def auto_read_latest_fx_exr():
+    read_node = make_read_node("FX/render", node_name="Bobo_FX_read")
+    if not read_node:
+        return
+    try:
+        viewer = nuke.activeViewer().node()
+        nuke.zoom(1, [viewer["xpos"].value(), viewer["ypos"].value()])
+    except Exception as e:
+        nuke.tprint(f"[Auto Read] Viewer zoom error: {e}")
 
 
 def auto_read_latest_exr():

@@ -8,6 +8,13 @@ from shared.util import get_production_path
 
 project_file = nuke.root()["name"].value()
 
+DEPT_DIR_MAP = {
+    "Lighting": "lighting",
+    "Compositing": "comp",
+    "FX": "FX",  # keep your existing uppercase folder
+    "Shading": "lighting",
+}
+
 
 def make_text_nodes():
     # Text Padding
@@ -45,7 +52,9 @@ def make_text_nodes():
     department_text.knob("enable_background").setValue(1)
     department_text.setName("department_text")
     dropdown_knob = nuke.Enumeration_Knob(
-        "departmentDropdown", "departmentDropdown", ["Lighting", "Compositing"]
+        "departmentDropdown",
+        "departmentDropdown",
+        ["Lighting", "Compositing", "FX", "Shading"],
     )
     department_text.addKnob(dropdown_knob)
     # message set below to force the font size to update
@@ -187,10 +196,6 @@ def get_users_name():
     # Get the current login username
     username = os.getlogin()
 
-    # Determine the path to the usernames.json file in the same directory as this script.
-    # script_dir = os.path.dirname(os.path.abspath(__file__))
-    # json_path = "/users/animation/sblancha/dev/dungeon-pipeline/pipeline/software/nuke/tools/NungeonTools/scripts/usernames.json"
-
     json_path = str(get_production_path()) + "/json/usernames.json"
     # print(str(json_path))
 
@@ -211,9 +216,13 @@ def get_week_range():
     return start_of_week, end_of_week
 
 
-def get_output_file_info_mov():
+def get_output_file_info_mov(create_missing=True):
+    currDept = getDepartment()
+    subdir = DEPT_DIR_MAP.get(currDept, currDept.lower())
+    base_path = os.path.join("/groups/bobo/edit/shots", subdir)
+    # change this path per department
     start_of_week, end_of_week = get_week_range()
-    base_path = "/groups/bobo/edit/shots/lighting/"
+
     shot_code = get_shot_code()
 
     valid_subfolder = None  # Store the most recent valid subfolder if found
@@ -239,8 +248,9 @@ def get_output_file_info_mov():
     if valid_subfolder is None:
         today_str = datetime.date.today().strftime("%m-%d-%Y")
         valid_subfolder = os.path.join(base_path, today_str)
-        os.makedirs(valid_subfolder)
-        print(f"Created new subfolder: {valid_subfolder}")
+        if create_missing:
+            os.makedirs(valid_subfolder)
+            print(f"Created new subfolder: {valid_subfolder}")
     else:
         print(f"Using most recent subfolder: {valid_subfolder}")
 
@@ -248,6 +258,27 @@ def get_output_file_info_mov():
     new_file_name = shot_code + "_" + next_version + ".mov"
 
     return [new_file_name, valid_subfolder]  # Always returns a list
+
+
+def apply_mov_path_to_ui_and_write(group):
+    """
+    Recompute the MOV path based on current department and update:
+      - the UI 'mov_export_path' label
+      - the internal MOV_write 'file' knob
+    """
+    new_file_name, folder_path = get_output_file_info_mov(create_missing=True)
+    full_path = os.path.join(folder_path, new_file_name)
+
+    if group.knob("mov_export_path"):
+        group["mov_export_path"].setValue(full_path)
+
+    group.begin()
+    try:
+        w = nuke.toNode("MOV_write")
+        if w:
+            w["file"].setValue(full_path)
+    finally:
+        group.end()
 
 
 def get_output_file_info_exr():
@@ -261,6 +292,7 @@ def get_output_file_info_exr():
 
 
 def make_MOV_node():
+    # IF FX change output file
     new_file_name = get_output_file_info_mov()[0]
     folder_path = get_output_file_info_mov()[1]
 
@@ -400,6 +432,7 @@ def makeUI(groupNode):
 group = nuke.thisNode()
 first_frame = int(group["export_frame_in"].value())
 last_frame  = int(group["export_frame_out"].value())
+dept = group["departmentDropdown"].value() if group.knob("departmentDropdown") else "Lighting"
 
 group.begin()
 write_node = nuke.toNode("MOV_write")
@@ -409,11 +442,11 @@ if write_node:
     nuke.execute(write_node.name(), first_frame, last_frame, 1)  
 else:
     nuke.message("MOV_write node not found inside the group!")
-
-if demo_node:
-    nuke.execute(demo_node.name(), first_frame, last_frame, 1)
-else:
-    nuke.message("MOV_write_noText node not found inside the group!")
+if dept == "Lighting" or dept == "Compositing":
+    if demo_node:
+        nuke.execute(demo_node.name(), first_frame, last_frame, 1)
+    else:
+        nuke.message("MOV_write_noText node not found inside the group!")
 
 group.end()
 """
@@ -483,7 +516,7 @@ nuke.message("This render will have 5 frames added to beginning and end of shot.
 
     # dropdown
     department_dropdown = nuke.Enumeration_Knob(
-        "departmentDropdown", "", ["Lighting", "Compositing"]
+        "departmentDropdown", "", ["Lighting", "Compositing", "FX", "Shading"]
     )
 
     # Add all knobs
@@ -513,7 +546,7 @@ nuke.message("This render will have 5 frames added to beginning and end of shot.
     task_knob = nuke.Enumeration_Knob("shotgrid_task", "ShotGrid Task", task_labels)
     groupNode.addKnob(task_knob)
     dept_knob = nuke.Enumeration_Knob(
-        "departmentDropdown",
+        "sgDepartmentDropdown",
         "Department",
         ["Lighting", "Compositing", "FX", "Environment", "Shading"],
     )
@@ -535,6 +568,20 @@ create_new_shot_version()
         "send_to_sg", "Send to ShotGrid", send_to_sg_script
     )
     groupNode.addKnob(send_sg_btn)
+    apply_mov_path_to_ui_and_write(groupNode)
+
+    # Live update when the department changes
+    group_knob_changed = """
+import nuke
+from bobo_write_node_v2 import apply_mov_path_to_ui_and_write  # adjust module name if different
+n = nuke.thisNode()
+k = nuke.thisKnob()
+if k and k.name() == "departmentDropdown":
+    apply_mov_path_to_ui_and_write(n)
+"""
+    groupNode.knob("knobChanged").setValue(group_knob_changed)
+
+    ### END MOV EXPORT ###
 
     # EXR Export Tab
     exr_tab_name = "EXR Export"
@@ -612,6 +659,14 @@ def createLinks(groupNode, text_nodes, mov_node, exr_node, switch):
     )  # department
 
 
+# get the department
+def getDepartment():
+    grp = nuke.thisGroup()
+    if grp and grp.knob("departmentDropdown"):
+        return grp["departmentDropdown"].value()
+    return "Lighting"
+
+
 ### This is where we start sending things back to Shotgrid ###
 def getShot():
     _conn = DB(DB_Config)
@@ -659,7 +714,7 @@ def getMostRecentPlaylist():
     parse the M/D/YY date prefix, and return the most recent one.
     """
     group = nuke.thisGroup()
-    dept = group["departmentDropdown"].value()
+    dept = group["sgDepartmentDropdown"].value()
     if not dept:
         nuke.message("Please pick a department first.")
         return None
@@ -703,6 +758,7 @@ def getMostRecentPlaylist():
         return None
 
 
+# if FX grab FX video file
 def create_new_shot_version():
     group = nuke.thisGroup()
     shot = getShot()
@@ -766,7 +822,9 @@ def create_new_shot_version():
         return
 
     try:
+        # result, infor = upload_auto_and_wait(_conn, version_id, video_path)
         _conn.upload_version_movie(version_id, video_path)
+        # if result == "OK":
         nuke.message(
             f"ShotGrid version '{version_name}' created and movie uploaded successfully."
         )
@@ -849,6 +907,7 @@ def main():
         # another mov node for demo reels
         exr_node_pos_x = exr_node.xpos()
         exr_node_pos_y = exr_node.ypos()
+        # if not FX
         demo_write_node = make_demoReel_mov_node()
         demo_write_node.setInput(0, reformat_node)
         demo_write_node.setXYpos(exr_node_pos_x + 100, exr_node_pos_y)
