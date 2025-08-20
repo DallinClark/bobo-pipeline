@@ -100,7 +100,7 @@ m.addCommand(
 # m.addCommand("FrameBurn", "nuke.createNode('FrameBurn')", icon="nungeonIcon.png")
 m.addCommand("Grade_AOV", "nuke.createNode('grade_AOV')", icon="BobukeIcon.png")
 m.addCommand("luma Distort", "nuke.createNode('lumaDistort')", icon="BobukeIcon.png")
-m.addCommand("Roughen Edges", "nuke.createNode('roughenEdges')", icon="BobukeIcon.png")
+#m.addCommand("Roughen Edges", "nuke.createNode('roughenEdges')", icon="BobukeIcon.png") #broken but worked on previous films
 # lens node
 m.addCommand("Lens", "nuke.createNode('Lens')", icon="BobukeIcon.png")
 print(
