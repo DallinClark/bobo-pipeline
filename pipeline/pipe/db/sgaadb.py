@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 import threading
+import os
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partialmethod as pm
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from pipe.struct.db import (
     Asset,
@@ -286,7 +287,8 @@ class SGaaDB(DBInterface):
         task: Task,
         video_path: Optional[str] = None,
         description: Optional[str] = None,
-    ) -> None:
+        playlist_id: Optional[int] = None,
+    ) -> dict[Any, Any]:
         # Create Version instance
         version = Version(
             id=-1,
@@ -301,9 +303,22 @@ class SGaaDB(DBInterface):
         # Push to ShotGrid
         sg_dict = version.to_sg(exclude=["id"])
         sg_dict["project"] = {"type": "Project", "id": self._id}
-        self._sg.create("Version", sg_dict)
+        sg_dict["playlists"] = [{"type": "Playlist", "id": playlist_id}]
+        new_version = self._sg.create("Version", sg_dict)
 
-        return
+        # Return structured object
+        return new_version
+
+    def upload_version_movie(self, version_id, path_to_file, field="sg_uploaded_movie"):
+        display_name = os.path.basename(path_to_file)
+        attachment = self._sg.upload(
+            entity_type="Version",
+            entity_id=version_id,
+            path=path_to_file,
+            field_name=field,
+            display_name=display_name,
+        )
+        return attachment
 
     def get_tasks(self, shot: Shot, user: User) -> list[Task]:
         filters = [

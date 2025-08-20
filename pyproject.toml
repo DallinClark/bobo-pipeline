@@ -15,7 +15,8 @@ exclude = [
     'shotgun_api3',
     'studiolibrary',
     'timeline_marker',
-    'houdini/scripts'
+    'houdini/scripts',
+    'maya/scripts'
 ]
 files = 'pipeline'
 
@@ -50,6 +51,7 @@ exclude = [
     "shotgun_api3",
     "studiolibrary",
     "timeline_marker",
+    "pipeline/software/maya/scripts/**"
 ]
 
 [tool.poetry]

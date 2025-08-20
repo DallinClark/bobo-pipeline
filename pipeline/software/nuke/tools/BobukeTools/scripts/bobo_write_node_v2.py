@@ -8,6 +8,13 @@ from shared.util import get_production_path
 
 project_file = nuke.root()["name"].value()
 
+DEPT_DIR_MAP = {
+    "Lighting": "lighting",
+    "Compositing": "comp",
+    "FX": "FX",  # keep your existing uppercase folder
+    "Shading": "lighting",
+}
+
 
 def make_text_nodes():
     # Text Padding
@@ -45,7 +52,9 @@ def make_text_nodes():
     department_text.knob("enable_background").setValue(1)
     department_text.setName("department_text")
     dropdown_knob = nuke.Enumeration_Knob(
-        "departmentDropdown", "departmentDropdown", ["Lighting", "Compositing"]
+        "departmentDropdown",
+        "departmentDropdown",
+        ["Lighting", "Compositing", "FX", "Shading"],
     )
     department_text.addKnob(dropdown_knob)
     # message set below to force the font size to update
@@ -108,6 +117,7 @@ def update_text_messages(
 
 
 def get_in_out():
+    """
     curr_shot = get_project_name()
     conn = DB.Get(DB_Config)
     print(str(curr_shot))
@@ -115,6 +125,23 @@ def get_in_out():
     # print(curr_shot)
     # print(shot_info.cut_in)
     # print(shot_info.cut_out)
+    return [shot_info.cut_in, shot_info.cut_out]
+    """
+    """
+    Returns the in/out cut frames for the current shot.
+    Falls back to the script's own frame range if the shot cannot be found in the database.
+    """
+    curr_shot = get_project_name()
+    conn = DB.Get(DB_Config)
+    try:
+        shot_info = conn.get_shot_by_code(curr_shot)
+    except StopIteration:
+        nuke.message(
+            f"No shot found for code '{curr_shot}'. Using script's frame range instead."
+        )
+        first = int(nuke.root()["first_frame"].value())
+        last = int(nuke.root()["last_frame"].value())
+        return [first, last]
     return [shot_info.cut_in, shot_info.cut_out]
 
 
@@ -169,10 +196,6 @@ def get_users_name():
     # Get the current login username
     username = os.getlogin()
 
-    # Determine the path to the usernames.json file in the same directory as this script.
-    # script_dir = os.path.dirname(os.path.abspath(__file__))
-    # json_path = "/users/animation/sblancha/dev/dungeon-pipeline/pipeline/software/nuke/tools/NungeonTools/scripts/usernames.json"
-
     json_path = str(get_production_path()) + "/json/usernames.json"
     # print(str(json_path))
 
@@ -193,9 +216,13 @@ def get_week_range():
     return start_of_week, end_of_week
 
 
-def get_output_file_info_mov():
+def get_output_file_info_mov(create_missing=True):
+    currDept = getDepartment()
+    subdir = DEPT_DIR_MAP.get(currDept, currDept.lower())
+    base_path = os.path.join("/groups/bobo/edit/shots", subdir)
+    # change this path per department
     start_of_week, end_of_week = get_week_range()
-    base_path = "/groups/bobo/edit/shots/lighting/"
+
     shot_code = get_shot_code()
 
     valid_subfolder = None  # Store the most recent valid subfolder if found
@@ -221,8 +248,9 @@ def get_output_file_info_mov():
     if valid_subfolder is None:
         today_str = datetime.date.today().strftime("%m-%d-%Y")
         valid_subfolder = os.path.join(base_path, today_str)
-        os.makedirs(valid_subfolder)
-        print(f"Created new subfolder: {valid_subfolder}")
+        if create_missing:
+            os.makedirs(valid_subfolder)
+            print(f"Created new subfolder: {valid_subfolder}")
     else:
         print(f"Using most recent subfolder: {valid_subfolder}")
 
@@ -230,6 +258,27 @@ def get_output_file_info_mov():
     new_file_name = shot_code + "_" + next_version + ".mov"
 
     return [new_file_name, valid_subfolder]  # Always returns a list
+
+
+def apply_mov_path_to_ui_and_write(group):
+    """
+    Recompute the MOV path based on current department and update:
+      - the UI 'mov_export_path' label
+      - the internal MOV_write 'file' knob
+    """
+    new_file_name, folder_path = get_output_file_info_mov(create_missing=True)
+    full_path = os.path.join(folder_path, new_file_name)
+
+    if group.knob("mov_export_path"):
+        group["mov_export_path"].setValue(full_path)
+
+    group.begin()
+    try:
+        w = nuke.toNode("MOV_write")
+        if w:
+            w["file"].setValue(full_path)
+    finally:
+        group.end()
 
 
 def get_output_file_info_exr():
@@ -243,6 +292,7 @@ def get_output_file_info_exr():
 
 
 def make_MOV_node():
+    # IF FX change output file
     new_file_name = get_output_file_info_mov()[0]
     folder_path = get_output_file_info_mov()[1]
 
@@ -262,11 +312,20 @@ def make_MOV_node():
 
     # Other write node settings.
     write_node["colorspace"].setValue(6)  # Data (linear-rawr)
+
     write_node["transformType"].setValue(1)  # Display transform
-    write_node["mov64_codec"].setValue(
-        12
-    )  # Avid DnxHr (integer value 12 for some reason)
-    write_node["mov64_dnxhd_codec_profile"].setValue(1)  # DNxHD 422 10-bit 220Mbit
+
+    fmt = write_node.format()
+    aspect = fmt.width() / float(fmt.height())
+
+    if abs(aspect - (16.0 / 9.0)) < 0.001:
+        # 16:9 → use DNxHD
+        write_node["mov64_codec"].setValue(11)  # Avid DNxHD
+        write_node["mov64_dnxhd_codec_profile"].setValue(1)  # DNxHD 422 10-bit 220 Mbps
+    else:
+        # anything else → stick with DNxHR
+        write_node["mov64_codec"].setValue(12)  # Avid DNxHR
+        # (you can also set mov64_dnxhr_profile if you need a specific DNxHR flavor)
 
     # update the version number json.
     shot_code = get_shot_code()
@@ -287,13 +346,23 @@ def make_MOV_node():
 
 
 def update_mov_node(write_node):
-    # print("in the update mov node")
-    write_node["mov64_codec"].setValue(
-        13
-    )  # option 13 should be Avid DnxHr WHY NOT 3?? Idk
-    write_node["mov64_dnxhd_codec_profile"].setValue(
-        0
-    )  # option 1 should be 4:4:4 12 bit
+    # get aspect ratio
+    fmt = write_node.format()
+    aspect = fmt.width() / float(fmt.height())
+
+    # look up the actual dropdown indices at runtime
+    # nuke.message("Codecs:\n" + "\n".join(f"{i}: {v}" for i,v in enumerate(vals))) #(if you ever need to see a list of codecs)
+    # pick the right codec
+    if abs(aspect - (16.0 / 9.0)) < 0.001:
+        # 16:9 → DNxHD 422 10-bit 220Mbps
+        write_node["mov64_codec"].setValue(12)
+        write_node["mov64_dnxhd_codec_profile"].setValue(1)
+    else:
+        # anything else → DNxHR (HQ for example)
+        write_node["mov64_codec"].setValue(13)
+        write_node["mov64_dnxhd_codec_profile"].setValue(0)
+        # if you want a specific DNxHR flavor you can also do:
+        # write_node["mov64_dnxhr_profile"].setValue(<your-profile-index>)
 
 
 def make_demoReel_mov_node():
@@ -363,20 +432,21 @@ def makeUI(groupNode):
 group = nuke.thisNode()
 first_frame = int(group["export_frame_in"].value())
 last_frame  = int(group["export_frame_out"].value())
+dept = group["departmentDropdown"].value() if group.knob("departmentDropdown") else "Lighting"
 
 group.begin()
 write_node = nuke.toNode("MOV_write")
 demo_node = nuke.toNode("MOV_write_noText")
 
 if write_node:
-    nuke.execute(write_node.name(), first_frame, last_frame, 1)
+    nuke.execute(write_node.name(), first_frame, last_frame, 1)  
 else:
     nuke.message("MOV_write node not found inside the group!")
-
-if demo_node:
-    nuke.execute(demo_node.name(), first_frame, last_frame, 1)
-else:
-    nuke.message("MOV_write_noText node not found inside the group!")
+if dept == "Lighting" or dept == "Compositing":
+    if demo_node:
+        nuke.execute(demo_node.name(), first_frame, last_frame, 1)
+    else:
+        nuke.message("MOV_write_noText node not found inside the group!")
 
 group.end()
 """
@@ -446,7 +516,7 @@ nuke.message("This render will have 5 frames added to beginning and end of shot.
 
     # dropdown
     department_dropdown = nuke.Enumeration_Knob(
-        "departmentDropdown", "", ["Lighting", "Compositing"]
+        "departmentDropdown", "", ["Lighting", "Compositing", "FX", "Shading"]
     )
 
     # Add all knobs
@@ -461,6 +531,57 @@ nuke.message("This render will have 5 frames added to beginning and end of shot.
     groupNode.addKnob(divider2)
     groupNode.addKnob(mov_export_path)
     groupNode.addKnob(open_folder_button)
+
+    # Add Send to Shotgrid UI
+    groupNode.addKnob(nuke.Text_Knob("shotgrid_divider", ""))
+
+    # Populate ShotGrid Task dropdown dynamically
+    try:
+        _conn = DB(DB_Config)
+        # shots = _conn.get_shot_code_list()
+        tasks = _conn.get_tasks(getShot(), getShotGridUser())
+        task_labels = [t.content for t in tasks if hasattr(t, "content")]
+    except Exception:
+        task_labels = []
+    task_knob = nuke.Enumeration_Knob("shotgrid_task", "ShotGrid Task", task_labels)
+    groupNode.addKnob(task_knob)
+    dept_knob = nuke.Enumeration_Knob(
+        "sgDepartmentDropdown",
+        "Department",
+        ["Lighting", "Compositing", "FX", "Environment", "Shading"],
+    )
+    dept_knob.clearFlag(nuke.STARTLINE)
+    groupNode.addKnob(dept_knob)
+
+    # Description field
+    desc_knob = nuke.Multiline_Eval_String_Knob(
+        "shotgrid_description", "ShotGrid Description"
+    )
+    desc_knob.setValue("")
+    groupNode.addKnob(desc_knob)
+
+    # Send to ShotGrid button
+    send_to_sg_script = """from bobo_write_node_v2 import create_new_shot_version
+create_new_shot_version()
+"""
+    send_sg_btn = nuke.PyScript_Knob(
+        "send_to_sg", "Send to ShotGrid", send_to_sg_script
+    )
+    groupNode.addKnob(send_sg_btn)
+    apply_mov_path_to_ui_and_write(groupNode)
+
+    # Live update when the department changes
+    group_knob_changed = """
+import nuke
+from bobo_write_node_v2 import apply_mov_path_to_ui_and_write  # adjust module name if different
+n = nuke.thisNode()
+k = nuke.thisKnob()
+if k and k.name() == "departmentDropdown":
+    apply_mov_path_to_ui_and_write(n)
+"""
+    groupNode.knob("knobChanged").setValue(group_knob_changed)
+
+    ### END MOV EXPORT ###
 
     # EXR Export Tab
     exr_tab_name = "EXR Export"
@@ -503,6 +624,7 @@ group.end()
     exr_export_path.setValue(full_path_exr)
 
     button_script_open_exr = f"""
+
 import os
 import nuke
 
@@ -537,9 +659,177 @@ def createLinks(groupNode, text_nodes, mov_node, exr_node, switch):
     )  # department
 
 
-### This is where we start sending things back to Shotgrid ###
+# get the department
+def getDepartment():
+    grp = nuke.thisGroup()
+    if grp and grp.knob("departmentDropdown"):
+        return grp["departmentDropdown"].value()
+    return "Lighting"
 
-##Dailies Review
+
+### This is where we start sending things back to Shotgrid ###
+def getShot():
+    _conn = DB(DB_Config)
+    shot = _conn.get_shot_by_code(get_shot_code())
+    if shot:
+        return shot
+    else:
+        nuke.message("Invalid shot code")
+
+
+def getShotGridUser():
+    _conn = DB(DB_Config)
+    username = get_users_name()
+    if username:
+        return _conn.get_user_by_name(username)
+    else:
+        nuke.message(
+            "Username did not match any users in Shotgrid. Talk to your lead or the pipeline person."
+        )
+        raise Exception(
+            "Username did not match any users in Shotgrid. Talk to your lead or the pipeline person."
+        )
+
+
+def getUserTask():
+    """
+    Returns the Task object corresponding to the user's selection in the ShotGrid Task dropdown.
+    """
+    group = nuke.thisGroup()
+    selected_name = group["shotgrid_task"].value()
+    shot = getShot()
+    user = getShotGridUser()
+    tasks = DB(DB_Config).get_tasks(shot, user)
+    for t in tasks:
+        # Task has attributes, not a dict
+        if hasattr(t, "content") and t.content == selected_name:
+            return t
+    return None
+
+
+def getMostRecentPlaylist():
+    """
+    Look at the departmentDropdown on this group,
+    find all SG playlists whose code contains that department,
+    parse the M/D/YY date prefix, and return the most recent one.
+    """
+    group = nuke.thisGroup()
+    dept = group["sgDepartmentDropdown"].value()
+    if not dept:
+        nuke.message("Please pick a department first.")
+        return None
+
+    # Connect to ShotGrid
+    _conn = DB(DB_Config)
+    sg = _conn._sg
+
+    # Find playlists named e.g. "8/07/25 Lighting Dailies"
+    filters = [
+        ["code", "contains", dept],
+    ]
+    fields = ["code"]
+    try:
+        playlists = sg.find("Playlist", filters, fields)
+    except Exception as e:
+        nuke.message(f"ShotGrid lookup failed: {e}")
+        return None
+
+    most_recent = None
+    latest_date = None
+
+    for pl in playlists:
+        code = pl.get("code", "")
+        # split off the date portion
+        date_str = code.split(" ", 1)[0]
+        try:
+            pl_date = datetime.datetime.strptime(date_str, "%m/%d/%y").date()
+        except ValueError:
+            # skip any playlists not matching the naming pattern
+            continue
+
+        if latest_date is None or pl_date > latest_date:
+            latest_date = pl_date
+            most_recent = pl
+
+    if most_recent:
+        return most_recent
+    else:
+        nuke.message(f"No playlists found for “{dept}”.")
+        return None
+
+
+# if FX grab FX video file
+def create_new_shot_version():
+    group = nuke.thisGroup()
+    shot = getShot()
+    user = getShotGridUser()
+    playlist = getMostRecentPlaylist()
+
+    if playlist:
+        nuke.message(
+            f"Using playlist: {playlist['code']}\n"
+            "\n"
+            "Contact your lead if you need a newer playlist!"
+        )
+        playlist_id = playlist["id"]
+    else:
+        if not nuke.ask(
+            "Are you sure you want to continue? You will be creating a version that isn't attached to a dailies review."
+        ):
+            nuke.message(
+                "Please select a valid playlist to continue. If you continue to recieve this error please talk to your lead"
+            )
+
+    task = getUserTask()
+    if not task:
+        nuke.message("Please select a valid ShotGrid task.")
+        return
+
+    # task_id = task_obj.id
+    task_name = task.content
+    version_name = f"{get_users_name()}_{task_name}_{get_version_num()}"
+    if group.knob("mov_export_path"):
+        video_path = group["mov_export_path"].value()
+    else:
+        nuke.message(
+            "You haven't exported your video yet, please click exportMOV to continue."
+        )
+
+    description = (
+        group["shotgrid_description"].value()
+        if group.knob("shotgrid_description")
+        else ""
+    )
+
+    _conn = DB(DB_Config)
+    if playlist_id:
+        new_version = _conn.create_version_for_shot(
+            shot, version_name, user, task, video_path, description, playlist_id
+        )
+    else:
+        new_version = _conn.create_version_for_shot(
+            shot, version_name, user, task, video_path, description
+        )
+    try:
+        version_id = (
+            new_version["id"] if isinstance(new_version, dict) else new_version.id
+        )
+    except Exception:
+        nuke.message(
+            "Created version in ShotGrid, but could not retrieve its ID. "
+            "Please update your DB API wrapper to return the Version record."
+        )
+        return
+
+    try:
+        # result, infor = upload_auto_and_wait(_conn, version_id, video_path)
+        _conn.upload_version_movie(version_id, video_path)
+        # if result == "OK":
+        nuke.message(
+            f"ShotGrid version '{version_name}' created and movie uploaded successfully."
+        )
+    except Exception as e:
+        nuke.message(f"Version '{version_name}' created, but movie upload failed: {e}")
 
 
 ### End return to shotgrid helper functions ###
@@ -566,7 +856,7 @@ def main():
         groupNode = nuke.createNode("Group")
         groupNode["name"].setValue(final_name)
 
-        # Enter the group to build its internal node graph.
+        # Enter the group to build its internal node graph.input
         groupNode.begin()
 
         # input_node
@@ -574,6 +864,7 @@ def main():
 
         # reformat node
         reformat_node = nuke.createNode("Reformat")
+        reformat_node["format"].setValue("Bobo_aspect_ratio")
         reformat_node.setInput(0, input_node)
 
         # All text nodes
@@ -616,6 +907,7 @@ def main():
         # another mov node for demo reels
         exr_node_pos_x = exr_node.xpos()
         exr_node_pos_y = exr_node.ypos()
+        # if not FX
         demo_write_node = make_demoReel_mov_node()
         demo_write_node.setInput(0, reformat_node)
         demo_write_node.setXYpos(exr_node_pos_x + 100, exr_node_pos_y)

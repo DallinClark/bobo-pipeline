@@ -67,7 +67,9 @@ class PlayblastDialog(ButtonPair, QtWidgets.QMainWindow):
     class CUSTOM_HUDS:
         FILENAME = HudDefinition(
             "LnDfilename",
-            command=lambda: os.path.splitext(os.path.basename(str(mc.file(query=True, sceneName=True) or "")))[0],
+            command=lambda: os.path.splitext(
+                os.path.basename(str(mc.file(query=True, sceneName=True) or ""))
+            )[0],
             event="SceneSaved",
             label="File:",
             section=5,

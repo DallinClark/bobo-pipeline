@@ -544,7 +544,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                         - 1
                     )
                     relative_path = Sdf.Path("../" * walk_up_len + rig_path)
-                    if relative_path not in root_layer.subLayerPaths:
+                    if relative_path not in root_layer.subLayerPaths:  # type: ignore
                         root_layer.subLayerPaths.append(relative_path)
 
                 except Exception as e:
