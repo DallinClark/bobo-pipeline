@@ -202,7 +202,6 @@ class LayoutMaker:
         reference_file_rel = os.path.relpath(
             reference_file_abs, start=os.path.dirname(file_path)
         )
-
         stage.SetEditTarget(stage.GetRootLayer())
         reference_prim.GetPrim().GetReferences().AddReference(reference_file_rel)
         reference_prim.GetPrim().SetInstanceable(True)
