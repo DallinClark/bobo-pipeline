@@ -80,6 +80,7 @@ Changelog:
         button to the 'Extras' tab.
 
 """
+
 __author__ = "Eric Pavey"
 __version__ = "1.3.0"
 __source__ = "https://github.com/AKEric/skinner"

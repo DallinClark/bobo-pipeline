@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+# ruff: noqa
 r"""
 Name : skinner.utils.py
 Author : Eric Pavey - warpcat@gmail.com - www.akeric.com
@@ -27,7 +29,8 @@ Updates:
     2024-06-10 : v1.2.0 : Updating setBindPose : "it stopped working", and now
         needs a 'g' (global) arg set True.
 """
-from __future__ import annotations # for type hinting
+
+from __future__ import annotations  # for type hinting
 import re
 import os
 import sys
@@ -46,13 +49,15 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
 
-#---------------------------
+# ---------------------------
 # Decorators:
+
 
 def waitCursor(f):
     r"""
     A 'waitCursor' function decorator.
     """
+
     def wrapper(*args, **kwargs):
         mc.waitCursor(state=True)
         try:
@@ -60,17 +65,20 @@ def waitCursor(f):
         finally:
             mc.waitCursor(state=False)
         return result
+
     return wrapper
 
-#---------------------------
+
+# ---------------------------
 # Context Managers:
+
 
 class ProgressWindow(object):
     r"""
     A context manager wrappering Maya's progressWindow functionality.
     """
 
-    def __init__(self, totalSteps:int, enable=True, title="Applying skinning..."):
+    def __init__(self, totalSteps: int, enable=True, title="Applying skinning..."):
         r"""
         Parameters:
         totalSteps : int : The number of things we're iterating over.
@@ -89,13 +97,17 @@ class ProgressWindow(object):
         Enter the context manager, setup the progress window:
         """
         if self.enable:
-            mc.progressWindow(title=self.title,
-                              progress=0, minValue=0, maxValue=100,
-                              status='Not started yet...',
-                              isInterruptable=True )
+            mc.progressWindow(
+                title=self.title,
+                progress=0,
+                minValue=0,
+                maxValue=100,
+                status="Not started yet...",
+                isInterruptable=True,
+            )
         return self
 
-    def update(self, info:str) -> bool:
+    def update(self, info: str) -> bool:
         r"""
         Call this every loop once the context has been entered.  It detects for
         progress window canceling, and updates the current progress.
@@ -107,12 +119,16 @@ class ProgressWindow(object):
         """
         ret = True
         if self.enable:
-            if mc.progressWindow( query=True, isCancelled=True ):
+            if mc.progressWindow(query=True, isCancelled=True):
                 ret = False
             else:
                 self.currentIndex += 1
                 self.progress += self.progressSteps
-                mc.progressWindow(edit=True, progress=int(self.progress), status='%s/%s : %s'%(self.currentIndex, self.totalSteps, info))
+                mc.progressWindow(
+                    edit=True,
+                    progress=int(self.progress),
+                    status="%s/%s : %s" % (self.currentIndex, self.totalSteps, info),
+                )
         return ret
 
     def __exit__(self, exc_type, exc_value, tb) -> bool:
@@ -132,8 +148,10 @@ class ProgressWindow(object):
         # Raise the last exception:
         return False
 
-#-----------------
+
+# -----------------
 # General utils
+
 
 def confirmDependencies():
     r"""
@@ -184,11 +202,14 @@ print(sp.__file__)
         errors.append(f"Not running in Python 3+, current version is: {sys.version}")
 
     if errors:
-        print("----------------------------------------------------------------------------")
+        print(
+            "----------------------------------------------------------------------------"
+        )
         print("Skinner is missing required depedencies:")
         for err in errors:
             print(f"    {err}")
         print(missingInfo)
+
 
 def loadPlugin():
     """
@@ -200,9 +221,10 @@ def loadPlugin():
         pluginPath = os.path.join(pluginDir, pluginName)
         mc.loadPlugin(pluginPath, quiet=True)
         mc.pluginInfo(pluginName, edit=True, autoload=True)
-        print("Auto-loading Skinner scripted plugin: %s"%pluginName)
+        print("Auto-loading Skinner scripted plugin: %s" % pluginName)
 
-def mayaArrayToNp(mayaArr:list) -> np.ndarray:
+
+def mayaArrayToNp(mayaArr: list) -> np.ndarray:
     r"""
     Currently not used.  But I wrote it, so it's staying.
 
@@ -214,7 +236,8 @@ def mayaArrayToNp(mayaArr:list) -> np.ndarray:
     """
     return np.append([mayaArr[0]], mayaArr[1:], axis=0)
 
-def normalizeToOne(vals:list) -> list:
+
+def normalizeToOne(vals: list) -> list:
     r"""
     Return a list with the same number as the arg, where all values add to 1.0.
 
@@ -225,7 +248,7 @@ def normalizeToOne(vals:list) -> list:
     if sum(vals) == 1.0:
         return vals
 
-    normed = [float(val)/sum(vals) for val in vals]
+    normed = [float(val) / sum(vals) for val in vals]
     normSum = sum(normed)
     if normSum != 1.0:
         minIndex = normed.index(min(normed))
@@ -243,7 +266,8 @@ def normalizeToOne(vals:list) -> list:
 
     return normed
 
-def getIconPath() -> (str,None):
+
+def getIconPath() -> (str, None):
     """
     Return the path to the icon for this tool as a string if it's found, otherwise
     return None.  It is called icon.png, and lives next to this module.
@@ -254,7 +278,10 @@ def getIconPath() -> (str,None):
     else:
         return None
 
-def validateInteractiveNormalization(skinClusters:list, promptOnNonInteractiveNormalization=True):
+
+def validateInteractiveNormalization(
+    skinClusters: list, promptOnNonInteractiveNormalization=True
+):
     """
     Used in generateSkinChunks and setWeights : Skinner only works with skinCluster
     nodes with their normalizeWeights attrs set to 1 : 'interactive'.  If they're
@@ -270,38 +297,53 @@ def validateInteractiveNormalization(skinClusters:list, promptOnNonInteractiveNo
     """
     nonInteractive = []
     for skinCluster in skinClusters:
-        if mc.getAttr('%s.normalizeWeights'%skinCluster) != 1: # 0 = none, 1 = interactive, 2 = post
+        if (
+            mc.getAttr("%s.normalizeWeights" % skinCluster) != 1
+        ):  # 0 = none, 1 = interactive, 2 = post
             nonInteractive.append(skinCluster)
 
     if nonInteractive:
-        print("Skinner: skinCluster nodes with their normalizeWeights attr set to 'non-interactive' values:")
+        print(
+            "Skinner: skinCluster nodes with their normalizeWeights attr set to 'non-interactive' values:"
+        )
         for ni in nonInteractive:
             print("    ", ni)
         if promptOnNonInteractiveNormalization:
-            result = mc.confirmDialog(title="Warning",
-                                      message=f"Found {len(nonInteractive)} skinCluster node(s) that don't have their 'normalizeWeights' set to 'interactive'.\n\nSkinner only supports normalized weights:\n\nDo you want skinner to auto convert your skinClusters to 'interactive' normalization?  If not, the tool will exit.\n\nIf you don't understand what this means, it's generally safe to 'Convert'.",
-                                      button=("Convert", "Exit"))
+            result = mc.confirmDialog(
+                title="Warning",
+                message=f"Found {len(nonInteractive)} skinCluster node(s) that don't have their 'normalizeWeights' set to 'interactive'.\n\nSkinner only supports normalized weights:\n\nDo you want skinner to auto convert your skinClusters to 'interactive' normalization?  If not, the tool will exit.\n\nIf you don't understand what this means, it's generally safe to 'Convert'.",
+                button=("Convert", "Exit"),
+            )
             if result == "Exit":
-                raise Exception("User exited tool based on incompatible skinCluster.normalizeWeight values.")
+                raise Exception(
+                    "User exited tool based on incompatible skinCluster.normalizeWeight values."
+                )
             mc.undoInfo(openChunk=True, chunkName="validateInteractiveNormalization")
             try:
                 for skinCluster in nonInteractive:
-                    mc.setAttr(f"{skinCluster}.normalizeWeights", 1) # 0 = none, 1 = interactive, 2 = post
+                    mc.setAttr(
+                        f"{skinCluster}.normalizeWeights", 1
+                    )  # 0 = none, 1 = interactive, 2 = post
                     try:
                         # There ahve been times  Maya has errored here, simply saying
                         # "No objects found.", and nothing else.  But skipping this
                         # if it fails seems to be ok,
-                        mc.skinPercent(skinCluster, normalize=True) # normalize!
+                        mc.skinPercent(skinCluster, normalize=True)  # normalize!
                     except:
                         pass
                     print("    NORM2 END")
-                print("Skinner: updated the above skinCluster nodes to use 'interactive' weight normalization.")
+                print(
+                    "Skinner: updated the above skinCluster nodes to use 'interactive' weight normalization."
+                )
             finally:
                 mc.undoInfo(closeChunk=True)
         else:
-            raise Exception(f"Found {len(nonInteractive)} skinCluster nodes that don't have their 'normalizeWeights' set to 'interactive' (1) : Skinner only supports normalized weights: Please set that normalization type, and then normalize the weights: {nonInteractive}")
+            raise Exception(
+                f"Found {len(nonInteractive)} skinCluster nodes that don't have their 'normalizeWeights' set to 'interactive' (1) : Skinner only supports normalized weights: Please set that normalization type, and then normalize the weights: {nonInteractive}"
+            )
 
-def getPreDeformedShape(node:str) -> str:
+
+def getPreDeformedShape(node: str) -> str:
     """
     Introduced 1.1.0 : For the provided node, return the pre-deformed (usually an
     intermediateObject, but not necessarily, depending on the state of that attr)
@@ -322,14 +364,18 @@ def getPreDeformedShape(node:str) -> str:
     if mc.objectType(node) == "mesh":
         shape = mc.ls(node, long=True)
         if len(shape) > 1:
-            raise Exception(f"Based on '{shape}'Found multiple nodes in the scene with the provided name: Please provide a full path: {shape}")
+            raise Exception(
+                f"Based on '{shape}'Found multiple nodes in the scene with the provided name: Please provide a full path: {shape}"
+            )
         shape = shape[0]
     else:
         shapes = mc.listRelatives(node, shapes=True, noIntermediate=True, fullPath=True)
         assert shapes, f"The proided node has no (mesh) shape node: '{node}'"
-        meshShapes = mc.ls(shapes, type='mesh', long=True)
+        meshShapes = mc.ls(shapes, type="mesh", long=True)
         assert meshShapes, f"The proided node has no mesh shape node: '{node}'"
-        assert len(meshShapes) == 1, f"The provided node '{node}' has multiple child mesh shape nodes:  Skinner doesn't (yet) support this: {meshShapes} "
+        assert (
+            len(meshShapes) == 1
+        ), f"The provided node '{node}' has multiple child mesh shape nodes:  Skinner doesn't (yet) support this: {meshShapes} "
         shape = meshShapes[0]
 
     history = mc.listHistory(shape, allConnections=True)
@@ -343,10 +389,10 @@ def getPreDeformedShape(node:str) -> str:
 
     # All mesh shapes, including the one passed in. The order appears to be a bit
     # random, which is unforunate.
-    historyMesh = mc.ls(history, type='mesh', long=True)
+    historyMesh = mc.ls(history, type="mesh", long=True)
     if len(historyMesh) == 1:
         if vertCount == mc.polyEvaluate(historyMesh[0], vertex=True):
-        # Doubt this would ever happen, but just in case:
+            # Doubt this would ever happen, but just in case:
             return historyMesh[0]
         else:
             return shape
@@ -372,10 +418,12 @@ def getPreDeformedShape(node:str) -> str:
     else:
         return shape
 
-#----------
+
+# ----------
 # API getters
 
-def getMObject(stringName:str) -> om2.MObject:
+
+def getMObject(stringName: str) -> om2.MObject:
     r"""
     Return an MOBject instance for the provided string node name.
     """
@@ -383,7 +431,8 @@ def getMObject(stringName:str) -> om2.MObject:
     selList.add(stringName)
     return selList.getDependNode(0)
 
-def getMDagPath(stringName:str) -> om2.MDagPath:
+
+def getMDagPath(stringName: str) -> om2.MDagPath:
     r"""
     Return an MDagPath for the provided string name.
     """
@@ -391,7 +440,8 @@ def getMDagPath(stringName:str) -> om2.MDagPath:
     selList.add(stringName)
     return selList.getDagPath(0)
 
-def getMObjectForVertIndices(verts:list) -> om2.MObject:
+
+def getMObjectForVertIndices(verts: list) -> om2.MObject:
     r"""
     Get an MObject collecting the ids for the passed in verts. Note, this MObject
     stores vert indices, it really has nothing to do with the actual mesh/verts
@@ -413,17 +463,18 @@ def getMObjectForVertIndices(verts:list) -> om2.MObject:
 
     Return : MObject : The representation of these components.
     """
-    if not isinstance(verts, (list,tuple)):
+    if not isinstance(verts, (list, tuple)):
         verts = [verts]
-    indices = [int(re.findall(r'\d+', vert)[-1]) for vert in verts]
+    indices = [int(re.findall(r"\d+", vert)[-1]) for vert in verts]
     # https://help.autodesk.com/view/MAYAUL/2022/ENU/?guid=Maya_SDK_py_ref_class_open_maya_1_1_m_fn_single_indexed_component_html
-    singleIdComp = om2.MFnSingleIndexedComponent() # type: om2.MFnSingleIndexedComponent
+    singleIdComp = om2.MFnSingleIndexedComponent()  # type: om2.MFnSingleIndexedComponent
     # https://help.autodesk.com/view/MAYAUL/2022/ENU/?guid=Maya_SDK_py_ref_class_open_maya_1_1_m_object_html
-    vertexComp = singleIdComp.create(om2.MFn.kMeshVertComponent) # type: om2.MObject
+    vertexComp = singleIdComp.create(om2.MFn.kMeshVertComponent)  # type: om2.MObject
     singleIdComp.addElements(indices)
     return vertexComp
 
-def getMFnSkinCluster(shape:(str,om2.MDagPath)):
+
+def getMFnSkinCluster(shape: (str, om2.MDagPath)):
     r"""
     Get the skin cluster for the given shape node.
 
@@ -438,9 +489,11 @@ def getMFnSkinCluster(shape:(str,om2.MDagPath)):
         mDagPath = shape
     mDagPath = getMDagPath(shape)
     ret = None
-    mItDependencyGraph = om2.MItDependencyGraph(mDagPath.node(),
-                                                om2.MItDependencyGraph.kDownstream,
-                                                om2.MItDependencyGraph.kPlugLevel)
+    mItDependencyGraph = om2.MItDependencyGraph(
+        mDagPath.node(),
+        om2.MItDependencyGraph.kDownstream,
+        om2.MItDependencyGraph.kPlugLevel,
+    )
     while not mItDependencyGraph.isDone():
         mObject = mItDependencyGraph.currentNode()
         if mObject.hasFn(om2.MFn.kSkinClusterFilter):
@@ -449,7 +502,8 @@ def getMFnSkinCluster(shape:(str,om2.MDagPath)):
         mItDependencyGraph.next()
     return ret
 
-def getInfluenceDagPaths(meshName:str) -> list:
+
+def getInfluenceDagPaths(meshName: str) -> list:
     r"""
     Return a list of MDagPath instances for each influence on the mesh.
     """
@@ -457,10 +511,12 @@ def getInfluenceDagPaths(meshName:str) -> list:
     mFnSkinCluster = getMFnSkinCluster(shapeDatPath)
     return mFnSkinCluster.influenceObjects()
 
-#----------------
+
+# ----------------
 # Skin related actions
 
-def unlockInfluences( skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster) ):
+
+def unlockInfluences(skinCluster: (str, om2.MDagPath, oma2.MFnSkinCluster)):
     r"""
     Unlock/unhold all the influences for the provided skinCluster.
 
@@ -473,8 +529,13 @@ def unlockInfluences( skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster) ):
         elif isinstance(skinCluster, oma2.MFnSkinCluster):
             skinCluster = skinCluster.name()
         else:
-            raise Exception("The provided type to 'skinCluster' is not supported: %s"%(type(skinCluster)))
-    influences = mc.ls(mc.skinCluster(skinCluster, query=True, influence=True), type='joint', long=True)
+            raise Exception(
+                "The provided type to 'skinCluster' is not supported: %s"
+                % (type(skinCluster))
+            )
+    influences = mc.ls(
+        mc.skinCluster(skinCluster, query=True, influence=True), type="joint", long=True
+    )
     for infJ in influences:
         try:
             mc.setAttr(f"{infJ}.lockInfluenceWeights", 0)
@@ -482,8 +543,11 @@ def unlockInfluences( skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster) ):
             pass
 
 
-def addInfluences(skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster),
-                  influences:list, setToBindPose=True):
+def addInfluences(
+    skinCluster: (str, om2.MDagPath, oma2.MFnSkinCluster),
+    influences: list,
+    setToBindPose=True,
+):
     r"""
     Currently not sure how to add influences to a skinCluster via the API, so,
     via the commands.  If any influences need to be added, the skinCluster will
@@ -500,7 +564,10 @@ def addInfluences(skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster),
         elif isinstance(skinCluster, oma2.MFnSkinCluster):
             skinCluster = skinCluster.name()
         else:
-            raise Exception("The provided type to 'skinCluster' is not supported: %s"%(type(skinCluster)))
+            raise Exception(
+                "The provided type to 'skinCluster' is not supported: %s"
+                % (type(skinCluster))
+            )
     infs = []
     for inf in influences:
         if isinstance(inf, (str, bytes)):
@@ -508,9 +575,12 @@ def addInfluences(skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster),
         elif isinstance(inf, om2.MDagPath):
             infs.append(inf.fullPathName())
         else:
-            raise Exception("The items in influence must be string or MDagPath, instead got '%s'"%(type(inf)))
+            raise Exception(
+                "The items in influence must be string or MDagPath, instead got '%s'"
+                % (type(inf))
+            )
 
-    if not isinstance(influences, (list,tuple)):
+    if not isinstance(influences, (list, tuple)):
         influences = [influences]
 
     unlockInfluences(skinCluster)
@@ -518,7 +588,8 @@ def addInfluences(skinCluster:(str,om2.MDagPath,oma2.MFnSkinCluster),
         setBindPose(skinCluster)
     mc.skinCluster(skinCluster, edit=True, addInfluence=infs, weight=0.0)
 
-def setBindPose(skinCluster:str) -> (bool,None):
+
+def setBindPose(skinCluster: str) -> (bool, None):
     r"""
     Set the provided skinCluster to its bind pose.  If no dagPose is connected to
     the provided skinCluster, an error will be printed, and nothing done.
@@ -532,9 +603,12 @@ def setBindPose(skinCluster:str) -> (bool,None):
         to the bind pose. False if not all the nodes could be set to the bind pose.
         None if there was no dagPose node to set.
     """
-    dagPose = mc.listConnections("%s.bindPose"%skinCluster)
+    dagPose = mc.listConnections("%s.bindPose" % skinCluster)
     if not dagPose:
-        om2.MGlobal.displayError("skinner.setBindPose : The provided skinCluster '%s' has no connected dagPose node, unable to set to the bind pose."%skinCluster)
+        om2.MGlobal.displayError(
+            "skinner.setBindPose : The provided skinCluster '%s' has no connected dagPose node, unable to set to the bind pose."
+            % skinCluster
+        )
         return None
 
     notAtPose = mc.dagPose(dagPose[0], atPose=True, query=True, g=True)
@@ -543,12 +617,16 @@ def setBindPose(skinCluster:str) -> (bool,None):
             mc.dagPose(dagPose[0], restore=True, g=True)
         except RuntimeError as e:
             print(e)
-            om2.MGlobal.displayError("skinner.bindpose : Tried to set the skinCluster '%s' to it's bind pose, as defined by '%s', but failed, see above."%(skinCluster,dagPose[0]))
+            om2.MGlobal.displayError(
+                "skinner.bindpose : Tried to set the skinCluster '%s' to it's bind pose, as defined by '%s', but failed, see above."
+                % (skinCluster, dagPose[0])
+            )
             return False
 
     return True
 
-def getAtBindPose(skinClusters:list) -> bool:
+
+def getAtBindPose(skinClusters: list) -> bool:
     """
     Get if the provided skinCluster node(s) are at their bindpose.  It does this
     by querying the connected dagPose node.  If there is no dagPose node, it will
@@ -560,14 +638,16 @@ def getAtBindPose(skinClusters:list) -> bool:
     Return : bool : True if all skinClustesr are at their bindPose, False if any
         one of them isn't.
     """
-    if not isinstance(skinClusters, (list,tuple)):
+    if not isinstance(skinClusters, (list, tuple)):
         skinClusters = [skinClusters]
     atPose = True
 
     for skinCluster in skinClusters:
         if not atPose:
             break
-        dagPoses = mc.listConnections(skinCluster , source=True, destination=False, type="dagPose")
+        dagPoses = mc.listConnections(
+            skinCluster, source=True, destination=False, type="dagPose"
+        )
         if not dagPoses:
             continue
         poses = set(dagPoses)
@@ -578,7 +658,12 @@ def getAtBindPose(skinClusters:list) -> bool:
                 break
     return atPose
 
-def transposeWeights(skinChunkWeights:list[float], skinChunkInfNames:list[str], skinClusterInfNames:list[str] ):
+
+def transposeWeights(
+    skinChunkWeights: list[float],
+    skinChunkInfNames: list[str],
+    skinClusterInfNames: list[str],
+):
     """
     For the passed in list of weight values from a skinChunk, transpose (reorder
     them) so that they match the same order as the influences for a given skinCluster.
@@ -594,10 +679,16 @@ def transposeWeights(skinChunkWeights:list[float], skinChunkInfNames:list[str], 
     """
     # Mostly wrote to help with debugging while authroring it.  Technically none
     # of these should be hit based on calls from the main code.
-    assert len(skinChunkWeights[0]) == len(skinChunkInfNames), f"The list of weighs in skinChunkWeights ({len(skinChunkWeights[0])}) is a different length than the number of names in skinChunkInfNames ({len(skinChunkInfNames)})"
-    missingSkinChunk = [name for name in skinChunkInfNames if name not in skinClusterInfNames]
+    assert (
+        len(skinChunkWeights[0]) == len(skinChunkInfNames)
+    ), f"The list of weighs in skinChunkWeights ({len(skinChunkWeights[0])}) is a different length than the number of names in skinChunkInfNames ({len(skinChunkInfNames)})"
+    missingSkinChunk = [
+        name for name in skinChunkInfNames if name not in skinClusterInfNames
+    ]
     assert not missingSkinChunk, f"Found {len(missingSkinChunk)} influences in skinChunkInfNames that aren't in skinClusterInfNames: {missingSkinChunk}"
-    missingSkinCluster = [name for name in skinChunkInfNames if name not in skinChunkInfNames]
+    missingSkinCluster = [
+        name for name in skinChunkInfNames if name not in skinChunkInfNames
+    ]
     assert not missingSkinCluster, f"Found {len(missingSkinCluster)} influences in missingSkinCluster that aren't in skinChunkInfNames: {missingSkinCluster}"
 
     ret = []
@@ -612,10 +703,12 @@ def transposeWeights(skinChunkWeights:list[float], skinChunkInfNames:list[str], 
         ret.append(transposed)
     return ret
 
-#-------------------
+
+# -------------------
 # Skin weight related getters
 
-def getWeights(items:list) -> np.ndarray:
+
+def getWeights(items: list) -> np.ndarray:
     r"""
     Get the influence weight data for the provided items.
 
@@ -630,22 +723,28 @@ def getWeights(items:list) -> np.ndarray:
 
     """
     # Convert from strings to api:
-    verts = mc.ls(mc.polyListComponentConversion(items, toVertex=True), flatten=True, long=True)
+    verts = mc.ls(
+        mc.polyListComponentConversion(items, toVertex=True), flatten=True, long=True
+    )
     shapes = list(set([vert.split(".")[0] for vert in verts]))
-    assert len(shapes) == 1, "getWeights : All 'items' must be part of the same mesh.  Instead, was provided items on these mesh: %s"%shapes
+    assert len(shapes) == 1, (
+        "getWeights : All 'items' must be part of the same mesh.  Instead, was provided items on these mesh: %s"
+        % shapes
+    )
     meshShape = getMeshShape(verts[0].split(".")[0])
     meshDagPath = getMDagPath(meshShape)
     vertexComp = getMObjectForVertIndices(verts)
 
     # Now get the weight data:
     mFnSkinCluster = getMFnSkinCluster(meshDagPath)
-    assert mFnSkinCluster, "%s isn't skinned"%meshShape
+    assert mFnSkinCluster, "%s isn't skinned" % meshShape
     # https://help.autodesk.com/view/MAYAUL/2016/ENU/?guid=__py_ref_class_open_maya_anim_1_1_m_fn_skin_cluster_html
     weights, numInfs = mFnSkinCluster.getWeights(meshDagPath, vertexComp)
-    chunks = [list(weights[i:i+numInfs]) for i in range(0, len(weights), numInfs)]
+    chunks = [list(weights[i : i + numInfs]) for i in range(0, len(weights), numInfs)]
     return np.array(chunks)
 
-def getBlendWeights(items:list):
+
+def getBlendWeights(items: list):
     r"""
     Get the 'blend weight' data for the provided items.  It's presumed that this
     skinCluster is set to 'Weight Blended' mode, but even if it's not, this function
@@ -660,9 +759,14 @@ def getBlendWeights(items:list):
     Return : ndarray[x] : The list of blendWeight values per vert.
     """
     # Convert from strings to api:
-    verts = mc.ls(mc.polyListComponentConversion(items, toVertex=True), flatten=True, long=True)
+    verts = mc.ls(
+        mc.polyListComponentConversion(items, toVertex=True), flatten=True, long=True
+    )
     shapes = list(set([vert.split(".")[0] for vert in verts]))
-    assert len(shapes) == 1, "getBlendWeights: All 'items' must be part of the same mesh.  Instead, was provided items on these mesh: %s"%shapes
+    assert len(shapes) == 1, (
+        "getBlendWeights: All 'items' must be part of the same mesh.  Instead, was provided items on these mesh: %s"
+        % shapes
+    )
     meshShape = getMeshShape(verts[0].split(".")[0])
     meshDagPath = getMDagPath(meshShape)
     vertexComp = getMObjectForVertIndices(verts)
@@ -670,14 +774,16 @@ def getBlendWeights(items:list):
     # Now get the weight data:
     # https://help.autodesk.com/view/MAYAUL/2016/ENU/?guid=__py_ref_class_open_maya_anim_1_1_m_fn_skin_cluster_html
     mFnSkinCluster = getMFnSkinCluster(meshDagPath)
-    assert mFnSkinCluster, "%s isn't skinned"%meshShape
+    assert mFnSkinCluster, "%s isn't skinned" % meshShape
     blendWeights = mFnSkinCluster.getBlendWeights(meshDagPath, vertexComp)
     return np.array(blendWeights)
 
-#-------------------
+
+# -------------------
 # Mesh related getters
 
-def getMeshShape(node:str) -> str:
+
+def getMeshShape(node: str) -> str:
     r"""
     Return the mesh shape string node name for the provided transform-level node
     name.  If a shape is passed in, it is passed out.  If no mesh shape can be
@@ -687,13 +793,18 @@ def getMeshShape(node:str) -> str:
     if mc.objectType(node) == "mesh":
         ret = node
     else:
-        childShapes = mc.listRelatives(node, shapes=True, type='mesh', fullPath=True)
-        childMesh = [mesh for mesh in childShapes if not mc.getAttr('%s.intermediateObject'%mesh)]
+        childShapes = mc.listRelatives(node, shapes=True, type="mesh", fullPath=True)
+        childMesh = [
+            mesh
+            for mesh in childShapes
+            if not mc.getAttr("%s.intermediateObject" % mesh)
+        ]
         if childMesh:
             ret = childMesh[0]
         else:
-            raise Exception("Unable to find a mesh shape node for: %s"%(node))
+            raise Exception("Unable to find a mesh shape node for: %s" % (node))
     return ret
+
 
 def getChildMeshShapes(mesh=None) -> list:
     r"""
@@ -709,17 +820,28 @@ def getChildMeshShapes(mesh=None) -> list:
     """
     if not mesh:
         # Get the mesh shapes of the current selection:
-        mesh = mc.listRelatives(mc.ls(selection=True, long=True), allDescendents=True,
-                                fullPath=True, type="mesh", noIntermediate=True)
+        mesh = mc.listRelatives(
+            mc.ls(selection=True, long=True),
+            allDescendents=True,
+            fullPath=True,
+            type="mesh",
+            noIntermediate=True,
+        )
     else:
         # Find all the child mesh shapes of what was passed in.
-        if not isinstance(mesh, (list,tuple)):
+        if not isinstance(mesh, (list, tuple)):
             mesh = [mesh]
         allMesh = []
         for m in mesh:
             if mc.objectType(m) == "transform":
-                childMesh = mc.listRelatives(m, allDescendents=True, fullPath=True,
-                                             type="mesh", shapes=True, noIntermediate=True)
+                childMesh = mc.listRelatives(
+                    m,
+                    allDescendents=True,
+                    fullPath=True,
+                    type="mesh",
+                    shapes=True,
+                    noIntermediate=True,
+                )
                 allMesh.extend(childMesh)
             elif mc.objectType(m) == "mesh":
                 allMesh.append(m)
@@ -727,11 +849,13 @@ def getChildMeshShapes(mesh=None) -> list:
 
     # noItermediate isn't doing it's job so...
     if mesh:
-        mesh = [m for m in mesh if not mc.getAttr('%s.intermediateObject'%m)]
+        mesh = [m for m in mesh if not mc.getAttr("%s.intermediateObject" % m)]
     return mesh
 
-#-------------------
+
+# -------------------
 # Vertex related getters
+
 
 def getVertNormals(items) -> np.ndarray:
     r"""
@@ -747,11 +871,20 @@ def getVertNormals(items) -> np.ndarray:
     """
     if not isinstance(items, (list, tuple)):
         items = [items]
-    vertCheck = [item for item in mc.ls(items, flatten=True, long=True) if '.vtx[' in item]
-    convertedVerts =  mc.ls(mc.polyListComponentConversion([item for item in items if '.vtx[' not in item]), flatten=True, long=True)
+    vertCheck = [
+        item for item in mc.ls(items, flatten=True, long=True) if ".vtx[" in item
+    ]
+    convertedVerts = mc.ls(
+        mc.polyListComponentConversion([item for item in items if ".vtx[" not in item]),
+        flatten=True,
+        long=True,
+    )
     verts = vertCheck + convertedVerts
     shapes = list(set([vert.split(".")[0] for vert in verts]))
-    assert len(shapes) == 1, "getVertNormals : All 'items' must be part of the same mesh.  Instead, was provided items on these mesh: %s"%shapes
+    assert len(shapes) == 1, (
+        "getVertNormals : All 'items' must be part of the same mesh.  Instead, was provided items on these mesh: %s"
+        % shapes
+    )
     meshShape = getMeshShape(verts[0].split(".")[0])
     meshDagPath = getMDagPath(meshShape)
     vertexComp = getMObjectForVertIndices(verts)
@@ -759,10 +892,11 @@ def getVertNormals(items) -> np.ndarray:
     iterVerts = om2.MItMeshVertex(meshDagPath, vertexComp)
     normals = []
     while not iterVerts.isDone():
-        normal = iterVerts.getNormal(om2.MSpace.kWorld) # MVector
+        normal = iterVerts.getNormal(om2.MSpace.kWorld)  # MVector
         normals.append(normal)
         iterVerts.next()
     return np.array(normals)
+
 
 def getMeshVertIds(items=None) -> dict:
     r"""
@@ -790,28 +924,36 @@ def getMeshVertIds(items=None) -> dict:
                 items.append(item)
             else:
                 if mc.objectType(item) == "joint":
-                    outSkinClusters = mc.listConnections(item, source=False, destination=True, type='skinCluster')
+                    outSkinClusters = mc.listConnections(
+                        item, source=False, destination=True, type="skinCluster"
+                    )
                     # Note, a joint can be connected to a dagPose node, but not
                     # a skinCluster.   We only care about the ones connected to
                     # skinClusters:
                     if outSkinClusters:
                         outSkinClusters = list(set(outSkinClusters))
                         for skinCluster in outSkinClusters:
-                            mesh = mc.skinCluster(skinCluster, query=True, geometry=True)
+                            mesh = mc.skinCluster(
+                                skinCluster, query=True, geometry=True
+                            )
                             if mesh:
                                 for m in mesh:
                                     if m not in items:
                                         items.append(m)
 
                 elif mc.objectType(item) == "transform":
-                    children = mc.listRelatives(item, allDescendents=True, fullPath=True) # noIntermediate=True, type='mesh', don't play well together.
-                    childMesh = mc.ls(children, type='mesh', noIntermediate=True, long=True)
+                    children = mc.listRelatives(
+                        item, allDescendents=True, fullPath=True
+                    )  # noIntermediate=True, type='mesh', don't play well together.
+                    childMesh = mc.ls(
+                        children, type="mesh", noIntermediate=True, long=True
+                    )
                     if childMesh:
                         for cm in childMesh:
                             if cm not in items:
                                 items.append(cm)
     else:
-        if not isinstance(items, (list,tuple)):
+        if not isinstance(items, (list, tuple)):
             items = [items]
         items = mc.ls(items, flatten=True, long=True)
     assert items, "No mesh/verts are provided."
@@ -819,7 +961,6 @@ def getMeshVertIds(items=None) -> dict:
     nonItemsRet = {}
 
     for item in items:
-
         if ".vtx[" in item:
             # vertex component
             vertId = int(re.findall("\d+", item)[-1])
@@ -829,9 +970,14 @@ def getMeshVertIds(items=None) -> dict:
             if mc.objectType(itemName) == "mesh":
                 meshShape = itemName
             else:
-                shapes = mc.listRelatives(itemName, fullPath=True,
-                                          type="mesh", shapes=True, noIntermediate=True)
-                if shapes: # this should alway be a thing
+                shapes = mc.listRelatives(
+                    itemName,
+                    fullPath=True,
+                    type="mesh",
+                    shapes=True,
+                    noIntermediate=True,
+                )
+                if shapes:  # this should alway be a thing
                     meshShape = shapes[0]
 
             if meshShape in itemsRet:
@@ -847,8 +993,14 @@ def getMeshVertIds(items=None) -> dict:
 
             else:
                 # Must be transform, find all child mesh, and add all their verts.
-                childMesh = mc.listRelatives(item, allDescendents=True, fullPath=True,
-                                             type="mesh", shapes=True, noIntermediate=True)
+                childMesh = mc.listRelatives(
+                    item,
+                    allDescendents=True,
+                    fullPath=True,
+                    type="mesh",
+                    shapes=True,
+                    noIntermediate=True,
+                )
                 if childMesh:
                     for cm in childMesh:
                         itemsRet[cm] = list(range(mc.polyEvaluate(cm, vertex=True)))
@@ -859,14 +1011,15 @@ def getMeshVertIds(items=None) -> dict:
 
     return itemsRet
 
-def getConnectedVertIDs(verts:list) -> list:
+
+def getConnectedVertIDs(verts: list) -> list:
     r"""
     Return a list of all connected vert ids based on the list of passed in verts.
     All verts are presumed to be on the same mesh.
     """
     if not isinstance(verts, (list, tuple)):
         verts = [verts]
-    connectedVertIds = [] # np.array
+    connectedVertIds = []  # np.array
 
     selList = om2.MSelectionList()
     verts = mc.ls(verts, flatten=True)
@@ -877,7 +1030,7 @@ def getConnectedVertIDs(verts:list) -> list:
     while not iterSelList.isDone():
         nodeDagPath, componentsObject = iterSelList.getComponent()
         if not componentsObject.isNull():
-            iterGeo = om2.MItMeshVertex  (nodeDagPath, componentsObject)
+            iterGeo = om2.MItMeshVertex(nodeDagPath, componentsObject)
             while not iterGeo.isDone():
                 connectedIds = iterGeo.getConnectedVertices()
                 connectedVertIds.extend(connectedIds)
@@ -886,7 +1039,8 @@ def getConnectedVertIDs(verts:list) -> list:
 
     return sorted(list(set(connectedVertIds)))
 
-def getVertNeighborSamples(meshShape:str, neighborSamples:int) -> dict:
+
+def getVertNeighborSamples(meshShape: str, neighborSamples: int) -> dict:
     r"""
     Find all the connected neighbor verts for the provided mesh, based on the
     number of sample points.
@@ -900,9 +1054,9 @@ def getVertNeighborSamples(meshShape:str, neighborSamples:int) -> dict:
     """
     vertNeighbors = {}
     totalMeshVerts = mc.polyEvaluate(meshShape, vertex=True)
-    step = int(totalMeshVerts/neighborSamples)
+    step = int(totalMeshVerts / neighborSamples)
     if step == 0:
-        step = totalMeshVerts-1
+        step = totalMeshVerts - 1
     for i in range(0, totalMeshVerts, step):
-        vertNeighbors[i] = getConnectedVertIDs('%s.vtx[%s]'%(meshShape, i))
+        vertNeighbors[i] = getConnectedVertIDs("%s.vtx[%s]" % (meshShape, i))
     return vertNeighbors

@@ -96,5 +96,3 @@ class ReferenceAndMatchRig:
             message=f"Rig referenced and matched as {new_ns}",
             button=["OK"],
         )
-
-
