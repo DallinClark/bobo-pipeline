@@ -382,7 +382,9 @@ def split_preroll(
     return stiched_layer
 
 
-def bind_materials_new_variant(stage: Usd.Stage, mat_path: Sdf.Path, new_path: Sdf.Path) -> None:
+def bind_materials_new_variant(
+    stage: Usd.Stage, mat_path: Sdf.Path, new_path: Sdf.Path
+) -> None:
     # Get the material prim and resolve the bound material
     mat_prim = stage.GetPrimAtPath(mat_path)
     if not mat_prim:
@@ -397,14 +399,12 @@ def bind_materials_new_variant(stage: Usd.Stage, mat_path: Sdf.Path, new_path: S
     if not new_prim:
         raise RuntimeError(f"Target prim {new_path} does not exist.")
 
-
     # Bind the material to the new prim
     new_api = UsdShade.MaterialBindingAPI.Apply(new_prim)
     new_api.Bind(bound_material)
 
     stage.GetRootLayer().Save()
 
-    
 
 def add_variant_to_model(asset: Asset, variant: str) -> None:
     # Construct the full path to geo.usd
@@ -431,7 +431,7 @@ def add_variant_to_model(asset: Asset, variant: str) -> None:
 
         # Set the inherits to the new path
         inherits = new_prim.GetInherits()
-        inherits.ClearInherits()            # remove old ones
+        inherits.ClearInherits()  # remove old ones
         inherits.AddInherit(new_class_path)  # add new one
 
     cfx_usd_path = get_production_path() / asset.path / "usd" / "cfx.usd"
@@ -522,7 +522,6 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 )
                 char_prim_spec.specifier = Sdf.SpecifierOver
 
-
                 reference = Sdf.Reference(
                     f"./{Path(stitched_layer.realPath).relative_to(root_layer_path.parent)}",
                     character_root_path,
@@ -548,7 +547,9 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                         root_layer.subLayerPaths.append(relative_path)
 
                 except Exception as e:
-                    print(f"Warning! Could not find asset matching namespace {name}: {e}")
+                    print(
+                        f"Warning! Could not find asset matching namespace {name}: {e}"
+                    )
 
         elif self._chaser_args.mode == ChaserMode.CHAR:
             scale_down_geo(self._stage)
