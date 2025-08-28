@@ -40,18 +40,28 @@ class MAnimShotFileManager(MShotFileManager):
 
     def _setup_scene(self) -> None:
         self._import_camera()
-        self._import_env()
+
+        print(f"SETTING UP SCENE, HERE ARE MY ASSETS: {self.shot.assets}")
 
         # Import Rigs
         for asset_stub in self.shot.assets:
             asset = self._conn.get_asset_by_stub(asset_stub)
             if not asset.path:
                 continue
-            rig_path = "/".join(("production", asset.path, "rig", "rig.mb"))
+            rig_path = "/".join(("anim", "Rigs", asset.name + ".mb"))
+            print(str(get_production_path()) + "/../" + rig_path)
             if (get_production_path() / ".." / rig_path).exists():
                 mc.file(rig_path, reference=True, namespace=asset.name)
             else:
-                print(f'Unable to find rig for asset "{asset.disp_name}"')
+                rig_path = "/".join(("anim", "Rigs", asset.name.capitalize() + ".mb"))
+                print(str(get_production_path()) + "/../" + rig_path)
+                if (get_production_path() / ".." / rig_path).exists():
+                    mc.file(rig_path, reference=True, namespace=asset.name)
+                else:
+                    print(f'Unable to find rig for asset "{asset.disp_name}"')
+
+        self._import_env()
+
 
     def _setup_file(self, path: Path, entity) -> None:
         mc.file(newFile=True, force=True)
