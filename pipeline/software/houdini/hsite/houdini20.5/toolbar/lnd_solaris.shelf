@@ -153,5 +153,6 @@ loptoolutils.referenceTestAsset(node, asset_name)]]></script>
   <shelfSet name="solaris_lnd" label="Solaris Geometry">
     <memberToolshelf name="bobo_assets"/>
     <memberToolshelf name="test_geometry"/>
+    <memberToolshelf name="shelf_1"/>
   </shelfSet>
 </shelfDocument>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import ffmpeg  # type: ignore[import-untyped]
+#import ffmpeg  # type: ignore[import-untyped]
+import subprocess
 import logging
 import os
 import shutil
@@ -108,39 +109,49 @@ class Playblaster(metaclass=ABCMeta):
         # do the playblast
         self._write_images(str(tempdir / FILENAME))
 
-        # use ffmpeg to encode the video
         start_frame = int(self._shot.cut_in) - tails[0]
-        images = ffmpeg.input(
-            str(tempdir / FILENAME) + ".%04d.png",
-            start_number=start_frame,
-            r=self.FR,
-            # precisely define input colorspace
-            colorspace="bt709",
-            color_trc="iec61966-2-1",
-        )
+        input_pattern = str(tempdir / FILENAME) + ".%04d.png"
+
         for preset, paths in out_paths.items():
             out_filename = str(tempdir / FILENAME) + "." + preset.ext
-            ffmpeg.output(
-                images,
-                out_filename,
-                **preset.out_kwargs,
-                timecode="00:00:{:02}:{:02}".format(
-                    start_frame // self.FR,
-                    start_frame % self.FR,
-                ),
-                r=self.FR,
-            ).overwrite_output().run()
 
-            # copy video out of tempdir
+            # Convert preset.out_kwargs to CLI args
+            out_args = []
+            for k, v in preset.out_kwargs.items():
+                out_args.append(f"-{k}")
+                out_args.append(str(v))
+
+            # Add timecode
+            timecode = "00:00:{:02}:{:02}".format(start_frame // self.FR, start_frame % self.FR)
+
+            # Construct the full ffmpeg command
+            cmd = [
+                "/groups/bobo/ffmpeg/ffmpeg-git-20240629-amd64-static/ffmpeg",
+                "-y",  # Overwrite output
+                "-start_number", str(start_frame),
+                "-framerate", str(self.FR),
+                "-colorspace", "bt709",
+                "-color_trc", "iec61966-2-1",
+                "-i", input_pattern,
+                "-timecode", timecode,
+                "-r", str(self.FR),
+                *out_args,
+                out_filename,
+            ]
+
+            # Run the command
+            subprocess.run(cmd, check=True)
+
+            # Copy to each desired output path
             for path in (Path(str(p) + "." + preset.ext) for p in paths):
                 if not path.parent.exists():
                     path.parent.mkdir(mode=0o770, parents=True)
                 shutil.copyfile(out_filename, path)
 
-        # clean up if not in debug mode
-        if not log.isEnabledFor(logging.DEBUG):
-            for p in tempdir.glob(FILENAME + "*"):
-                p.unlink()
+                # clean up if not in debug mode
+                if not log.isEnabledFor(logging.DEBUG):
+                    for p in tempdir.glob(FILENAME + "*"):
+                        p.unlink()
 
     @abstractmethod
     def playblast(self) -> None:

@@ -527,15 +527,15 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     f"./{Path(stitched_layer.realPath).relative_to(root_layer_path.parent)}",
                     character_root_path,
                 )
-                print("HEIHISHIHSIHSI")
 
                 char_prim_spec.referenceList.appendedItems = [reference]
+
 
                 try:
                     asset = conn.get_asset_by_attr("name", base_name)
                     if base_name != name:
-                        print(f"I GOT HERE variant: {name}")
                         add_variant_to_model(asset, name)
+
 
                     assert asset.path is not None
                     rig_path = f"{asset.path}/usd/main.usd"
@@ -543,9 +543,10 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                         len(root_layer_path.relative_to(get_production_path()).parts)
                         - 1
                     )
+
                     relative_path = Sdf.Path("../" * walk_up_len + rig_path)
-                    if relative_path not in root_layer.subLayerPaths:  # type: ignore
-                        root_layer.subLayerPaths.append(relative_path)
+                    if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
+                        root_layer.subLayerPaths.append(str(relative_path))
 
                 except Exception as e:
                     print(f"Warning! Could not find asset matching namespace {name}: {e}")
