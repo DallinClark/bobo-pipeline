@@ -70,7 +70,7 @@ class MLayoutFileManager(FileManager):
 
     @classmethod
     def get_stage(cls) -> Usd.Stage:
-        return mayaUsd.ufe.getStage(cls.get_stage_shape())
+        return mc.ls(type="mayaUsdProxyShape", long=True)[0]
 
     @classmethod
     @log_errors

@@ -72,7 +72,7 @@ class PrevisPlayblastDialog(PlayblastDialog):
         super().__init__(
             parent,
             self._shot_dialog_configs + self._sequence_dialog_configs,
-            "Lnd Previs Playblast",
+            "Bobo Previs Playblast",
         )
 
     def _do_camera_shot_lookup(self) -> str:
@@ -101,7 +101,7 @@ class PrevisPlayblastDialog(PlayblastDialog):
                 PlayblastDialog.CUSTOM_HUDS.FILENAME,
                 PlayblastDialog.CUSTOM_HUDS.ARTIST,
                 HudDefinition(
-                    "LnDshot",
+                    "Boboshot",
                     command=self._do_camera_shot_lookup,
                     section=7,
                     idle_refresh=True,

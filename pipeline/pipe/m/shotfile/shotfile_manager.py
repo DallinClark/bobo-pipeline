@@ -187,11 +187,6 @@ class MShotFileManager(FileManager):
         if env_override_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
             root_layer.subLayerPaths.append(env_override_layer.identifier)
 
-        ## Fix env scale
-        # env_prim = stage.OverridePrim(Sdf.Path("/environment"))
-        # env_xformable = UsdGeom.Xformable(env_prim)
-        # env_xformable.GetScaleOp().Set((100, 100, 100))
-
         stage.SetEditTarget(Usd.EditTarget(env_override_layer))
 
         if not (env_stub := self.shot.set):

@@ -31,12 +31,19 @@ def update_filepath(
 def update_destination_prim(
     node: hou.Node, parm_tuple: hou.ParmTuple, event_type: hou.nodeEventType, **kwargs
 ) -> None:
+
+    if parm_tuple is None:
+        return
+        
     if parm_tuple.name() != "primpath":
         return
     # this callback only needs to run once
     node.removeEventCallback([event_type], callback=update_destination_prim)  # type: ignore[list-item]
 
     # don't mess with this if we're inside a Layout node
+    if node.parent() is None:
+        return
+        
     if node.parent().name() == "ASSETS":
         return
 

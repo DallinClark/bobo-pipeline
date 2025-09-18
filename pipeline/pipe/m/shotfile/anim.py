@@ -41,8 +41,6 @@ class MAnimShotFileManager(MShotFileManager):
     def _setup_scene(self) -> None:
         self._import_camera()
 
-        print(f"SETTING UP SCENE, HERE ARE MY ASSETS: {self.shot.assets}")
-
         # Import Rigs
         for asset_stub in self.shot.assets:
             asset = self._conn.get_asset_by_stub(asset_stub)

@@ -95,34 +95,42 @@ class MatlibManager:
         self, node: hou.Node, layer_mixer: hou.Node, layer_name: str, offset: float
     ):
         """Creates a PxrTexture, PxrNormalMap, and PxrLayer inside this node."""
-
+        print("HELLO I AM HERE")
         # Create nodes
-        roughness = node.createNode(
-            "pxrtexture::3.0", f"SpecularRoughness_{layer_name}"
-        )
-        roughness_remap = node.createNode(
-            "pxrremap::3.0", f"RoughnessRemap_{layer_name}"
-        )
+        roughness = node.createNode("pxrtexture::3.0", f"SpecularRoughness_{layer_name}")
+        roughness_remap = node.createNode("pxrremap::3.0", f"RoughnessRemap_{layer_name}")
         color = node.createNode("pxrtexture::3.0", f"BaseColor_{layer_name}")
         normal = node.createNode("pxrnormalmap::3.0", f"Normal_{layer_name}")
         layer = node.createNode("pxrlayer::3.0", f"Layer_{layer_name}")
+        metallic_workflow = node.createNode("pxrmetallicworkflow::3.0", f"Met_workflow_{layer_name}")
+        metallic = node.createNode("pxrtexture::3.0", f"Mettallic_{layer_name}")
 
         # Position them
-        roughness.setPosition(hou.Vector2(-2, 0 - offset * 7))
-        roughness_remap.setPosition(hou.Vector2(0, 0 - offset * 7))
-        color.setPosition(hou.Vector2(0, 2 - offset * 7))
-        normal.setPosition(hou.Vector2(0, -2 - offset * 7))
-        layer.setPosition(hou.Vector2(2, 0 - offset * 7))
+        roughness.setPosition(hou.Vector2(-6, -3 - offset * 7))
+        roughness_remap.setPosition(hou.Vector2(-3, -3 - offset * 7))
+        color.setPosition(hou.Vector2(-3, 3 - offset * 7))
+        normal.setPosition(hou.Vector2(0, -4 - offset * 7))
+        layer.setPosition(hou.Vector2(3, 0 - offset * 7))
+        metallic.setPosition(hou.Vector2(-3, 0 - offset * 7))
+        metallic_workflow.setPosition(hou.Vector2(0,0 - offset * 7))
+
 
         # Connect them
         roughness_remap.setNamedInput("inputRGB", roughness, "resultRGB")
-        layer.setNamedInput("diffuseColor", color, "resultRGB")
-        layer.setNamedInput("specularFaceColor", roughness_remap, "resultR")
+        layer.setNamedInput("diffuseColor", metallic_workflow, "resultDiffuseRGB")
+        layer.setNamedInput("specularFaceColor", metallic_workflow, "resultSpecularFaceRGB")
+        layer.setNamedInput("specularEdgeColor", metallic_workflow, "resultSpecularEdgeRGB")
+        layer.setNamedInput("specularRoughness", roughness_remap, "resultR")
         layer.setNamedInput("bumpNormal", normal, "resultN")
+        metallic_workflow.setNamedInput("baseColor", color, "resultRGB")
+        metallic_workflow.setNamedInput("metallic", metallic, "resultR")
+
         if offset != 0:
             layer_mixer.setNamedInput(f"layer{offset}", layer, "pxrMaterialOut")
+            layer_mixer.parm(f"layer{offset}Enabled").set(True)
         else:
             layer_mixer.setNamedInput("baselayer", layer, "pxrMaterialOut")
+            layer_mixer.parm("layer1Enabled").set(False)
 
         # set parameters
         color_file = color.parm("filename")
@@ -143,9 +151,19 @@ class MatlibManager:
                 f'$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs("../../textureset")`_Normal_Utility - Raw.<UDIM>.tex'
             )
 
+        metallic_file = metallic.parm("filename")
+        if metallic_file is not None:
+            metallic_file.set(
+                f'$HIP/tex/{self.geo_variant_name}/{self.mat_variant_name}/{layer_name}/tex/`chs("../../textureset")`_Metallic_Utility - Raw.<UDIM>.tex'
+            )
+
         color_space = color.parm("filename_colorspace")
         if color_space is not None:
             color_space.set("srgb_texture")
+
+        layer.parm("enableSpecular").set(True)
+        layer.parm("specularGain").set(1.0)
+
 
     def get_geo_variant_list(self) -> list[str]:
         """Gets list of variants in the way that the HDA interface expects:
@@ -166,6 +184,7 @@ class MatlibManager:
             node = self.node
 
         # Make sure we're inside a VOP network
+        print("OKOKOKO")
         vopnet = None
         for child in node.children():
             if child.type().name() == "materiallibrary":
@@ -194,20 +213,14 @@ class MatlibManager:
 
         layer_mixer.setPosition(hou.Vector2(6, 0))
 
-        layer_surface = vopnet.createNode("pxrlayersurface::3.0", "Layer_Surface")
+        layer_surface = vopnet.createNode("pxrlayersurface::3.0", f"Surface_{self.mat_variant_name}")
         if layer_surface is None:
             return
 
         layer_surface.setPosition(hou.Vector2(9, 0))
 
-        collect = vopnet.createNode("collect", "collect")
-        if collect is None:
-            return
-
-        collect.setPosition(hou.Vector2(12, 0))
-
         layer_surface.setInput(0, layer_mixer, 0)
-        collect.setInput(0, layer_surface, 0)
+        print(layers)
 
         for i, layer in enumerate(layers):
             self.create_layered_material(vopnet, layer_mixer, layer, i)

@@ -3,6 +3,7 @@ import maya.cmds as mc
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 from pxr import Sdf
 from typing import cast
+import shutil
 
 
 class MLayoutPublisher:
@@ -46,6 +47,10 @@ class MLayoutPublisher:
         scene_path_str = cast(str, scene_path)
         scene_dir = os.path.dirname(scene_path_str)
         save_path = os.path.join(scene_dir, "maya_layout.usd")
+
+        if os.path.exists(save_path):
+            backup_path = save_path + ".bak"
+            shutil.copy2(save_path, backup_path)
 
         # Get the root layer and export
         try:
