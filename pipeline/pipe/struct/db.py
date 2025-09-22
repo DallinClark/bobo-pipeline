@@ -201,6 +201,15 @@ class Sequence(SGEntity):
             _STRUCT_HOOK: lambda e, _: EnvironmentStub.from_sg(e) if e else None,
         }
     )
+    sets: list[EnvironmentStub] = field(
+        default_factory=list,
+        metadata={
+            _SG_NAME: "sg_sets",
+            _STRUCT_HOOK: lambda raw_sets, _: [
+                EnvironmentStub.from_sg(set) for set in (raw_sets or [])
+            ],
+        },
+    )
 
 
 @attrs.frozen
@@ -234,6 +243,15 @@ class Shot(SGEntity):
             _SG_NAME: "sg_set",
             _STRUCT_HOOK: lambda e, _: EnvironmentStub.from_sg(e) if e else None,
         }
+    )
+    sets: list[EnvironmentStub] = field(
+        default_factory=list,
+        metadata={
+            _SG_NAME: "sg_sets",
+            _STRUCT_HOOK: lambda raw_sets, _: [
+                EnvironmentStub.from_sg(set) for set in (raw_sets or [])
+            ],
+        },
     )
 
 
