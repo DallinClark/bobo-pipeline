@@ -189,20 +189,34 @@ class MShotFileManager(FileManager):
 
         stage.SetEditTarget(Usd.EditTarget(env_override_layer))
 
-        if not (env_stub := self.shot.set):
-            if not self.shot.sequence:
-                env_stub = None
-            else:
-                env_stub = self._conn.get_sequence_by_stub(self.shot.sequence).set
+        env_stubs = self.shot.sets
+        if env_stubs:
+            for env_stub in env_stubs:
+                layout = self._conn.get_env_by_stub(env_stub)
+                if layout and layout.path:
+                    env_file_layer = Sdf.Layer.FindOrOpenRelativeToLayer(
+                        root_layer, "/".join((layout.path, "main.usd"))
+                    )
+                    if env_file_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
+                        root_layer.subLayerPaths.append(env_file_layer.identifier)
+                    # locked_layers.append(env_file_layer.identifier)
+                    env_file_layer.SetPermissionToSave(False)
+        else:
+            # Fallback to depreciated single set logic if no sets are assigned
+            if not (env_stub := self.shot.set):  # type: ignore[assignment]
+                if not self.shot.sequence:
+                    env_stub = None
+                else:
+                    env_stub = self._conn.get_sequence_by_stub(self.shot.sequence).set
 
-        if env_stub and (env := self._conn.get_env_by_stub(env_stub)) and env.path:
-            env_file_layer = Sdf.Layer.FindOrOpenRelativeToLayer(
-                root_layer, "/".join((env.path, "main.usd"))
-            )
-            if env_file_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
-                root_layer.subLayerPaths.append(env_file_layer.identifier)
-            # locked_layers.append(env_file_layer.identifier)
-            env_file_layer.SetPermissionToSave(False)
+            if env_stub and (env := self._conn.get_env_by_stub(env_stub)) and env.path:
+                env_file_layer = Sdf.Layer.FindOrOpenRelativeToLayer(
+                    root_layer, "/".join((env.path, "main.usd"))
+                )
+                if env_file_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
+                    root_layer.subLayerPaths.append(env_file_layer.identifier)
+                # locked_layers.append(env_file_layer.identifier)
+                env_file_layer.SetPermissionToSave(False)
 
         # for id in locked_layers:
         #     mc.mayaUsdLayerEditor(id, edit=True, lockLayer=(2, 0, stageShape))
