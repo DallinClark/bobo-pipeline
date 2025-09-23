@@ -202,7 +202,6 @@ class Sequence(SGEntity):
         }
     )
     sets: list[EnvironmentStub] = field(
-        default_factory=list,
         metadata={
             _SG_NAME: "sg_sets",
             _STRUCT_HOOK: lambda raw_sets, _: [
@@ -245,7 +244,6 @@ class Shot(SGEntity):
         }
     )
     sets: list[EnvironmentStub] = field(
-        default_factory=list,
         metadata={
             _SG_NAME: "sg_sets",
             _STRUCT_HOOK: lambda raw_sets, _: [

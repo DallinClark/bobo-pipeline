@@ -97,12 +97,18 @@ class MatlibManager:
         """Creates a PxrTexture, PxrNormalMap, and PxrLayer inside this node."""
         print("HELLO I AM HERE")
         # Create nodes
-        roughness = node.createNode("pxrtexture::3.0", f"SpecularRoughness_{layer_name}")
-        roughness_remap = node.createNode("pxrremap::3.0", f"RoughnessRemap_{layer_name}")
+        roughness = node.createNode(
+            "pxrtexture::3.0", f"SpecularRoughness_{layer_name}"
+        )
+        roughness_remap = node.createNode(
+            "pxrremap::3.0", f"RoughnessRemap_{layer_name}"
+        )
         color = node.createNode("pxrtexture::3.0", f"BaseColor_{layer_name}")
         normal = node.createNode("pxrnormalmap::3.0", f"Normal_{layer_name}")
         layer = node.createNode("pxrlayer::3.0", f"Layer_{layer_name}")
-        metallic_workflow = node.createNode("pxrmetallicworkflow::3.0", f"Met_workflow_{layer_name}")
+        metallic_workflow = node.createNode(
+            "pxrmetallicworkflow::3.0", f"Met_workflow_{layer_name}"
+        )
         metallic = node.createNode("pxrtexture::3.0", f"Mettallic_{layer_name}")
 
         # Position them
@@ -112,14 +118,17 @@ class MatlibManager:
         normal.setPosition(hou.Vector2(0, -4 - offset * 7))
         layer.setPosition(hou.Vector2(3, 0 - offset * 7))
         metallic.setPosition(hou.Vector2(-3, 0 - offset * 7))
-        metallic_workflow.setPosition(hou.Vector2(0,0 - offset * 7))
-
+        metallic_workflow.setPosition(hou.Vector2(0, 0 - offset * 7))
 
         # Connect them
         roughness_remap.setNamedInput("inputRGB", roughness, "resultRGB")
         layer.setNamedInput("diffuseColor", metallic_workflow, "resultDiffuseRGB")
-        layer.setNamedInput("specularFaceColor", metallic_workflow, "resultSpecularFaceRGB")
-        layer.setNamedInput("specularEdgeColor", metallic_workflow, "resultSpecularEdgeRGB")
+        layer.setNamedInput(
+            "specularFaceColor", metallic_workflow, "resultSpecularFaceRGB"
+        )
+        layer.setNamedInput(
+            "specularEdgeColor", metallic_workflow, "resultSpecularEdgeRGB"
+        )
         layer.setNamedInput("specularRoughness", roughness_remap, "resultR")
         layer.setNamedInput("bumpNormal", normal, "resultN")
         metallic_workflow.setNamedInput("baseColor", color, "resultRGB")
@@ -127,10 +136,10 @@ class MatlibManager:
 
         if offset != 0:
             layer_mixer.setNamedInput(f"layer{offset}", layer, "pxrMaterialOut")
-            layer_mixer.parm(f"layer{offset}Enabled").set(True)
+            layer_mixer.parm(f"layer{offset}Enabled").set(True)  # type: ignore[union-attr]
         else:
             layer_mixer.setNamedInput("baselayer", layer, "pxrMaterialOut")
-            layer_mixer.parm("layer1Enabled").set(False)
+            layer_mixer.parm("layer1Enabled").set(False)  # type: ignore[union-attr]
 
         # set parameters
         color_file = color.parm("filename")
@@ -161,9 +170,8 @@ class MatlibManager:
         if color_space is not None:
             color_space.set("srgb_texture")
 
-        layer.parm("enableSpecular").set(True)
-        layer.parm("specularGain").set(1.0)
-
+        layer.parm("enableSpecular").set(True)  # type: ignore[union-attr]
+        layer.parm("specularGain").set(1.0)  # type: ignore[union-attr]
 
     def get_geo_variant_list(self) -> list[str]:
         """Gets list of variants in the way that the HDA interface expects:
@@ -213,7 +221,9 @@ class MatlibManager:
 
         layer_mixer.setPosition(hou.Vector2(6, 0))
 
-        layer_surface = vopnet.createNode("pxrlayersurface::3.0", f"Surface_{self.mat_variant_name}")
+        layer_surface = vopnet.createNode(
+            "pxrlayersurface::3.0", f"Surface_{self.mat_variant_name}"
+        )
         if layer_surface is None:
             return
 

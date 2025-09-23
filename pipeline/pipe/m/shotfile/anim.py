@@ -60,7 +60,6 @@ class MAnimShotFileManager(MShotFileManager):
 
         self._import_env()
 
-
     def _setup_file(self, path: Path, entity) -> None:
         mc.file(newFile=True, force=True)
         super()._setup_file(path, entity)
