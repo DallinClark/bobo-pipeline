@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-import mayaUsd  # type: ignore[import-not-found]
+import mayaUsd  # type: ignore[import-not-found] # noqa: F401
 import maya.cmds as mc
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 
@@ -70,7 +70,7 @@ class MLayoutFileManager(FileManager):
 
     @classmethod
     def get_stage(cls) -> Usd.Stage:
-        return mc.ls(type="mayaUsdProxyShape", long=True)[0]
+        return mc.ls(type="mayaUsdProxyShape", long=True)[0]  # type: ignore[return-value]
 
     @classmethod
     @log_errors

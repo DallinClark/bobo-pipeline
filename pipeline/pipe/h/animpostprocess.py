@@ -25,28 +25,51 @@ class AnimPostProcessor:
 
         stage_ctx: hou.Node = hou.node("/stage")  # type: ignore[assignment]
 
-        load_layer = stage_ctx.createNode("dbclark::main::Bobo_Load_Layers::1.0")
-        load_layer.parm("shot").set(f"$JOB/{shot.path}")  # type: ignore[union-attr]
-
-        for dep in ["cfx", "fx", "envfx", "lighting"]:
-            load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
-
-        if env_stub := (shot.set or self._conn.get_sequence_by_stub(shot.sequence).set):  # type: ignore[arg-type]
+        load_layers = []
+        sets = shot.sets
+        if sets:
+            for env_stub in sets:
+                layout = self._conn.get_env_by_stub(env_stub)
+                load_layer = stage_ctx.createNode(
+                    "dbclark::main::Bobo_Load_Layers::1.0"
+                )
+                load_layer.parm("shot").set(f"$JOB/{shot.path}")  # type: ignore[union-attr]
+                for dep in ["cfx", "fx", "envfx", "lighting"]:
+                    load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
+                if layout and layout.path:
+                    load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+                load_layers.append(load_layer)
+        else:
+            # Fallback to single set logic
+            env_stub = shot.set or self._conn.get_sequence_by_stub(shot.sequence).set  # type: ignore[assignment, arg-type]
             layout = self._conn.get_env_by_stub(env_stub)
-            load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+            load_layer = stage_ctx.createNode("dbclark::main::Bobo_Load_Layers::1.0")
+            load_layer.parm("shot").set(f"$JOB/{shot.path}")  # type: ignore[union-attr]
+            for dep in ["cfx", "fx", "envfx", "lighting"]:
+                load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
+            if layout and layout.path:
+                load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+            load_layers.append(load_layer)
+
+        # Merge load layers if there are multiple
+        if len(load_layers) > 1:
+            merge_node = stage_ctx.createNode("merge")
+            for idx, layer in enumerate(load_layers):
+                merge_node.setInput(idx, layer)
+            input_node = merge_node
+        else:
+            input_node = load_layers[0]
 
         layer_break = stage_ctx.createNode("layerbreak")
+        layer_break.setInput(0, input_node)
 
         postprocess = stage_ctx.createNode("sdm222::lnd_anim_postprocess::1.0")
+        postprocess.setInput(0, layer_break)
 
         publish = stage_ctx.createNode("usd_rop")
-
         publish.parm("trange").set("normal")  # type: ignore[union-attr]
         publish.parm("lopoutput").set(f"$JOB/{shot.path}/anim/usd/post-process.usd")  # type: ignore[union-attr]
         publish.parm("savestyle").set("flattenalllayers")  # type: ignore[union-attr]
-
-        layer_break.setInput(0, load_layer)
-        postprocess.setInput(0, layer_break)
         publish.setInput(0, postprocess)
 
         publish.parm("execute").pressButton()  # type: ignore[union-attr]

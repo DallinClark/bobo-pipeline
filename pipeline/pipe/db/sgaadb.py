@@ -575,6 +575,7 @@ class _ShotListQuery(_Query):
             "sg_path",
             "sg_sequence",
             "sg_set",
+            "sg_sets",
         ]
 
     # Override
@@ -600,6 +601,7 @@ class _SequenceListQuery(_Query):
             "id",
             "sg_path",
             "sg_set",
+            "sg_sets",
             "shots",
         ]
 
