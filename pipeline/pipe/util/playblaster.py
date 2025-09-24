@@ -4,6 +4,7 @@ import ffmpeg  # type: ignore[import-untyped]
 import logging
 import os
 import shutil
+import subprocess
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
@@ -28,7 +29,6 @@ class FFMpegPreset:
 
     def __hash__(self):
         return hash(frozenset(self.out_kwargs.items()))
-
 
 class Playblaster(metaclass=ABCMeta):
     """Parent class for creating playblasters. Uses FFmpeg to encode videos"""
@@ -86,6 +86,30 @@ class Playblaster(metaclass=ABCMeta):
     def __exit__(self, *args) -> None:
         self._in_context = False
 
+    def _run_postprocess(self, video_path: Path) -> None:
+        temp_output = video_path.with_suffix(".post.mp4")
+
+        cmd = [
+            "ffmpeg",
+            "-y",  # overwrite without asking
+            "-i", str(video_path),
+            "-vf", "format=yuv420p",
+            "-c:v", "dnxhr",
+            "-profile:v", "dnxhr_hq",
+            "-crf", "18",
+            "-preset", "slow",
+            "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            str(temp_output)
+        ]
+
+        log.info(f"Running FFmpeg post-process: {' '.join(cmd)}")
+        subprocess.run(cmd, check=True)
+
+        # Replace original with post-processed file
+        video_path.unlink()
+        temp_output.rename(video_path)
+        
     def _do_playblast(
         self,
         out_paths: dict[PRESET, list[Path | str]] | None = None,
@@ -99,7 +123,7 @@ class Playblaster(metaclass=ABCMeta):
 
         tempdir = Path(os.getenv("TMPDIR", os.getenv("TEMP", "tmp"))).resolve()
 
-        FILENAME = "lnd_pb_temp." + self._shot.code
+        FILENAME = "bobo_pb_temp." + self._shot.code
 
         # remove any old playblasts
         for p in tempdir.glob(FILENAME + "*"):
@@ -117,30 +141,50 @@ class Playblaster(metaclass=ABCMeta):
             # precisely define input colorspace
             colorspace="bt709",
             color_trc="iec61966-2-1",
-        )
+        ).filter("format", "yuv422p")
         for preset, paths in out_paths.items():
-            out_filename = str(tempdir / FILENAME) + "." + preset.ext
-            ffmpeg.output(
-                images,
-                out_filename,
-                **preset.out_kwargs,
-                timecode="00:00:{:02}:{:02}".format(
-                    start_frame // self.FR,
-                    start_frame % self.FR,
-                ),
-                r=self.FR,
+            try:
+                out_filename = str(tempdir / FILENAME) + "." + preset.ext
+                ffmpeg.output(
+                    images,
+                    out_filename,
+                    **preset.out_kwargs,
+                    timecode="00:00:{:02}:{:02}".format(
+                        start_frame // self.FR,
+                        start_frame % self.FR,
+                    ),
+                    r=self.FR,
             ).overwrite_output().run()
+            except ffmpeg.Error as e:
+                print("stdout:", e.stdout.decode())
+                print("stderr:", e.stderr.decode()) 
+
+            # copy video out of tempdir
+            final_paths: list[Path] = []
 
             # copy video out of tempdir
             for path in (Path(str(p) + "." + preset.ext) for p in paths):
                 if not path.parent.exists():
                     path.parent.mkdir(mode=0o770, parents=True)
                 shutil.copyfile(out_filename, path)
+                final_paths.append(path)  # <-- collect final output path
+
+            #run postprocess so video works in vlc
+            for final_path in final_paths:
+                try:
+                    self._run_postprocess(final_path)
+                except Exception as e:
+                    log.error(f"Post-process failed for {final_path}: {e}")
+
+            
+
 
         # clean up if not in debug mode
         if not log.isEnabledFor(logging.DEBUG):
             for p in tempdir.glob(FILENAME + "*"):
                 p.unlink()
+
+        #
 
     @abstractmethod
     def playblast(self) -> None:
