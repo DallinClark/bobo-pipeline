@@ -121,6 +121,7 @@ class HShotFileManager(HFileManager):
                 layout = self._conn.get_env_by_stub(env_stub)
                 if layout and layout.path:
                     load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+                load_layers.append(load_layer)
 
         # Merge load layers if there are multiple
         if len(load_layers) > 1:
