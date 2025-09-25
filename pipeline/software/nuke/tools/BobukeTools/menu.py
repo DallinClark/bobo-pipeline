@@ -21,6 +21,11 @@ def make_bobo_fx_read_node():
 
     # run the FX read now
     bobo_read_node.auto_read_latest_fx_exr()
+def make_bobo_cfx_read_node():
+    import bobo_read_node  # type: ignore[import-not-found]
+
+    # run the FX read now
+    bobo_read_node.auto_read_latest_cfx_exr()
 
 
 def make_bobo_write_node():
@@ -111,7 +116,7 @@ m.addCommand("Bobo Open Shot Node", "choose_shot()", icon="BobukeIcon.png")
 m.addCommand("Bobo Read Node", "make_bobo_read_node()", icon="BobukeIcon.png")
 
 m.addCommand("Bobo FX Read", "make_bobo_fx_read_node()", icon="BobukeIcon.png")
-
+m.addCommand("Bobo CFX Read", "make_bobo_cfx_read_node()", icon="BobukeIcon.png")
 
 ################################### Nungeon Shelf Tool Buttons ###################################
 menu = nuke.menu("Nuke")
