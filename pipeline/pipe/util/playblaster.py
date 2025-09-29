@@ -87,14 +87,14 @@ class Playblaster(metaclass=ABCMeta):
         self._in_context = False
 
     def _run_postprocess(self, video_path: Path) -> None:
-        temp_output = video_path.with_suffix(".post.mp4")
+        temp_output = video_path.with_suffix(".post.mov")
 
         cmd = [
             "ffmpeg",
             "-y",  # overwrite without asking
             "-i", str(video_path),
             "-vf", "format=yuv420p",
-            "-c:v", "dnxhr",
+            "-c:v", "dnxhd",
             "-profile:v", "dnxhr_hq",
             "-crf", "18",
             "-preset", "slow",
@@ -132,6 +132,20 @@ class Playblaster(metaclass=ABCMeta):
         # do the playblast
         self._write_images(str(tempdir / FILENAME))
 
+        # 0 padding on negative numbers
+        import re
+
+        pattern = re.compile(rf"{re.escape(FILENAME)}\.(\-?\d+)\.png$")
+        for p in tempdir.glob(f"{FILENAME}.*.png"):
+            match = pattern.match(p.name)
+            if not match:
+                continue
+            num = int(match.group(1))
+            new_name = f"{FILENAME}.{num:+05d}.png".replace("+", "")
+            new_path = p.with_name(new_name)
+            p.rename(new_path)
+
+
         # use ffmpeg to encode the video
         start_frame = int(self._shot.cut_in) - tails[0]
         images = ffmpeg.input(
@@ -156,8 +170,10 @@ class Playblaster(metaclass=ABCMeta):
                     r=self.FR,
             ).overwrite_output().run()
             except ffmpeg.Error as e:
-                print("stdout:", e.stdout.decode())
-                print("stderr:", e.stderr.decode()) 
+                if e.stdout:
+                    print("stdout:", e.stdout.decode())
+                if e.stderr:
+                    print("stderr:", e.stderr.decode()) 
 
             # copy video out of tempdir
             final_paths: list[Path] = []
