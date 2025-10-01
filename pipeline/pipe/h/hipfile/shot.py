@@ -94,7 +94,7 @@ class HShotFileManager(HFileManager):
         load_layers = []
         sets = shot.sets
         if sets:
-            for environment_stub in sets:
+            for idx, environment_stub in enumerate(sets):
                 load_layer = stage.createNode("dbclark::main::Bobo_Load_Layers::1.0")
                 load_layer.setUserData("nodeshape", "bulge_down")
                 load_layer.parm("shot").set("$JOB/`@SHOT`")  # type: ignore[union-attr]
@@ -105,6 +105,8 @@ class HShotFileManager(HFileManager):
                 layout = self._conn.get_env_by_stub(environment_stub)
                 if layout and layout.path:
                     load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+
+                load_layer.setPosition((idx * 2, 6))
                 load_layers.append(load_layer)
         else:
             # Fallback to depreciated single set logic if no sets are assigned
