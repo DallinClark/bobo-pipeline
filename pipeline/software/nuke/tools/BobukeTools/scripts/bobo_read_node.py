@@ -94,8 +94,9 @@ def get_latest_exr_sequences(render_root):
 
     _, _, newest = sorted(candidates, key=lambda x: (x[0], x[1]))[-1]
 
-    subfolders = [d for d in os.listdir(newest)
-                  if os.path.isdir(os.path.join(newest, d))]
+    subfolders = [
+        d for d in os.listdir(newest) if os.path.isdir(os.path.join(newest, d))
+    ]
 
     sequences = []
 
@@ -109,33 +110,41 @@ def get_latest_exr_sequences(render_root):
             if not seq:
                 continue
             pattern, first, last, _pad, step = seq
-            sequences.append({
-                "label": sub,
-                "pattern": pattern,
-                "first": first,
-                "last": last,
-                "step": step
-            })
+            sequences.append(
+                {
+                    "label": sub,
+                    "pattern": pattern,
+                    "first": first,
+                    "last": last,
+                    "step": step,
+                }
+            )
         if not sequences:
-            nuke.message(f"[Auto Read] No .exr sequences found under any subfolder in:\n  {newest}")
+            nuke.message(
+                f"[Auto Read] No .exr sequences found under any subfolder in:\n  {newest}"
+            )
             return []
     else:
         images_dir = _find_images_dir(newest)
         if not images_dir:
-            nuke.message(f"[Auto Read] Neither images_dn nor images found in:\n  {newest}")
+            nuke.message(
+                f"[Auto Read] Neither images_dn nor images found in:\n  {newest}"
+            )
             return []
         seq = _scan_exr_sequence(images_dir)
         if not seq:
             nuke.message(f"[Auto Read] No .exr files found in:\n  {images_dir}")
             return []
         pattern, first, last, _pad, step = seq
-        sequences.append({
-            "label": "root",
-            "pattern": pattern,
-            "first": first,
-            "last": last,
-            "step": step
-        })
+        sequences.append(
+            {
+                "label": "root",
+                "pattern": pattern,
+                "first": first,
+                "last": last,
+                "step": step,
+            }
+        )
 
     return sequences
 
@@ -196,7 +205,9 @@ def make_read_nodes(render_subdir="render", node_name_prefix="EXR_read"):
 
     for s in sequences:
         label = _sanitize_for_nuke(s["label"])
-        node_name = f"{node_name_prefix}_{label}" if label != "root" else node_name_prefix
+        node_name = (
+            f"{node_name_prefix}_{label}" if label != "root" else node_name_prefix
+        )
         read = nuke.nodes.Read(name=node_name, file=s["pattern"], on_error="black")
         # native sequence range
         read["origfirst"].setValue(s["first"])
@@ -233,7 +244,9 @@ def make_read_nodes(render_subdir="render", node_name_prefix="EXR_read"):
                 current_fps = float(nuke.root()["fps"].value())
                 new_fps = current_fps / float(only_step)
                 nuke.root()["fps"].setValue(new_fps)
-                nuke.tprint(f"[Auto Read] Detected cadence {only_step}s; FPS set to {new_fps:.3f}")
+                nuke.tprint(
+                    f"[Auto Read] Detected cadence {only_step}s; FPS set to {new_fps:.3f}"
+                )
             except Exception as e:
                 nuke.tprint(f"[Auto Read] Could not adjust FPS: {e}")
 
@@ -249,6 +262,7 @@ def auto_read_latest_fx_exr():
         nuke.zoom(1, [viewer["xpos"].value(), viewer["ypos"].value()])
     except Exception as e:
         nuke.tprint(f"[Auto Read] Viewer zoom error: {e}")
+
 
 def auto_read_latest_cfx_exr():
     nodes = make_read_nodes("cfx/render", node_name_prefix="Bobo_CFX_read")

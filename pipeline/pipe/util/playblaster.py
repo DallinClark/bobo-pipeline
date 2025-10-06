@@ -30,6 +30,7 @@ class FFMpegPreset:
     def __hash__(self):
         return hash(frozenset(self.out_kwargs.items()))
 
+
 class Playblaster(metaclass=ABCMeta):
     """Parent class for creating playblasters. Uses FFmpeg to encode videos"""
 
@@ -92,15 +93,23 @@ class Playblaster(metaclass=ABCMeta):
         cmd = [
             "ffmpeg",
             "-y",  # overwrite without asking
-            "-i", str(video_path),
-            "-vf", "format=yuv420p",
-            "-c:v", "dnxhd",
-            "-profile:v", "dnxhr_hq",
-            "-crf", "18",
-            "-preset", "slow",
-            "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart",
-            str(temp_output)
+            "-i",
+            str(video_path),
+            "-vf",
+            "format=yuv420p",
+            "-c:v",
+            "dnxhd",
+            "-profile:v",
+            "dnxhr_hq",
+            "-crf",
+            "18",
+            "-preset",
+            "slow",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(temp_output),
         ]
 
         log.info(f"Running FFmpeg post-process: {' '.join(cmd)}")
@@ -109,7 +118,7 @@ class Playblaster(metaclass=ABCMeta):
         # Replace original with post-processed file
         video_path.unlink()
         temp_output.rename(video_path)
-        
+
     def _do_playblast(
         self,
         out_paths: dict[PRESET, list[Path | str]] | None = None,
@@ -145,7 +154,6 @@ class Playblaster(metaclass=ABCMeta):
             new_path = p.with_name(new_name)
             p.rename(new_path)
 
-
         # use ffmpeg to encode the video
         start_frame = int(self._shot.cut_in) - tails[0]
         images = ffmpeg.input(
@@ -168,12 +176,12 @@ class Playblaster(metaclass=ABCMeta):
                         start_frame % self.FR,
                     ),
                     r=self.FR,
-            ).overwrite_output().run()
+                ).overwrite_output().run()
             except ffmpeg.Error as e:
                 if e.stdout:
                     print("stdout:", e.stdout.decode())
                 if e.stderr:
-                    print("stderr:", e.stderr.decode()) 
+                    print("stderr:", e.stderr.decode())
 
             # copy video out of tempdir
             final_paths: list[Path] = []
@@ -185,15 +193,12 @@ class Playblaster(metaclass=ABCMeta):
                 shutil.copyfile(out_filename, path)
                 final_paths.append(path)  # <-- collect final output path
 
-            #run postprocess so video works in vlc
+            # run postprocess so video works in vlc
             for final_path in final_paths:
                 try:
                     self._run_postprocess(final_path)
                 except Exception as e:
                     log.error(f"Post-process failed for {final_path}: {e}")
-
-            
-
 
         # clean up if not in debug mode
         if not log.isEnabledFor(logging.DEBUG):

@@ -21,6 +21,8 @@ def make_bobo_fx_read_node():
 
     # run the FX read now
     bobo_read_node.auto_read_latest_fx_exr()
+
+
 def make_bobo_cfx_read_node():
     import bobo_read_node  # type: ignore[import-not-found]
 
