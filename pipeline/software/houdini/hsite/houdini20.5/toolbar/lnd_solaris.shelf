@@ -155,5 +155,6 @@ loptoolutils.referenceTestAsset(node, asset_name)]]></script>
     <memberToolshelf name="test_geometry"/>
     <memberToolshelf name="shelf_1"/>
     <memberToolshelf name="shelf_1"/>
+    <memberToolshelf name="shelf_2"/>
   </shelfSet>
 </shelfDocument>
