@@ -1,24 +1,61 @@
+[project]
+name = "bobo-pipeline"
+version = "2.1.0"
+description = "Pipeline for BYU Animation's Class of 2026 capstone film"
+readme = "README.md"
+license = { text = "BSD-3" }
+authors = [
+    { name = "Scott Milner", email = "scottdmilner@gmail.com" },
+    { name = "Dallin Clark", email = "dallinbretclark@gmail.com" },
+    { name = "Joseph Wardle", email = "joseph.m.wardle@gmail.com" },
+]
+reqpires-python = ">=3.9,<4.0"
+dependencies = [
+    "attrs>=24.2.0,<25.0.0",
+    "cattrs>=23.2.3,<24.0.0",
+    "ffmpeg-python>=0.2.0,<0.3.0",
+    "qt-py>=1.4.1,<2.0.0",
+    "filelock>=3.17.0,<4.0.0",
+    "six>=1.17.0,<2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.5.7,<0.6.0",
+    "mypy>=1.11.1,<2.0.0",
+    "maya-stubs>=0.4.1,<0.5.0",
+    "types-usd>=24.5.1,<25.0.0",
+    "types-houdini>=19.5.1,<20.0.0",
+    "types-katana>=5.0.5.0,<6.0.0",
+    "types-mari>=5.0.5.0,<6.0.0",
+    "types-nuke>=13.2.8.0,<14.0.0",
+    "types-opencolorio>=2.2.1.2,<3.0.0",
+    "types-pyside2>=5.15.2.1.7,<6.0.0",
+    "types-substance-painter>=2023.8.3.0.0,<2024.0.0.0.0",
+    "nptyping>=2.5.0,<3.0.0",
+]
+
 [tool.mypy]
 exclude = [
     ".git",
-    'MOPS',
+    "MOPS",
     "NukeSurvivalToolkit_publicRelease",
-    'VFX-LYNX',
-    'ae_SVG',
-    'dwpicker.*',
-    'lib/python',
-    'maya-timeline-marker_git',
+    "VFX-LYNX",
+    "ae_SVG",
+    "dwpicker.*",
+    "lib/python",
+    "maya-timeline-marker_git",
     "mayacapture",
-    'modelChecker',
-    'pin_shift.py',
-    'rjg',
-    'shotgun_api3',
-    'studiolibrary',
-    'timeline_marker',
-    'houdini/scripts',
-    'maya/scripts'
+    "modelChecker",
+    "pin_shift.py",
+    "rjg",
+    "shotgun_api3",
+    "studiolibrary",
+    "timeline_marker",
+    "houdini/scripts",
+    "maya/scripts"
 ]
-files = 'pipeline'
+files = "pipeline"
 
 [[tool.mypy.overrides]]
 module = "dwpicker"
@@ -46,43 +83,10 @@ exclude = [
     "maya-timeline-marker_git",
     "modelChecker",
     "modelChecker_git",
-    'pin_shift.py',
+    "pin_shift.py",
     "rjg",
     "shotgun_api3",
     "studiolibrary",
     "timeline_marker",
-    "pipeline/software/maya/scripts/**"
+    "pipeline/software/maya/scripts/**",
 ]
-
-[tool.poetry]
-name = "bobo-pipeline"
-version = "0.1.0"
-description = "Pipeline for BYU Animation's Class of 2025 capstone film"
-license = "BSD-3"
-authors = ["Scott Milner <scottdmilner@gmail.com>"]
-readme = "README.md"
-package-mode = false
-
-[tool.poetry.dependencies]
-python = "^3.9"
-attrs = "^24.2.0"
-cattrs = "^23.2.3"
-ffmpeg-python = "^0.2.0"
-qt-py = {extras = ["stubs"], version = "^1.4.1"}
-filelock = "^3.17.0"
-six = "^1.17.0"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.5.7"
-mypy = "^1.11.1"
-maya-stubs = "^0.4.1"
-types-usd = "^24.5.1"
-types-houdini = "^19.5.1"
-types-katana = "^5.0.5.0"
-types-mari = "^5.0.5.0"
-types-nuke = "^13.2.8.0"
-types-opencolorio = "^2.2.1.2"
-types-pyside2 = "^5.15.2.1.7"
-types-substance-painter = "^2023.8.3.0.0"
-nptyping = "^2.5.0"
-qt-py = {extras = ["stubs"], version = "^1.4.1"}
