@@ -6,7 +6,7 @@ import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partialmethod as pm
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from pipe.struct.db import (
     Asset,
@@ -262,14 +262,13 @@ class SGaaDB(DBInterface):
 
     def create_version_for_shot(
         self,
-        shot: ShotStub,
+        shot: ShotStub,  # noqa: F405
         code: str,
         user: User,
         task: Task,
         video_path: Optional[str] = None,
-        description: Optional[str] = None
+        description: Optional[str] = None,
     ) -> None:
-
         # Create Version instance
         version = Version(
             id=-1,
@@ -284,7 +283,7 @@ class SGaaDB(DBInterface):
         # Push to ShotGrid
         sg_dict = version.to_sg(exclude=["id"])
         sg_dict["project"] = {"type": "Project", "id": self._id}
-        new_version = self._sg.create('Version', sg_dict)
+        self._sg.create("Version", sg_dict)
 
         # Return structured object
         return
@@ -304,14 +303,12 @@ class SGaaDB(DBInterface):
             "sg_status_list",
             "due_date",
             "entity",
-            "task_type",       
+            "task_type",
         ]
 
         raw_tasks = self._sg.find("Task", filters, fields)
         print(raw_tasks)
         return [Task.from_sg(task) for task in raw_tasks]
-
-
 
     def get_asset_name_list_by_type(
         self, types: list[str], sorted: bool = False
@@ -330,8 +327,8 @@ class SGaaDB(DBInterface):
         if sorted:
             arr.sort()
         return arr
-    
-    get_user_attr_list: T_GetAttrList = pm(get_entity_attr_list, User) # type: ignore[assignment] # noqa: F405
+
+    get_user_attr_list: T_GetAttrList = pm(get_entity_attr_list, User)  # type: ignore[assignment] # noqa: F405
     get_user_by_attr: T_GetUserByAttr = pm(get_entity_by_attr, User)  # type: ignore[assignment] # noqa: F405
     get_user_name_list: T_GetUserNameList = pm(get_user_attr_list, "name")  # type: ignore[assignment] # noqa: F405
     get_user_by_name: T_GetUserByName = pm(get_user_by_attr, "name")  # type: ignore[assignment] # noqa: F405
@@ -469,6 +466,7 @@ class _AssetListQuery(_Query):
 
         return filters
 
+
 class _UserListQuery(_Query):
     """Helper class for making queries about users to a SG connection instance"""
 
@@ -480,9 +478,9 @@ class _UserListQuery(_Query):
     @property
     def _base_fields(self) -> list[str]:
         return [
-            "id", # user id
-            "name", # User's name
-            "login", # email
+            "id",  # user id
+            "name",  # User's name
+            "login",  # email
         ]
 
     # Override

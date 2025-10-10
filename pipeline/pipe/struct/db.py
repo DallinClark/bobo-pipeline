@@ -45,7 +45,7 @@ class SGDiffable(Diffable):
         return _con.structure(sg_dict, cls)
 
     def to_sg(self, exclude: list[str] = []) -> dict[str, Any]:
-        '''return dict in shotgun format from object''' 
+        """return dict in shotgun format from object"""
         data = _con.unstructure(self)
         result = {}
 
@@ -56,7 +56,7 @@ class SGDiffable(Diffable):
             val = data.get(f.name)
             if val is not None:
                 # If there's an unstruct hook, apply it
-                if (hook := f.metadata.get(_UNSTRUCT_HOOK)):
+                if hook := f.metadata.get(_UNSTRUCT_HOOK):
                     val = hook(val, None)
                 result[sg_key] = val
 
@@ -211,10 +211,7 @@ class ShotStub(SGEntityStub):
 
     @property
     def sg_ref(self) -> dict[str, Any]:
-        return {
-            "type": "Shot",
-            "id": self.id
-        }
+        return {"type": "Shot", "id": self.id}
 
 
 @attrs.define
@@ -239,11 +236,13 @@ class Shot(SGEntity):
         }
     )
 
+
 @attrs.frozen
 class UserStub(SGEntityStub):
     """Represent user "stubs" that come from ShotGrid"""
 
     name: str = field(metadata={_SG_NAME: "login"})
+
 
 @attrs.define
 class User(SGEntity):
@@ -251,13 +250,15 @@ class User(SGEntity):
 
     name: str = field(on_setattr=attrs.setters.frozen)
 
-    login: Optional[str] = field(metadata={_SG_NAME: "login"}) 
+    login: Optional[str] = field(metadata={_SG_NAME: "login"})
 
 
 @attrs.frozen
 class TaskStub(SGEntityStub):
     """Represent shot "stubs" that come from ShotGrid"""
+
     id: int
+
 
 @attrs.define
 class Task(SGEntity):
@@ -277,14 +278,22 @@ class Version(SGEntity):
     shot: ShotStub = field(
         metadata={
             _SG_NAME: "entity",
-            _UNSTRUCT_HOOK: lambda val, _: ({"type": "Shot", "id": val["id"]} if isinstance(val, dict) else {"type": "Shot", "id": val.id})
+            _UNSTRUCT_HOOK: lambda val, _: (
+                {"type": "Shot", "id": val["id"]}
+                if isinstance(val, dict)
+                else {"type": "Shot", "id": val.id}
+            ),
         }
     )
 
     task: Task = field(
         metadata={
             _SG_NAME: "sg_task",
-            _UNSTRUCT_HOOK: lambda val, _: ({"type": "Task", 'id': val["id"]}  if isinstance(val, dict) else {"type": "Task", "id": val.id})
+            _UNSTRUCT_HOOK: lambda val, _: (
+                {"type": "Task", "id": val["id"]}
+                if isinstance(val, dict)
+                else {"type": "Task", "id": val.id}
+            ),
         }
     )
 
@@ -292,13 +301,14 @@ class Version(SGEntity):
         metadata={
             _SG_NAME: "user",
             _STRUCT_HOOK: lambda val, _: User.from_sg(val),
-            _UNSTRUCT_HOOK: lambda val, _: ({"type": "HumanUser", 'id': val["id"]}  if isinstance(val, dict) else {"type": "HumanUser", "id": val.id}),
+            _UNSTRUCT_HOOK: lambda val, _: (
+                {"type": "HumanUser", "id": val["id"]}
+                if isinstance(val, dict)
+                else {"type": "HumanUser", "id": val.id}
+            ),
         }
     )
 
     video_path: Optional[str] = field(metadata={_SG_NAME: "sg_path_to_frames"})
 
     description: Optional[str] = field(metadata={_SG_NAME: "description"})
-
-
-
