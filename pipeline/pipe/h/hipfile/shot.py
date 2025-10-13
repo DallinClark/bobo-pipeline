@@ -123,7 +123,8 @@ class HShotFileManager(HFileManager):
                 layout = self._conn.get_env_by_stub(env_stub)
                 if layout and layout.path:
                     load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
-                load_layers.append(load_layer)
+
+            load_layers.append(load_layer)
 
         # Merge load layers if there are multiple
         if len(load_layers) > 1:
@@ -132,8 +133,11 @@ class HShotFileManager(HFileManager):
             for idx, load_layer in enumerate(load_layers):
                 merge_node.setInput(idx, load_layer)
             input_node = merge_node
-        else:
+        elif load_layers:
             input_node = load_layers[0]
+        else:
+            input_node = stage.createNode("null")
+            input_node.setName("NO_ENVIRONMENT", unique_name=True)
 
         layer_break = stage.createNode("layerbreak")
         layer_break.setInput(0, input_node)
