@@ -79,6 +79,9 @@ def bobo_componentgeometry(kwargs: dict, parent: Optional[hou.Node] = None) -> h
     else:
         cgeo = loptoolutils.genericTool(kwargs, "componentgeometry")
 
+    # Rename to match publishing expectations.
+    cgeo.setName("main", unique_name=True)
+
     # Set up nodes inside of Component Geometry
     geo_sop = cgeo.node("./sopnet/geo")
     geo_sop.loadItemsFromFile(
