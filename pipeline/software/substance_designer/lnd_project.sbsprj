@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 	<settingsinfo>
-		<version>2</version>
+		<version>4</version>
 	</settingsinfo>
 	<projectinfo>
 		<label>LnD Project</label>
@@ -20,6 +20,9 @@
 				<version>2</version>
 			</settingsinfo>
 		</versioncontrol>
+		<scenes3d>
+			<computebinormalinfragmentshader>true</computebinormalinfragmentshader>
+		</scenes3d>
 		<ocioenv>
 			<ociofloatbitmapcolorspace>ACEScg</ociofloatbitmapcolorspace>
 			<ociodefaultview>Technical</ociodefaultview>
@@ -37,6 +40,11 @@
 		<colormanagement>
 			<colormanagementengine>ocio</colormanagementengine>
 		</colormanagement>
+		<bakers>
+			<bakersmacros>
+				<size>0</size>
+			</bakersmacros>
+		</bakers>
 		<ace>
 			<aceuseembeddedprofiles>true</aceuseembeddedprofiles>
 			<acerenderingintent>relative-colorimetric</acerenderingintent>
