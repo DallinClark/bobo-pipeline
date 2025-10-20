@@ -141,7 +141,7 @@ def bobo_componentsetup(kwargs: dict) -> hou.Node:
     mtl = lnd_componentmaterial(kwargs, parent=p)
     lib = p.createNode("dbclark::main::Bobo_MatLib")
     cnf = p.createNode("sdm223::lnd_componentconfig")
-    ldv = p.createNode("sdm223::dev::LnD_Lookdev")
+    ldv = p.createNode("dbclark::dev::Bobo_Lookdev")
     env = p.createNode("fetch")
     out.setInput(0, cnf)
     out.setInput(1, env)
