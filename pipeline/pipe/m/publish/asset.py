@@ -24,6 +24,7 @@ from pipe.glui.dialogs import (
 )
 from pipe.struct.db import Asset, SGEntity
 from shared.util import get_production_path
+from software.houdini import HoudiniDCC
 from env import PIPEBOT_SECRET, PIPEBOT_URL
 
 from .publisher import Publisher
@@ -222,6 +223,18 @@ class AssetPublisher(Publisher):
         return {
             "shadingMode": "useRegistry",
         }
+
+    def _postpublish(self) -> None:
+        publish_path = repr(str(self._publish_path))
+        post_script = ";".join(
+            [
+                "from pipe.h.assetbuilder import AssetComponentBuilder",
+                f"AssetComponentBuilder({publish_path}).run()",
+                "exit()",
+            ]
+        )
+
+        HoudiniDCC(is_python_shell=True, extra_args=["-c", post_script]).launch()
 
 
 class ModelChecker(MCUI):
