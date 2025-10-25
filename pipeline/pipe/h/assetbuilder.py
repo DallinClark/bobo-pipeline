@@ -89,11 +89,18 @@ class AssetComponentBuilder:
 
         filename_parm.set(str(self.asset_path))
 
+        def _is_polyreduce(node: hou.Node) -> bool:
+            type_name = node.type().name()
+            if type_name == "polyreduce":
+                return True
+            # Handle versioned HDAs like "polyreduce::2.0"
+            return type_name.split("::")[-1] == "polyreduce"
+
         polyreduce: Optional[hou.SopNode] = next(
             (
                 cast("hou.SopNode", node)
                 for node in sopnet.allSubChildren()
-                if node.type().name() == "polyreduce"
+                if _is_polyreduce(node)
             ),
             None,
         )
