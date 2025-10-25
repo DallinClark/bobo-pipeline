@@ -4,7 +4,7 @@ from __future__ import annotations
 import hou
 import loptoolutils  # type: ignore[import-not-found]
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -131,8 +131,25 @@ def lnd_componentmaterial(kwargs: dict, parent: Optional[hou.Node] = None) -> ho
     return cmat
 
 
+def _create_lopnode(
+    kwargs: dict, node_type: str, *, parent: Optional[hou.Node] = None
+) -> hou.LopNode:
+    if parent is not None:
+        # parent.createNode returns a hou.Node; narrow to hou.LopNode for the type-checker
+        return cast(hou.LopNode, parent.createNode(node_type))
+    return loptoolutils.genericTool(kwargs, node_type)
+
+
 def bobo_componentsetup(kwargs: dict) -> hou.Node:
-    out: hou.LopNode = loptoolutils.genericTool(kwargs, "componentoutput")
+    parent = kwargs.get("node") if isinstance(kwargs, dict) else None
+    if not hou.isUIAvailable() and isinstance(parent, hou.Node):
+        parent_for_creation: Optional[hou.Node] = parent
+    else:
+        parent_for_creation = None
+
+    out: hou.LopNode = _create_lopnode(
+        kwargs, "componentoutput", parent=parent_for_creation
+    )
     out.setColor(hou.Color((0.616, 0.871, 0.769)))
 
     out_pos = out.position()
