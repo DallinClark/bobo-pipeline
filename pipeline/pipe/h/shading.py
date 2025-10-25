@@ -7,8 +7,13 @@ import os
 
 from pipe.db import DB
 from pipe.struct.db import Asset
+import logging
+from typing import Optional, Union, cast
 
 from env_sg import DB_Config
+
+log = logging.getLogger(__name__)
+_ASSET_CACHE_SENTINEL = object()
 
 _MATLIB_NAME = "Material_Library"
 _MATNAME = "matname"
@@ -17,9 +22,13 @@ _NO_TEXTURES = "NO_EXPORTED_TEXTURES"
 
 class MatlibManager:
     _conn: DB
+    _asset_cache: Union[Asset, None, object]
+    _asset_name_cache: Optional[str]
 
     def __init__(self, node: hou.LopNode | None = None) -> None:
         self._conn = DB.Get(DB_Config)
+        self._asset_cache = _ASSET_CACHE_SENTINEL
+        self._asset_name_cache = None
         if node:
             self._init_hda(node)
 
@@ -31,11 +40,38 @@ class MatlibManager:
         self._update_default_geo_var(node=node)
 
     @property
-    def _asset(self) -> Asset:
-        """Get asset based off of the path of the current hipfile"""
-        asset_name = str(hou.contextOption("ASSET"))
-        a = self._conn.get_asset_by_attr("name", asset_name)
-        return a
+    def _asset(self) -> Optional[Asset]:
+        """Get asset based off of the path of the current hipfile.
+
+        When running headless (e.g. during automated publishes) Houdini may not
+        have the ASSET context option populated which results in a StopIteration
+        bubbling out of the DB layer.  Gracefully handle that case so the
+        MatLib can still initialize with sensible defaults.
+        """
+
+        asset_name_option = hou.contextOption("ASSET")
+        asset_name = str(asset_name_option).strip() if asset_name_option else ""
+        if (
+            self._asset_cache is not _ASSET_CACHE_SENTINEL
+            and self._asset_name_cache == asset_name
+        ):
+            return cast(Optional[Asset], self._asset_cache)
+
+        if not asset_name:
+            log.debug("MatlibManager could not determine ASSET context option")
+            self._asset_cache = None
+            self._asset_name_cache = asset_name
+            return None
+
+        try:
+            asset = self._conn.get_asset_by_attr("name", asset_name)
+        except StopIteration:
+            log.warning("MatlibManager could not locate asset '%s' in DB", asset_name)
+            asset = None
+
+        self._asset_cache = asset
+        self._asset_name_cache = asset_name
+        return asset
 
     @property
     def _hip(self) -> Path:
@@ -80,7 +116,13 @@ class MatlibManager:
         # update geo_variant on the hda
         geo_var = node.parm("geo_var")
         assert geo_var is not None
-        geo_var.set(next(iter(self._asset.geometry_variants)))
+
+        asset = self._asset
+        if asset and asset.geometry_variants:
+            variant = next(iter(asset.geometry_variants))
+        else:
+            variant = "main"
+        geo_var.set(variant)
 
     def _update_default_mat_var(self, node: hou.LopNode | None = None) -> None:
         # this may be called before initialization, so `self.node` may not work
@@ -88,8 +130,14 @@ class MatlibManager:
             node = self.node
         # update mat_variant on the hda
         mat_var = node.parm("mat_var")
+
         assert mat_var is not None
-        mat_var.set(next(iter(self._asset.material_variants), _NO_TEXTURES))
+        asset = self._asset
+        if asset and asset.material_variants:
+            variant = next(iter(asset.material_variants))
+        else:
+            variant = _NO_TEXTURES
+        mat_var.set(variant)
 
     def create_layered_material(
         self, node: hou.Node, layer_mixer: hou.Node, layer_name: str, offset: float
@@ -176,13 +224,19 @@ class MatlibManager:
     def get_geo_variant_list(self) -> list[str]:
         """Gets list of variants in the way that the HDA interface expects:
         [id1, label1, id2, label2, ...]"""
-        mvs = list(self._asset.geometry_variants)
+        asset = self._asset
+        mvs = list(asset.geometry_variants) if asset else []
+        if not mvs:
+            mvs = ["main"]
         return [s for v in mvs for s in (v, v)]
 
     def get_mat_variant_list(self) -> list[str]:
         """Gets list of mat variants in the way that the HDA interface
         expects: [id1, label1, id2, label2, ...]"""
-        mvs = list(self._asset.material_variants) or [_NO_TEXTURES]
+        asset = self._asset
+        mvs = list(asset.material_variants) if asset else []
+        if not mvs:
+            mvs = [_NO_TEXTURES]
         return [s for v in mvs for s in (v, v)]
 
     def create_matnet(
