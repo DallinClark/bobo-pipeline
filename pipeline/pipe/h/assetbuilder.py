@@ -1,3 +1,5 @@
+"""Build Houdini component packages for the Bobo asset pipeline."""
+
 from __future__ import annotations
 
 import argparse
@@ -14,6 +16,7 @@ log = logging.getLogger(__name__)
 
 
 def _configure_logging(level: str) -> None:
+    """Normalize CLI logging so build output stays predictable."""
     level_name = level.upper()
     numeric_level = getattr(logging, level_name, None)
     if not isinstance(numeric_level, int):
@@ -25,6 +28,7 @@ def _configure_logging(level: str) -> None:
 
 
 def _set_parm(node: hou.Node, name: str, value) -> None:
+    """Set a Houdini parameter and warn if templates drift from expectations."""
     parm = node.parm(name)
     if parm is None:
         log.warning("Parameter %s missing on %s", name, node.path())
@@ -33,12 +37,12 @@ def _set_parm(node: hou.Node, name: str, value) -> None:
 
 
 def _prepare_stage() -> hou.Node:
+    """Clear /stage so every package build starts from a clean LOP network."""
     stage = hou.node("/stage")
     if stage is None:
         raise RuntimeError(
             "Could not locate /stage context in the current Houdini session"
         )
-    # type: ignore[union-attr]
     for child in stage.children():
         try:
             child.destroy()
@@ -51,6 +55,7 @@ def _prepare_stage() -> hou.Node:
 
 
 def _configure_component_geometry(geo_node: hou.LopNode, usd_path: Path) -> None:
+    """Wire the imported USD into the component SOP net and promote preview nodes."""
     sopnet = geo_node.node("./sopnet/geo")
     if sopnet is None:
         raise RuntimeError("Component Geometry SOP network is missing")
@@ -58,16 +63,55 @@ def _configure_component_geometry(geo_node: hou.LopNode, usd_path: Path) -> None
     usd_import = sopnet.node("import_usd")
     if usd_import is None:
         raise RuntimeError("Template network is missing the import_usd node")
-    usd_import.parm("filepath1").set(usd_path.as_posix())  # type: ignore[union-attr]
+    _set_parm(usd_import, "filepath1", usd_path.as_posix())
 
     polyreduce = sopnet.node("polyreduce1")
     if polyreduce:
-        polyreduce.setDisplayFlag(True)  # type: ignore[attr-defined]
-        polyreduce.setRenderFlag(True)  # type: ignore[attr-defined]
+        # Keep the proxy reduction visible so artists land on performant geometry.
+        if hasattr(polyreduce, "setDisplayFlag"):
+            polyreduce.setDisplayFlag(True)
+        if hasattr(polyreduce, "setRenderFlag"):
+            polyreduce.setRenderFlag(True)
         try:
             polyreduce.setCurrent(True, clear_all_selected=False)
         except hou.OperationFailed:
             log.debug("Unable to set polyreduce node current; continuing")
+
+
+def _execute_component_output(node: hou.Node) -> None:
+    """Trigger the componentoutput node across Houdini versions."""
+    previous_errors = tuple(node.errors())
+    executed = False
+
+    if isinstance(node, hou.RopNode):
+        node.render()
+        executed = True
+    else:
+        save_to_disk = getattr(node, "saveToDisk", None)
+        if callable(save_to_disk):
+            if not save_to_disk():
+                raise RuntimeError("Component Output node failed to save to disk")
+            executed = True
+        else:
+            for button in ("execute", "render", "renderbutton"):
+                parm = node.parm(button)
+                if parm is None:
+                    continue
+                parm.pressButton()
+                executed = True
+                break
+
+    if not executed:
+        raise RuntimeError(
+            f"Component Output node {node.path()} has no supported execution parameter"
+        )
+
+    new_errors = [err for err in node.errors() if err not in previous_errors]
+    if new_errors:
+        joined = "; ".join(new_errors)
+        raise RuntimeError(
+            f"Component Output node {node.path()} reported errors: {joined}"
+        )
 
 
 def build_component_package(
@@ -80,6 +124,11 @@ def build_component_package(
     root_prim: str | None = None,
     clean_export: bool = False,
 ) -> None:
+    """Generate a Houdini component package network and write the exported USD.
+
+    asset_name populates the ASSET context option so downstream tools can link
+    the session back to the ShotGrid entity that initiated the publish.
+    """
     usd_path = usd_path.resolve()
     if not usd_path.exists():
         raise FileNotFoundError(f"USD file not found: {usd_path}")
@@ -104,7 +153,10 @@ def build_component_package(
     component_out = stage.createNode("componentoutput", node_name="COMPONENT_OUT")
     component_out.setColor(hou.Color((0.616, 0.871, 0.769)))
 
-    geo = nodelayouts.bobo_componentgeometry({}, parent=stage)
+    geo_node = nodelayouts.bobo_componentgeometry({}, parent=stage)
+    if not isinstance(geo_node, hou.LopNode):
+        raise RuntimeError("Component geometry network must be created inside LOPs")
+    geo = geo_node
     cmat = nodelayouts.lnd_componentmaterial({}, parent=stage)
     lib = stage.createNode("dbclark::main::Bobo_MatLib")
     cnf = stage.createNode("sdm223::lnd_componentconfig")
@@ -118,16 +170,18 @@ def build_component_package(
     cmat.setInput(1, lib)
     ldv.setInput(0, component_out)
 
-    env.parm("loppath").set(f"../{ldv.name()}/OUT_ENV")  # type: ignore[union-attr]
+    _set_parm(env, "loppath", f"../{ldv.name()}/OUT_ENV")
 
     component_out.moveToGoodPosition()
     for node in (geo, cmat, lib, cnf, ldv, env):
         node.moveToGoodPosition()
 
-    component_out.setDisplayFlag(True)  # type: ignore[attr-defined]
-    geo.setDisplayFlag(True)  # type: ignore[attr-defined]
+    if hasattr(component_out, "setDisplayFlag"):
+        component_out.setDisplayFlag(True)
+    if hasattr(geo, "setDisplayFlag"):
+        geo.setDisplayFlag(True)
 
-    _configure_component_geometry(geo, usd_path)  # type: ignore[arg-type]
+    _configure_component_geometry(geo, usd_path)
 
     component_out.setCurrent(True, clear_all_selected=True)
 
@@ -142,14 +196,14 @@ def build_component_package(
     _set_parm(component_out, "thumbnailinputcamera", "/lookdev/cam")
 
     log.info("Saving component package to %s", export_dir)
-    if not component_out.saveToDisk():  # type: ignore[attr-defined]
-        raise RuntimeError("Component Output node failed to save to disk")
+    _execute_component_output(component_out)
 
     hou.hipFile.save()
     log.info("Component package build complete")
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
+    """Translate CLI arguments into configuration for the asset builder."""
     parser = argparse.ArgumentParser(
         description="Build Houdini component package from Maya export"
     )
@@ -168,6 +222,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="Component identifier used for filenames and root prim",
     )
     parser.add_argument(
+        "--asset-name",
+        help="Name stored on the ASSET context option for downstream tools",
+    )
+    parser.add_argument(
         "--root-prim", help="Optional override for the component root prim name"
     )
     parser.add_argument("--variant", help="Geometry variant name (for logging only)")
@@ -181,6 +239,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Entrypoint for command-line execution."""
     args = _parse_args(argv or sys.argv[1:])
     _configure_logging(args.log_level)
 
@@ -194,6 +253,7 @@ def main(argv: list[str] | None = None) -> int:
             usd_path=Path(args.usd_path),
             export_dir=Path(args.export_dir),
             component_name=component_name,
+            asset_name=args.asset_name,
             root_prim=args.root_prim,
             clean_export=args.clean_export,
         )
