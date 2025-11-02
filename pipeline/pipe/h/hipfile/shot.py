@@ -24,6 +24,7 @@ class HShotFileManager(HFileManager):
         FX = "fx"
         LIGHTING = "lighting"
         ENVFX = "envfx"
+        FLO = "flo"
 
     def __init__(self):
         department_dialog = FilteredListDialog(
@@ -32,6 +33,7 @@ class HShotFileManager(HFileManager):
                 self.DEPARTMENT.CFX,
                 self.DEPARTMENT.FX,
                 self.DEPARTMENT.ENVFX,
+                self.DEPARTMENT.FLO,
                 self.DEPARTMENT.LIGHTING,
             ],
             "Department Select",
@@ -84,6 +86,8 @@ class HShotFileManager(HFileManager):
             muted_departments = ["cfx", "fx", "envfx", "layout", "lighting"]
         elif self._department == self.DEPARTMENT.FX:
             muted_departments = ["fx"]
+        elif self._department == self.DEPARTMENT.FLO:
+            muted_departments = ["cfx", "fx", "envfx", "lighting"]
         elif self._department == self.DEPARTMENT.ENVFX:
             muted_departments = ["envfx"]
         elif self._department == self.DEPARTMENT.LIGHTING:
