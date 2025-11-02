@@ -25,6 +25,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "Build" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -59,6 +60,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "Simple Auto Rigger" 
         -overlayLabelColor 2.6281 0.7848 0.0125001 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -93,6 +95,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "GuideExport" 
         -overlayLabelColor 2.6281 0.7848 0.0125001 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -127,6 +130,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "Publish" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -161,6 +165,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "ReloadPipe" 
         -overlayLabelColor 2.624876 0.801436 0.012446 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -195,6 +200,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "GuideFlip" 
         -overlayLabelColor 0.383 2.085 0.1407 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -229,6 +235,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "RibbonTool" 
         -overlayLabelColor 0.414013 0.85208 0.141657 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -263,6 +270,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "ngSkinTools" 
         -overlayLabelColor 0.414013 0.85208 0.141657 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -297,6 +305,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "Rename" 
         -overlayLabelColor 0.414013 0.85208 0.141657 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -331,6 +340,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "PrepFace" 
         -overlayLabelColor 0.414013 0.85208 0.141657 
         -overlayLabelBackColor 0 0 0 0.5 
@@ -365,6 +375,7 @@ global proc shelf_Bobo_Rigging () {
         -flipX 0
         -flipY 0
         -useAlpha 1
+        -font "plainLabelFont" 
         -imageOverlayLabel "katie_Tool" 
         -overlayLabelColor 0.414013 0.85208 0.141657 
         -overlayLabelBackColor 0.227129 0.227129 0.227129 0.5 
@@ -377,6 +388,47 @@ global proc shelf_Bobo_Rigging () {
         -sourceType "python" 
         -commandRepeatable 1
         -flat 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -flexibleWidthType 3
+        -flexibleWidthValue 32
+        -enable 1
+        -width 35
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Split the weights of the selected transform and all of it's children." 
+        -enableBackground 0
+        -backgroundColor 0 0 0 
+        -highlightColor 0.321569 0.521569 0.65098 
+        -align "center" 
+        -label "Split Weights" 
+        -labelOffset 0
+        -rotation 0
+        -flipX 0
+        -flipY 0
+        -useAlpha 1
+        -font "plainLabelFont" 
+        -imageOverlayLabel "Split Weights" 
+        -overlayLabelColor 0.3292 2.8429 1.3271 
+        -overlayLabelBackColor 0 0 0 0.2 
+        -image "wire.png" 
+        -image1 "wire.png" 
+        -style "iconOnly" 
+        -marginWidth 0
+        -marginHeight 1
+        -command "import maya.cmds as cmds\nimport rjg.libs.skin\nselection = cmds.ls(selection=True)\nrjg.libs.skin.auto_split_all_weights(selection[0])" 
+        -sourceType "python" 
+        -commandRepeatable 1
+        -flat 1
+        -mi "Linear Split" ( "import maya.cmds as cmds\nimport rjg.libs.skin\nselection = cmds.ls(selection=True)\nrjg.libs.skin.auto_split_all_weights(selection[0], degree=1)" )
+        -mip 0
+        -mi "Quadratic Split" ( "import maya.cmds as cmds\nimport rjg.libs.skin\nselection = cmds.ls(selection=True)\nrjg.libs.skin.auto_split_all_weights(selection[0], degree=2)" )
+        -mip 1
+        -mi "Cubic Split" ( "import maya.cmds as cmds\nimport rjg.libs.skin\nselection = cmds.ls(selection=True)\nrjg.libs.skin.auto_split_all_weights(selection[0], degree=3)" )
+        -mip 2
     ;
 
 } 
