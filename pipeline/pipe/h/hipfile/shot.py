@@ -87,7 +87,7 @@ class HShotFileManager(HFileManager):
         elif self._department == self.DEPARTMENT.FX:
             muted_departments = ["fx"]
         elif self._department == self.DEPARTMENT.FLO:
-            muted_departments = ["cfx", "fx", "envfx", "lighting"]
+            muted_departments = ["cfx", "fx", "envfx", "lighting", "flo"]
         elif self._department == self.DEPARTMENT.ENVFX:
             muted_departments = ["envfx"]
         elif self._department == self.DEPARTMENT.LIGHTING:
