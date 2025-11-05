@@ -38,8 +38,8 @@ class Timeline(JsonSerializable):
         cls: type[Timeline], shot: Shot, preroll_duration: int = PREROLL_DURATION
     ) -> Timeline:
         return cls(
-            start=shot.cut_in,
-            end=shot.cut_out,
+            start=shot.cut_in - 5,
+            end=shot.cut_out + 5,
             preroll_duration=preroll_duration,
             head_duration=5,
             tail_duration=5,
