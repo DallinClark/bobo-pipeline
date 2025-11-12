@@ -186,7 +186,6 @@ def build_component_package(
     component_out.setCurrent(True, clear_all_selected=True)
 
     root_name = root_prim or component_name
-    _set_parm(component_out, "filename", component_name)
     _set_parm(component_out, "lopoutput", '$HIP/export/`chs("filename")`')
     _set_parm(component_out, "rootprim", f"/{root_name}")
     _set_parm(component_out, "localize", False)
