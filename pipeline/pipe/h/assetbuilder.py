@@ -3,16 +3,49 @@
 from __future__ import annotations
 
 import argparse
+import datetime
+import enum
+import json
 import logging
 import shutil
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 import hou
 
 from pipe.h import nodelayouts
 
 log = logging.getLogger(__name__)
+
+
+class BuildError(TypedDict):
+    """A structured error for machine-readable client output."""
+
+    code: str
+    message: str
+
+
+class BuildResult(TypedDict):
+    """Structured description of the outcome of a component package build."""
+
+    status: str
+    mode: str
+    hip_path: str
+    usd_path: str
+    export_dir: str
+    export_performed: bool
+    variant: str | None
+    changed_usd_reference: bool
+    warnings: list[str]
+    errors: list[BuildError]
+
+
+class BuildMode(enum.Enum):
+    """Whether to create a new HIP file or update an existing one."""
+
+    CREATE = "create"
+    UPDATE = "update"
 
 
 def _configure_logging(level: str) -> None:
@@ -36,85 +69,200 @@ def _set_parm(node: hou.Node, name: str, value) -> None:
     parm.set(value)
 
 
-def _prepare_stage() -> hou.Node:
-    """Clear /stage so every package build starts from a clean LOP network."""
-    stage = hou.node("/stage")
-    if stage is None:
-        raise RuntimeError(
-            "Could not locate /stage context in the current Houdini session"
+def _find_node(name: str, node_type: type[hou.Node] | None = None) -> hou.Node | None:
+    """Find a node by name, optionally validating its type."""
+    node = hou.node(f"/stage/{name}")
+    if node and node_type and not isinstance(node, node_type):
+        log.warning(
+            "Found node %s but it has wrong type (expected %s, got %s)",
+            name,
+            node_type.__name__,
+            node.type().name(),
         )
-    for child in stage.children():
-        try:
-            child.destroy()
-        except hou.OperationFailed:
-            log.warning(
-                "Failed to destroy node %s while resetting /stage", child.path()
-            )
-
-    return stage
+        return None
+    return node
 
 
-def _configure_component_geometry(geo_node: hou.LopNode, usd_path: Path) -> None:
-    """Wire the imported USD into the component SOP net and promote preview nodes."""
-    sopnet = geo_node.node("./sopnet/geo")
-    if sopnet is None:
-        raise RuntimeError("Component Geometry SOP network is missing")
-
-    usd_import = sopnet.node("import_usd")
-    if usd_import is None:
-        raise RuntimeError("Template network is missing the import_usd node")
-    _set_parm(usd_import, "filepath1", usd_path.as_posix())
-
-    polyreduce = sopnet.node("polyreduce1")
-    if polyreduce:
-        # Keep the proxy reduction visible so artists land on performant geometry.
-        if hasattr(polyreduce, "setDisplayFlag"):
-            polyreduce.setDisplayFlag(True)
-        if hasattr(polyreduce, "setRenderFlag"):
-            polyreduce.setRenderFlag(True)
-        try:
-            polyreduce.setCurrent(True, clear_all_selected=False)
-        except hou.OperationFailed:
-            log.debug("Unable to set polyreduce node current; continuing")
+def _get_node_hash(node: hou.Node) -> str | None:
+    """Retrieve a hash from a node's user data."""
+    return node.userData("bobo_pipeline_hash")
 
 
-def _execute_component_output(node: hou.Node) -> None:
-    """Trigger the componentoutput node across Houdini versions."""
-    previous_errors = tuple(node.errors())
+def _set_node_hash(node: hou.Node, file_path: Path) -> None:
+    """Store a hash of the file path on the node's user data."""
+    node.setUserData("bobo_pipeline_hash", str(hash(file_path)))
+
+
+def _create_hip_file(
+    *,
+    result: BuildResult,
+    hip_path: Path,
+    usd_path: Path,
+    component_name: str,
+    root_prim: str | None = None,
+) -> None:
+    """Create a new Houdini scene with a standard component network."""
+    hou.hipFile.clear(suppress_save_prompt=True)
+    hou.hipFile.setName(str(hip_path))
+
+    stage = hou.node("/stage")
+    if not stage:
+        raise RuntimeError("Could not find /stage in Houdini session")
+
+    log.info("Building Bobo component network")
+    geo_node = nodelayouts.bobo_componentgeometry({}, parent=stage)
+    cmat_node = nodelayouts.lnd_componentmaterial({}, parent=stage)
+    lib_node = stage.createNode("dbclark::main::Bobo_MatLib", "matlib")
+    config_node = stage.createNode("sdm223::lnd_componentconfig", "config")
+    lookdev_node = stage.createNode("sdm223::dev::LnD_Lookdev", "lookdev")
+    env_node = stage.createNode("fetch", "env")
+    out_node = stage.createNode("componentoutput", "COMPONENT_OUT")
+    out_node.setColor(hou.Color((0.616, 0.871, 0.769)))
+
+    out_node.setInput(0, config_node)
+    out_node.setInput(1, env_node)
+    config_node.setInput(0, cmat_node)
+    cmat_node.setInput(0, geo_node)
+    cmat_node.setInput(1, lib_node)
+    lookdev_node.setInput(0, out_node)
+
+    _set_parm(env_node, "loppath", f"../{lookdev_node.name()}/OUT_ENV")
+
+    for node in stage.children():
+        node.moveToGoodPosition()
+
+    # Configure the import node inside the component geometry HDA.
+    importer = geo_node.node("sopnet/geo/import_usd")
+    if not importer:
+        result["errors"].append(
+            {
+                "code": "NetworkMissingError",
+                "message": "Component Geometry SOP is missing 'import_usd' node",
+            }
+        )
+        return
+
+    _set_parm(importer, "filepath1", usd_path.as_posix())
+    _set_node_hash(importer, usd_path)
+    result["changed_usd_reference"] = True
+
+    # Configure the final output node.
+    root_name = root_prim or component_name
+    _set_parm(out_node, "lopoutput", '$HIP/export/`chs("filename")`')
+    _set_parm(out_node, "rootprim", f"/{root_name}")
+    _set_parm(out_node, "localize", False)
+    _set_parm(out_node, "thumbnailmode", 2)
+    _set_parm(out_node, "renderer", "RenderMan RIS")
+    _set_parm(out_node, "thumbnailscenesource", 1)
+    _set_parm(out_node, "thumbnailinputcamera", "/lookdev/cam")
+
+    out_node.setCurrent(True, clear_all_selected=True)
+    if hasattr(out_node, "setDisplayFlag"):
+        out_node.setDisplayFlag(True)
+
+
+def _update_hip_file(*, result: BuildResult, hip_path: Path, usd_path: Path) -> None:
+    """Load an existing HIP and update the USD reference if it has changed."""
+    try:
+        hou.hipFile.load(str(hip_path), suppress_save_prompt=True)
+    except hou.LoadWarning as exc:
+        result["warnings"].append(f"Houdini load warning: {exc}")
+
+    geo_node = _find_node("main", hou.LopNode)
+    if not geo_node:
+        result["errors"].append(
+            {
+                "code": "NetworkMissingError",
+                "message": "Expected to find a 'main' LOP node in /stage",
+            }
+        )
+        return
+
+    importer = geo_node.node("sopnet/geo/import_usd")
+    if not importer:
+        result["errors"].append(
+            {
+                "code": "NetworkMissingError",
+                "message": "Component Geometry SOP is missing 'import_usd' node",
+            }
+        )
+        return
+
+    # Only update the path if the new USD is different from the tracked one.
+    current_hash = _get_node_hash(importer)
+    new_hash = str(hash(usd_path))
+
+    if current_hash != new_hash:
+        log.info("Updating USD reference path")
+        _set_parm(importer, "filepath1", usd_path.as_posix())
+        _set_node_hash(importer, usd_path)
+        result["changed_usd_reference"] = True
+    else:
+        log.info("USD reference is already up-to-date")
+
+
+def _export_component(*, result: BuildResult, export_dir: Path) -> None:
+    """Trigger the component output node to save the package to disk."""
+    if result["errors"]:
+        log.warning("Skipping export due to previous errors")
+        return
+
+    out_node = _find_node("COMPONENT_OUT")
+    if not out_node:
+        result["errors"].append(
+            {
+                "code": "NetworkMissingError",
+                "message": "Cannot find 'COMPONENT_OUT' node to trigger export",
+            }
+        )
+        return
+
+    previous_errors = tuple(out_node.errors())
     executed = False
 
-    if isinstance(node, hou.RopNode):
-        node.render()
-        executed = True
-    else:
-        save_to_disk = getattr(node, "saveToDisk", None)
-        if callable(save_to_disk):
-            if not save_to_disk():
+    try:
+        # Modern Houdini versions use a simple `saveToDisk` method.
+        if hasattr(out_node, "saveToDisk") and callable(out_node.saveToDisk):
+            if not out_node.saveToDisk():
                 raise RuntimeError("Component Output node failed to save to disk")
             executed = True
+        # Fallback for older versions or different node types.
         else:
             for button in ("execute", "render", "renderbutton"):
-                parm = node.parm(button)
-                if parm is None:
-                    continue
-                parm.pressButton()
-                executed = True
-                break
+                parm = out_node.parm(button)
+                if parm:
+                    parm.pressButton()
+                    executed = True
+                    break
+    except (RuntimeError, hou.OperationFailed) as exc:
+        result["errors"].append({"code": "ExportExecutionError", "message": str(exc)})
+        return
 
     if not executed:
-        raise RuntimeError(
-            f"Component Output node {node.path()} has no supported execution parameter"
+        result["errors"].append(
+            {
+                "code": "NodePatchError",
+                "message": "No method found to trigger component output node",
+            }
         )
+        return
 
-    new_errors = [err for err in node.errors() if err not in previous_errors]
+    new_errors = [err for err in out_node.errors() if err not in previous_errors]
     if new_errors:
         joined = "; ".join(new_errors)
-        raise RuntimeError(
-            f"Component Output node {node.path()} reported errors: {joined}"
+        result["errors"].append(
+            {
+                "code": "ExportExecutionError",
+                "message": f"Component output reported errors: {joined}",
+            }
         )
+        return
+
+    result["export_performed"] = True
+    log.info("Component export successful")
 
 
-def build_component_package(
+def build_component_package(  # noqa: C901
     *,
     hip_path: Path,
     usd_path: Path,
@@ -122,87 +270,97 @@ def build_component_package(
     component_name: str,
     asset_name: str | None = None,
     root_prim: str | None = None,
+    variant: str | None = None,
     clean_export: bool = False,
-) -> None:
-    """Generate a Houdini component package network and write the exported USD.
+    export: bool = True,
+) -> BuildResult:
+    """Orchestrate the build or update of a Houdini component package.
 
-    asset_name populates the ASSET context option so downstream tools can link
-    the session back to the ShotGrid entity that initiated the publish.
+    This layer is responsible for discovery and decision-making, but does not
+    use the ``hou`` module directly. It prepares a plan and then calls the
+    appropriate function to execute it in a Houdini session.
+
+    Args:
+        hip_path: Destination .hipnc path.
+        usd_path: Source USD file exported from Maya.
+        export_dir: Directory where component USD layers will be written.
+        component_name: Component identifier used for filenames and root prim.
+        asset_name: Name stored on the ASSET context option.
+        root_prim: Optional override for the component root prim name.
+        variant: Geometry variant name.
+        clean_export: If True, remove the export directory before writing.
+        export: If False, skip the export step (dry-run).
+
+    Returns:
+        A dictionary summarizing the outcome of the build.
     """
-    usd_path = usd_path.resolve()
-    if not usd_path.exists():
-        raise FileNotFoundError(f"USD file not found: {usd_path}")
+    result: BuildResult = {
+        "status": "success",
+        "mode": "",  # Set dynamically
+        "hip_path": str(hip_path.resolve()),
+        "usd_path": str(usd_path.resolve()),
+        "export_dir": str(export_dir.resolve()),
+        "export_performed": False,
+        "variant": variant,
+        "changed_usd_reference": False,
+        "warnings": [],
+        "errors": [],
+    }
 
-    hip_path = hip_path.resolve()
-    hip_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if not usd_path.exists():
+            raise FileNotFoundError(f"USD file not found: {usd_path}")
 
-    export_dir = export_dir.resolve()
-    if clean_export and export_dir.exists():
-        log.info("Cleaning existing export directory: %s", export_dir)
-        shutil.rmtree(export_dir)
-    export_dir.mkdir(parents=True, exist_ok=True)
+        build_mode = BuildMode.UPDATE if hip_path.exists() else BuildMode.CREATE
+        result["mode"] = build_mode.value
 
-    log.info("Initializing new Houdini session at %s", hip_path)
-    hou.hipFile.clear(suppress_save_prompt=True)
-    hou.hipFile.save(str(hip_path))
-    hou.setContextOption("ASSET", asset_name or component_name)
+        if clean_export and export_dir.exists():
+            log.info("Cleaning existing export directory: %s", export_dir)
+            backup_dir = export_dir.parent / "export_backups"
+            if backup_dir.exists() or not any(export_dir.iterdir()):
+                shutil.rmtree(export_dir)
+            else:
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_path = backup_dir / f"{timestamp}"
+                log.info("Backing up existing export to %s", backup_path)
+                shutil.move(str(export_dir), str(backup_path))
 
-    stage = _prepare_stage()
+        export_dir.mkdir(parents=True, exist_ok=True)
+        hip_path.parent.mkdir(parents=True, exist_ok=True)
 
-    log.info("Building Bobo component network")
-    component_out = stage.createNode("componentoutput", node_name="COMPONENT_OUT")
-    component_out.setColor(hou.Color((0.616, 0.871, 0.769)))
+        hou.setContextOption("ASSET", asset_name or component_name)
 
-    geo_node = nodelayouts.bobo_componentgeometry({}, parent=stage)
-    if not isinstance(geo_node, hou.LopNode):
-        raise RuntimeError("Component geometry network must be created inside LOPs")
-    geo = geo_node
-    cmat = nodelayouts.lnd_componentmaterial({}, parent=stage)
-    lib = stage.createNode("dbclark::main::Bobo_MatLib")
-    cnf = stage.createNode("sdm223::lnd_componentconfig")
-    ldv = stage.createNode("sdm223::dev::LnD_Lookdev")
-    env = stage.createNode("fetch")
+        if build_mode == BuildMode.CREATE:
+            log.info("Creating new Houdini file at %s", hip_path)
+            _create_hip_file(
+                result=result,
+                hip_path=hip_path,
+                usd_path=usd_path,
+                component_name=component_name,
+                root_prim=root_prim,
+            )
+        else:
+            log.info("Updating existing Houdini file at %s", hip_path)
+            _update_hip_file(result=result, hip_path=hip_path, usd_path=usd_path)
 
-    component_out.setInput(0, cnf)
-    component_out.setInput(1, env)
-    cnf.setInput(0, cmat)
-    cmat.setInput(0, geo)
-    cmat.setInput(1, lib)
-    ldv.setInput(0, component_out)
+        if export:
+            log.info("Saving component package to %s", export_dir)
+            _export_component(result=result, export_dir=export_dir)
 
-    _set_parm(env, "loppath", f"../{ldv.name()}/OUT_ENV")
+        if not result["errors"]:
+            hou.hipFile.save(file_name=str(hip_path))
+            log.info("Component package build complete")
 
-    component_out.moveToGoodPosition()
-    for node in (geo, cmat, lib, cnf, ldv, env):
-        node.moveToGoodPosition()
+    except Exception as exc:
+        log.exception("Failed to build component package: %s", exc)
+        result["status"] = "failed"
+        result["errors"].append({"code": "UnhandledException", "message": str(exc)})
 
-    if hasattr(component_out, "setDisplayFlag"):
-        component_out.setDisplayFlag(True)
-    if hasattr(geo, "setDisplayFlag"):
-        geo.setDisplayFlag(True)
-
-    _configure_component_geometry(geo, usd_path)
-
-    component_out.setCurrent(True, clear_all_selected=True)
-
-    root_name = root_prim or component_name
-    _set_parm(component_out, "lopoutput", '$HIP/export/`chs("filename")`')
-    _set_parm(component_out, "rootprim", f"/{root_name}")
-    _set_parm(component_out, "localize", False)
-    _set_parm(component_out, "thumbnailmode", 2)
-    _set_parm(component_out, "renderer", "RenderMan RIS")
-    _set_parm(component_out, "thumbnailscenesource", 1)
-    _set_parm(component_out, "thumbnailinputcamera", "/lookdev/cam")
-
-    log.info("Saving component package to %s", export_dir)
-    _execute_component_output(component_out)
-
-    hou.hipFile.save()
-    log.info("Component package build complete")
+    return result
 
 
-def _parse_args(argv: list[str]) -> argparse.Namespace:
-    """Translate CLI arguments into configuration for the asset builder."""
+def main(argv: list[str] | None = None) -> int:
+    """Entrypoint for command-line execution."""
     parser = argparse.ArgumentParser(
         description="Build Houdini component package from Maya export"
     )
@@ -234,33 +392,37 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Remove the export directory before writing new files",
     )
-    return parser.parse_args(argv)
 
-
-def main(argv: list[str] | None = None) -> int:
-    """Entrypoint for command-line execution."""
-    args = _parse_args(argv or sys.argv[1:])
+    args = parser.parse_args(argv or sys.argv[1:])
     _configure_logging(args.log_level)
 
-    component_name = args.component_name
     if args.variant:
         log.info("Processing variant: %s", args.variant)
 
+    result = build_component_package(
+        hip_path=Path(args.hip_path),
+        usd_path=Path(args.usd_path),
+        export_dir=Path(args.export_dir),
+        component_name=args.component_name,
+        asset_name=args.asset_name,
+        root_prim=args.root_prim,
+        variant=args.variant,
+        clean_export=args.clean_export,
+        export=True,
+    )
+
+    # Always print the JSON result to stdout for the client to parse.
     try:
-        build_component_package(
-            hip_path=Path(args.hip_path),
-            usd_path=Path(args.usd_path),
-            export_dir=Path(args.export_dir),
-            component_name=component_name,
-            asset_name=args.asset_name,
-            root_prim=args.root_prim,
-            clean_export=args.clean_export,
-        )
-    except Exception as exc:  # noqa: BLE001
-        log.exception("Failed to build component package: %s", exc)
+        json_result = json.dumps(result, indent=2)
+        sys.stdout.write("\n--BUILD-RESULT--\n")
+        sys.stdout.write(json_result)
+        sys.stdout.write("\n--END-BUILD-RESULT--\n")
+        sys.stdout.flush()
+    except TypeError:
+        log.error("Failed to serialize build result to JSON: %s", result)
         return 1
 
-    return 0
+    return 1 if result["errors"] else 0
 
 
 if __name__ == "__main__":

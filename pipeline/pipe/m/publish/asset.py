@@ -5,29 +5,28 @@ import json
 import logging
 import os
 import subprocess
-from hashlib import sha1
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Optional, Sequence, cast
 from urllib import request
-from Qt.QtWidgets import QCheckBox, QWidget, QComboBox, QLabel, QHBoxLayout
-from Qt.QtGui import QTextCursor, QRegExpValidator
+
+from env import PIPEBOT_SECRET, PIPEBOT_URL, Executables
 from Qt.QtCore import QRegExp
+from Qt.QtGui import QRegExpValidator, QTextCursor
+from Qt.QtWidgets import QCheckBox, QComboBox, QHBoxLayout, QLabel, QWidget
+from shared.util import get_pipe_path, get_production_path
+from software.houdini.dcc import HoudiniDCC
+
 from pipe.db import DB
-from typing import Optional
-
-
-if TYPE_CHECKING:
-    from typing import Any, Sequence
 from pipe.glui.dialogs import (
     FilteredListDialog,
     MessageDialog,
     MessageDialogCustomButtons,
 )
 from pipe.struct.db import Asset, SGEntity
-from shared.util import get_pipe_path, get_production_path
-from env import Executables, PIPEBOT_SECRET, PIPEBOT_URL
 
-from software.houdini.dcc import HoudiniDCC
+if TYPE_CHECKING:
+    pass
+
 from .publisher import Publisher
 
 try:
@@ -37,8 +36,6 @@ except TypeError:
     MCUI = object
 
 log = logging.getLogger(__name__)
-
-
 ASSET_BUILDER_SCRIPT = get_pipe_path() / "pipe/h/assetbuilder.py"
 
 
@@ -135,7 +132,7 @@ class AssetPublisher(Publisher):
     _component_hip_path: Path | None
     _component_basename: str | None
     _asset_pipe_name: str | None
-    _houdini_error: str | None
+    _houdini_result: dict[str, Any] | None
 
     def __init__(self) -> None:
         super().__init__(PublishAssetDialog)
@@ -145,7 +142,7 @@ class AssetPublisher(Publisher):
         self._component_hip_path = None
         self._component_basename = None
         self._asset_pipe_name = None
-        self._houdini_error = None
+        self._houdini_result = None
 
     @staticmethod
     def _compute_component_basename(
@@ -197,40 +194,50 @@ class AssetPublisher(Publisher):
     def _get_entity_from_name(self, name: str) -> SGEntity | None:
         return self._conn.get_asset_by_name(name)
 
-    def _get_save_path(self) -> Path | None:
+    def _get_asset(self) -> Asset | None:
+        """Get the asset from the database."""
         dialog = cast(PublishAssetDialog, self._dialog)
-        asset = cast(Asset, self._entity)
-        variant_name = dialog.get_selected_variant()
-        try:
-            assert asset.path is not None
+        asset_name = dialog.get_selected_item()
+        if not asset_name:
+            return None
+        return self._conn.get_asset_by_name(asset_name)
 
-            if not variant_name:
-                raise ValueError()
+    def _get_variant_name(self) -> str | None:
+        """Get the variant name from the dialog."""
+        dialog = cast(PublishAssetDialog, self._dialog)
+        return dialog.get_selected_variant()
 
-        except AssertionError:
-            error = MessageDialog(
+    def _get_save_path(self) -> Path | None:
+        asset = self._get_asset()
+        if not asset:
+            MessageDialog(
+                self._window,
+                "Error: No asset selected. Nothing exported.",
+                "Error",
+            ).exec_()
+            return None
+
+        variant_name = self._get_variant_name()
+        if not variant_name:
+            MessageDialog(
+                self._window,
+                "Error: No variant selected. Nothing exported.",
+                "Error",
+            ).exec_()
+            return None
+
+        if not asset.path:
+            MessageDialog(
                 self._window,
                 "Error: No path for this Asset set in ShotGrid. Nothing exported",
                 "Error",
-            )
-            error.exec_()
-            return None
-
-        except ValueError:
-            error = MessageDialog(
-                self._window,
-                "Error: No variant selected. Nothing exported,",
-                "Error",
-            )
-            error.exec_()
+            ).exec_()
             return None
 
         self._geo_variant = variant_name
-        self._is_substance_only = dialog.is_substance_only
-        self._component_export_dir = None
-        self._component_hip_path = None
-        self._asset_pipe_name = None
-        self._houdini_error = None
+        self._is_substance_only = cast(
+            PublishAssetDialog, self._dialog
+        ).is_substance_only
 
         if variant_name not in asset.geometry_variants:
             asset.geometry_variants.add(variant_name)
@@ -238,12 +245,42 @@ class AssetPublisher(Publisher):
             self._conn.update_asset(asset)
 
         pipe_name, basename = self._compute_component_basename(
-            asset, variant_name, dialog.is_substance_only
+            asset, variant_name, self._is_substance_only
         )
         publish_dir = get_production_path() / asset.path
         self._asset_pipe_name = pipe_name
         self._component_basename = basename
         return publish_dir / f"{basename}.usd"
+
+    def _get_confirm_message(self) -> str:
+        message = super()._get_confirm_message()
+        if self._is_substance_only:
+            return message
+
+        if self._houdini_result is None:
+            return f"{message}\n\nHoudini component publish failed or was skipped."
+
+        result = self._houdini_result
+        status = result.get("status", "unknown").capitalize()
+        mode = result.get("mode", "unknown")
+
+        details = [f"Houdini build status: {status} ({mode} mode)"]
+        if result.get("changed_usd_reference"):
+            details.append("- Updated USD reference.")
+        if result.get("export_performed"):
+            details.append(f"- Exported to: {result.get('export_dir')}")
+
+        warnings = result.get("warnings")
+        if warnings:
+            details.append("\nWarnings:")
+            details.extend(f"- {w}" for w in warnings)
+
+        errors = result.get("errors")
+        if errors:
+            details.append("\nErrors:")
+            details.extend(f"- {e.get('code')}: {e.get('message')}" for e in errors)
+
+        return f"{message}\n\n" + "\n".join(details)
 
     def _presave(self) -> bool:
         # notify webhook of override
@@ -256,7 +293,7 @@ class AssetPublisher(Publisher):
             }
             data = bytes(json.dumps(override_info), encoding="utf-8")
             hashcheck = (
-                "sha1=" + hmac.new(PIPEBOT_SECRET.encode(), data, sha1).hexdigest()
+                "sha1=" + hmac.new(PIPEBOT_SECRET.encode(), data, "sha1").hexdigest()
             )
 
             req = request.Request(
@@ -267,11 +304,6 @@ class AssetPublisher(Publisher):
             request.urlopen(req)
         return True
 
-    def _get_mayausd_kwargs(self) -> dict[str, Any]:
-        return {
-            "shadingMode": "useRegistry",
-        }
-
     def _postpublish(self) -> None:
         if self._is_substance_only:
             log.info("Skipping Houdini component publish for substance-only export")
@@ -281,15 +313,12 @@ class AssetPublisher(Publisher):
         try:
             self._run_houdini_asset_builder(asset)
         except HoudiniBuildError as exc:
-            self._houdini_error = str(exc)
             log.error("Houdini asset build failed: %s", exc, exc_info=True)
             MessageDialog(
                 self._window,
                 "Houdini component publish failed. Please review the Script Editor for details.",
                 "Houdini Export Failed",
             ).exec_()
-        else:
-            self._houdini_error = None
 
     def _run_houdini_asset_builder(self, asset: Asset) -> None:
         publish_path = getattr(self, "_publish_path", None)
@@ -343,7 +372,6 @@ class AssetPublisher(Publisher):
             asset_pipe_name,
             "--variant",
             self._geo_variant,
-            "--clean-export",
         ]
 
         if asset_pipe_name and asset_pipe_name != component_name:
@@ -376,40 +404,30 @@ class AssetPublisher(Publisher):
             raise HoudiniBuildError(
                 f"Houdini component publish failed with exit code {exc.returncode}"
             ) from exc
-        else:
-            if result.stdout:
-                log.debug("Houdini asset builder stdout:\n%s", result.stdout)
-            if result.stderr:
-                log.debug("Houdini asset builder stderr:\n%s", result.stderr)
 
-        if not hip_path.exists():
+        # Parse the structured JSON output from the builder script
+        stdout = result.stdout or ""
+        json_block_start = stdout.find("--BUILD-RESULT--")
+        json_block_end = stdout.find("--END-BUILD-RESULT--")
+
+        if json_block_start == -1 or json_block_end == -1:
+            log.error("Houdini asset builder stdout:\n%s", stdout)
+            log.error("Houdini asset builder stderr:\n%s", result.stderr or "")
             raise HoudiniBuildError(
-                f"Houdini component build did not produce hip file at {hip_path}"
-            )
-        if not export_dir.exists():
-            raise HoudiniBuildError(
-                f"Houdini component build did not create export directory at {export_dir}"
+                "Failed to parse structured output from Houdini build."
             )
 
-    def _get_confirm_message(self) -> str:
-        message = super()._get_confirm_message()
-        if self._is_substance_only:
-            return message
+        json_text = stdout[json_block_start + len("--BUILD-RESULT--") : json_block_end]
+        try:
+            self._houdini_result = json.loads(json_text)
+        except json.JSONDecodeError:
+            log.error("Houdini asset builder stdout:\n%s", stdout)
+            raise HoudiniBuildError("Failed to decode JSON from Houdini build.")
 
-        if self._houdini_error:
-            return (
-                f"{message}\n\nHoudini component publish failed: {self._houdini_error}"
-            )
-
-        extras: list[str] = []
-        if self._component_hip_path:
-            extras.append(f"Houdini scene: {self._component_hip_path}")
-        if self._component_export_dir:
-            extras.append(f"Houdini exports: {self._component_export_dir}")
-        if extras:
-            message = f"{message}\n\n" + "\n".join(extras)
-
-        return message
+        if self._houdini_result.get("status") != "success":  # type: ignore
+            errors = self._houdini_result.get("errors", [])  # type: ignore
+            error_summary = "; ".join(e.get("message", "Unknown error") for e in errors)
+            raise HoudiniBuildError(f"Build failed: {error_summary}")
 
 
 class ModelChecker(MCUI):
