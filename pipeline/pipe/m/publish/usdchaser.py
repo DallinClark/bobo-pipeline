@@ -517,9 +517,15 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     layer, name, character_root_path, self._chaser_args.timeline
                 )
 
-                char_prim_spec = Sdf.CreatePrimInLayer(
-                    root_layer, Sdf.Path(f"/__class__/character/{name}")
-                )
+                if base_name != name:
+                    char_prim_spec = Sdf.CreatePrimInLayer(
+                        root_layer, Sdf.Path(f"/character/{name}/character/{base_name}")
+                    )
+                else:
+                    char_prim_spec = Sdf.CreatePrimInLayer(
+                        root_layer, Sdf.Path(f"/character/{name}")
+                    )
+                    
                 char_prim_spec.specifier = Sdf.SpecifierOver
 
                 reference = Sdf.Reference(
@@ -531,8 +537,6 @@ class ExportChaser(mayaUsdLib.ExportChaser):
 
                 try:
                     asset = conn.get_asset_by_attr("name", base_name)
-                    if base_name != name:
-                        add_variant_to_model(asset, name)
 
                     assert asset.path is not None
                     rig_path = f"{asset.path}/usd/main.usd"
@@ -541,9 +545,19 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                         - 1
                     )
 
-                    relative_path = Sdf.Path("../" * walk_up_len + rig_path)
-                    if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
-                        root_layer.subLayerPaths.append(str(relative_path))
+                    mount_path = Sdf.Path(f"/character/{name}")
+                    char_prim_spec = Sdf.CreatePrimInLayer(root_layer, mount_path)
+                    char_prim_spec.specifier = Sdf.SpecifierOver
+
+                    if base_name == name:
+                        # Instead of appending to root_layer.subLayerPaths
+                        if str(relative_path) not in char_prim_spec.subLayerPaths:
+                            char_prim_spec.subLayerPaths.append(str(relative_path))
+
+                    else:
+                        relative_path = Sdf.Path("../" * walk_up_len + rig_path)
+                        if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
+                            root_layer.subLayerPaths.append(str(relative_path))
 
                 except Exception as e:
                     print(
