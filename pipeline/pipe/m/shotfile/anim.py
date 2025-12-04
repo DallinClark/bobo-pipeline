@@ -1,14 +1,51 @@
 import logging
-import maya.cmds as mc
-
 from pathlib import Path
-from pxr import Usd, UsdGeom
+from typing import Optional
 
+import maya.cmds as mc
+from pxr import Usd, UsdGeom
 from shared.util import get_production_path
 
 from .shotfile_manager import MShotFileManager
 
 log = logging.getLogger(__name__)
+
+
+def _find_usd_shotcam() -> Optional[str]:
+    """Locate the shot camera brought in via MayaUSD"""
+    # look for any transform named shotCam under the mayaUsd proxy (__mayaUsd__ in its path)
+    candidates = [
+        path
+        for path in (mc.ls("*shotCam", type="transform", long=True) or [])
+        if "__mayaUsd__" in path.split("|")
+    ]
+    if not candidates:
+        return None
+    # prefer shortest (legacy: |__mayaUsd__|shotCamParent|shotCam), otherwise deterministic
+    candidates.sort(key=len)
+    return candidates[0]
+
+
+def _lock_camera_chain(cam_transform: str) -> None:
+    """Lock transforms on the shot camera and every parent to prevent accidental edits."""
+    parts = cam_transform.split("|")
+    current = ""
+    for part in parts[1:]:  # skip leading empty string
+        current = f"{current}|{part}"
+        if not mc.objExists(current):
+            continue
+        for attr in ("tx", "ty", "tz", "rx", "ry", "rz", "sx", "sy", "sz"):
+            try:
+                mc.setAttr(
+                    f"{current}.{attr}", lock=True, keyable=False, channelBox=False
+                )
+            except Exception:
+                pass
+    for shape in mc.listRelatives(cam_transform, shapes=True, fullPath=True) or []:
+        try:
+            mc.camera(shape, edit=True, lockTransform=True)
+        except Exception:
+            pass
 
 
 class MAnimShotFileManager(MShotFileManager):
@@ -31,9 +68,20 @@ class MAnimShotFileManager(MShotFileManager):
             mc.mayaUsdEditAsMaya(
                 cls.get_stage_shape() + "," + str(camera_prim.GetPrimPath())
             )
-            camera_shape = mc.listRelatives(CAM_NAME, fullPath=True, shapes=True)[0]
-            mc.lookThru(CAM_NAME)
-            mc.camera(camera_shape, edit=True, lockTransform=True)
+            cam_path = _find_usd_shotcam()
+            if cam_path:
+                _lock_camera_chain(cam_path)
+                mc.lookThru(cam_path)
+            else:
+                # fallback to legacy name if discovery fails
+                try:
+                    camera_shape = mc.listRelatives(
+                        CAM_NAME, fullPath=True, shapes=True
+                    )[0]
+                    mc.camera(camera_shape, edit=True, lockTransform=True)
+                    mc.lookThru(CAM_NAME)
+                except Exception:
+                    mc.warning("Could not locate USD shot camera in Maya scene.")
 
     def _get_subpath(self) -> str:
         return "anim"

@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import logging
-import maya.cmds as mc
-
 from datetime import datetime
 from typing import TYPE_CHECKING
-from Qt.QtWidgets import QComboBox, QGridLayout, QLabel, QSpinBox, QWidget
+
+import maya.cmds as mc
+from env_sg import DB_Config
 from Qt.QtCore import QRegExp
 from Qt.QtGui import QRegExpValidator
+from Qt.QtWidgets import QComboBox, QGridLayout, QLabel, QSpinBox, QWidget
+from shared.util import get_edit_path
 
 from pipe.db import DB
-from pipe.util import checkbox_callback_helper, Playblaster
-from shared.util import get_edit_path
-from env_sg import DB_Config
+from pipe.m.shotfile.anim import _find_usd_shotcam
+from pipe.util import Playblaster, checkbox_callback_helper
 
 from .struct import (
     HudDefinition,
@@ -129,7 +130,7 @@ class AnimPlayblastDialog(PlayblastDialog):
             sg_config = next(c for c in self._shot_dialog_configs if c.id == self.SG_ID)
             shots.append(
                 MShotPlayblastConfig(
-                    camera="|__mayaUsd__|shotCamParent|shotCam",
+                    camera=self._get_shot_camera_path(),
                     shot=self._shot,
                     paths=self.save_locations_to_paths(
                         self.SG_ID,
@@ -193,3 +194,11 @@ class AnimPlayblastDialog(PlayblastDialog):
             shots=shots,
             ssao=self.use_ssao,
         )
+
+    def _get_shot_camera_path(self) -> str | None:
+        """Resolve the USD shot camera in Maya, supporting both legacy and current hierarchies."""
+        cam = _find_usd_shotcam()
+        if cam:
+            return cam
+        log.warning("No USD shot camera found; falling back to legacy path.")
+        return "|__mayaUsd__|shotCamParent|shotCam"
