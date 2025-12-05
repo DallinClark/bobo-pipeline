@@ -36,3 +36,6 @@
 [submodule "pipeline/lib/tractor-lops"]
 	path = pipeline/lib/tractor-lops
 	url = https://github.com/scottdmilner/tractor-lops.git
+[submodule "pipeline/software/maya/scripts/aperture_git"]
+	path = pipeline/software/maya/scripts/aperture_git
+	url = git@github.com:michaelharmonart/aperture.git
