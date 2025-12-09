@@ -499,33 +499,22 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     base_name = name
                 print(base_name)
 
-                # the rigs that need the controls exported instead of the mesh
-                if base_name in [
-                    "gemheart",
-                    "raydenring",
-                    "ringroom",
-                    "robinring",
-                    "rrbrickdoor",
-                    "statueringpillar",
-                    "strikemagicpillarpath",
-                ]:
-                    character_root_path = Sdf.Path("/ROOT/CTRLS")
-                else:
-                    character_root_path = Sdf.Path("/ROOT/MODEL")
+                character_root_path = Sdf.Path("/ROOT/MODEL")
 
                 stitched_layer = split_preroll(
                     layer, name, character_root_path, self._chaser_args.timeline
                 )
+                
+                char_prim_spec: Sdf.PrimSpec = None
+                # if base_name != name:
+                #     char_prim_spec = Sdf.CreatePrimInLayer(
+                #         root_layer, Sdf.Path(f"__class__/character/{name}/character/{base_name}")
+                #     )
+                # else:
+                char_prim_spec = Sdf.CreatePrimInLayer(
+                    root_layer, Sdf.Path(f"__class__/character/{name}")
+                )
 
-                if base_name != name:
-                    char_prim_spec = Sdf.CreatePrimInLayer(
-                        root_layer, Sdf.Path(f"/character/{name}/character/{base_name}")
-                    )
-                else:
-                    char_prim_spec = Sdf.CreatePrimInLayer(
-                        root_layer, Sdf.Path(f"/character/{name}")
-                    )
-                    
                 char_prim_spec.specifier = Sdf.SpecifierOver
 
                 reference = Sdf.Reference(
@@ -545,17 +534,21 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                         - 1
                     )
 
-                    mount_path = Sdf.Path(f"/character/{name}")
-                    char_prim_spec = Sdf.CreatePrimInLayer(root_layer, mount_path)
-                    char_prim_spec.specifier = Sdf.SpecifierOver
 
-                    if base_name == name:
-                        # Instead of appending to root_layer.subLayerPaths
-                        if str(relative_path) not in char_prim_spec.subLayerPaths:
-                            char_prim_spec.subLayerPaths.append(str(relative_path))
+                    if base_name != name:
+                        mount_path = Sdf.Path(f"/character/{name}")
+                        char_prim_spec = Sdf.CreatePrimInLayer(root_layer, mount_path)
+                        char_prim_spec.specifier = Sdf.SpecifierDef
+
+                        relative_path = "../" * walk_up_len + rig_path
+
+                        print(relative_path)
+
+                        reference = Sdf.Reference(relative_path, Sdf.Path(f"/character"))
+
+                        char_prim_spec.referenceList.Add(reference)
 
                     else:
-                        relative_path = Sdf.Path("../" * walk_up_len + rig_path)
                         if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
                             root_layer.subLayerPaths.append(str(relative_path))
 
