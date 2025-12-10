@@ -40,3 +40,4 @@
 [submodule "pipeline/software/maya/scripts/aperture_git"]
 	path = pipeline/software/maya/scripts/aperture_git
 	url = git@github.com:michaelharmonart/aperture.git
+	branch = main
