@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import attrs
 import json
-import numpy as np
-import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
-
+import traceback
 from enum import IntEnum
 from math import isclose
 from pathlib import Path
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 from typing import TYPE_CHECKING, Optional
+
+import attrs
+import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
+import numpy as np
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Iterable, Protocol
@@ -20,13 +21,13 @@ if TYPE_CHECKING:
         def GetNumTimeSamples(self) -> int: ...
 
 
-from pipe.db import DB
-from pipe.struct.timeline import Timeline
-from pipe.struct.db import Asset
-from pipe.util import log_errors
+from env_sg import DB_Config
 from shared.util import get_production_path
 
-from env_sg import DB_Config
+from pipe.db import DB
+from pipe.struct.db import Asset
+from pipe.struct.timeline import Timeline
+from pipe.util import log_errors
 
 
 class ChaserMode(IntEnum):
@@ -504,13 +505,8 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 stitched_layer = split_preroll(
                     layer, name, character_root_path, self._chaser_args.timeline
                 )
-                
-                char_prim_spec: Sdf.PrimSpec = None
-                # if base_name != name:
-                #     char_prim_spec = Sdf.CreatePrimInLayer(
-                #         root_layer, Sdf.Path(f"__class__/character/{name}/character/{base_name}")
-                #     )
-                # else:
+
+                char_prim_spec: Sdf.PrimSpec
                 char_prim_spec = Sdf.CreatePrimInLayer(
                     root_layer, Sdf.Path(f"__class__/character/{name}")
                 )
@@ -524,38 +520,36 @@ class ExportChaser(mayaUsdLib.ExportChaser):
 
                 char_prim_spec.referenceList.appendedItems = [reference]
 
+                asset = None
+                relative_path_str = None
                 try:
                     asset = conn.get_asset_by_attr("name", base_name)
+                    if base_name != name:
+                        add_variant_to_model(asset, name)
 
                     assert asset.path is not None
-                    rig_path = f"{asset.path}/usd/main.usd"
+                    rig_path = str(asset.path).replace("\\", "/") + "/usd/main.usd"
                     walk_up_len = (
                         len(root_layer_path.relative_to(get_production_path()).parts)
                         - 1
                     )
 
-
-                    if base_name != name:
-                        mount_path = Sdf.Path(f"/character/{name}")
-                        char_prim_spec = Sdf.CreatePrimInLayer(root_layer, mount_path)
-                        char_prim_spec.specifier = Sdf.SpecifierDef
-
-                        relative_path = "../" * walk_up_len + rig_path
-
-                        print(relative_path)
-
-                        reference = Sdf.Reference(relative_path, Sdf.Path(f"/character"))
-
-                        char_prim_spec.referenceList.Add(reference)
-
-                    else:
-                        if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
-                            root_layer.subLayerPaths.append(str(relative_path))
-
-                except Exception as e:
+                    relative_path_str = "../" * walk_up_len + rig_path
+                    relative_path = Sdf.Path(relative_path_str)
+                    if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
+                        root_layer.subLayerPaths.append(str(relative_path))
                     print(
-                        f"Warning! Could not find asset matching namespace {name}: {e}"
+                        f"[chaser] added rig sublayer for {name}: {relative_path_str}"
                     )
+                except Exception:
+                    print(f"[chaser] asset link failed for {name} (base={base_name})")
+                    print(
+                        f"    asset={getattr(asset, 'path', None)} rig_path={rig_path if 'rig_path' in locals() else None}"
+                    )
+                    print(
+                        f"    relative_path={relative_path_str} root_layer={root_layer.realPath}"
+                    )
+                    print(traceback.format_exc())
 
         elif self._chaser_args.mode == ChaserMode.CHAR:
             scale_down_geo(self._stage)
