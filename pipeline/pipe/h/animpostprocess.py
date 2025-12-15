@@ -34,7 +34,7 @@ class AnimPostProcessor:
                     "dbclark::main::Bobo_Load_Layers::1.0"
                 )
                 load_layer.parm("shot").set(f"$JOB/{shot.path}")  # type: ignore[union-attr]
-                for dep in ["cfx", "fx", "envfx", "flo", "lighting"]:
+                for dep in ["cfx", "fx", "envfx", "flo", "lighting", "render"]:
                     load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
                 if layout and layout.path:
                     load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
@@ -45,7 +45,7 @@ class AnimPostProcessor:
             layout = self._conn.get_env_by_stub(env_stub)
             load_layer = stage_ctx.createNode("dbclark::main::Bobo_Load_Layers::1.0")
             load_layer.parm("shot").set(f"$JOB/{shot.path}")  # type: ignore[union-attr]
-            for dep in ["cfx", "fx", "envfx", "flo" "lighting"]:
+            for dep in ["cfx", "fx", "envfx", "flo" "lighting", "render"]:
                 load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
             if layout and layout.path:
                 load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
