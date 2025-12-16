@@ -1,0 +1,31 @@
+{
+  "load_package_once": true,
+  "env": [
+    { "RMANTREE": "/groups/bobo/production/opt/pixar/RenderManProServer-27.0" },
+    { "RFHTREE": "/groups/bobo/production/opt/pixar/RenderManForHoudini-27.0" },
+    {
+      "RFH_HOUDINI_VERS": [
+        { "houdini_version>='21.0'": "21.0.512" },
+        { "houdini_version>='20.5' and houdini_version<'21.0'": "20.5.684" },
+        { "houdini_version>='20.0' and houdini_version<'20.5'": "20.0.896" }
+      ]
+    },
+    {
+      "RFH_PY_VERS": [
+        { "houdini_python=='python2'": "2.7" },
+        { "houdini_python=='python3' and houdini_version<'19.5'": "3.7" },
+        { "houdini_python=='python3.7'": "3.7" },
+        { "houdini_python=='python3.9'": "3.9" },
+        { "houdini_python=='python3.10'": "3.10" },
+        { "houdini_python=='python3.11'": "3.11" }
+      ]
+    },
+    { "HOUDINI_PATH": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}" },
+    {
+      "RMAN_PROCEDURALPATH": {
+        "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}/openvdb",
+        "method": "prepend"
+      }
+    }
+  ]
+}

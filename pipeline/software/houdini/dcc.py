@@ -6,19 +6,19 @@ import logging
 import os
 import shutil
 import sqlite3
-
 from contextlib import closing, contextmanager, suppress
-from filelock import FileLock
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from filelock import FileLock
 
 if TYPE_CHECKING:
     import typing
 
+from env import Executables
 from shared.util import get_production_path, resolve_mapped_path
 
 from ..baseclass import DCC
-from env import Executables
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +116,8 @@ class HoudiniDCC(DCC):
                 [
                     str(resolve_mapped_path(pipe_path)),
                     # Add $RMANTREE/bin to PYTHONPATH for the Tractor PDG scheduler
-                    os.environ.get("RMANTREE", "") + "/bin",
+                    # os.environ.get("RMANTREE", "") + "/bin",
+                    str(get_production_path() / "opt/pixar/RenderManProServer-27.0"),
                 ]
             ),
             # RenderMan color config json file
