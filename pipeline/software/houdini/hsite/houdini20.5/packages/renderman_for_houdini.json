@@ -20,10 +20,33 @@
         { "houdini_python=='python3.11'": "3.11" }
       ]
     },
-    { "HOUDINI_PATH": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}" },
+    {
+      "PATH": {
+        "value": "${RMANTREE}/bin:${RFHTREE}/bin",
+        "method": "prepend"
+      }
+    },
+    {
+      "HOUDINI_PATH": {
+        "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}",
+        "method": "append"
+      }
+    },
+    {
+      "PXR_PLUGINPATH_NAME": {
+        "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}/plugin/hdPrman",
+        "method": "prepend"
+      }
+    },
     {
       "RMAN_PROCEDURALPATH": {
         "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}/openvdb",
+        "method": "prepend"
+      }
+    },
+    {
+      "RMAN_SHADERPATH": {
+        "value": "${RMANTREE}/lib/shaders",
         "method": "prepend"
       }
     }
