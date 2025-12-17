@@ -5,9 +5,21 @@
     { "RFHTREE": "/groups/bobo/production/opt/pixar/RenderManForHoudini-27.0" },
     {
       "RFH_HOUDINI_VERS": [
-        { "houdini_version>='21.0'": "21.0.512" },
-        { "houdini_version>='20.5' and houdini_version<'21.0'": "20.5.684" },
-        { "houdini_version>='20.0' and houdini_version<'20.5'": "20.0.896" }
+        {
+          "houdini_version<'21.5' and houdini_version>='21.0.512'": "21.0.512"
+        },
+        {
+          "houdini_version<'21.0' and houdini_version>='20.5.684'": "20.5.684"
+        },
+        {
+          "houdini_version<'20.5.684' and houdini_version>='20.5.684'": "20.5.684"
+        },
+        {
+          "houdini_version<'20.5' and houdini_version>='20.0.896'": "20.0.896"
+        },
+        {
+          "houdini_version<'20.0.896' and houdini_version>='20.0.896'": "20.0.896"
+        }
       ]
     },
     {
@@ -20,24 +32,7 @@
         { "houdini_python=='python3.11'": "3.11" }
       ]
     },
-    {
-      "PATH": {
-        "value": "${RMANTREE}/bin:${RFHTREE}/bin",
-        "method": "prepend"
-      }
-    },
-    {
-      "HOUDINI_PATH": {
-        "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}",
-        "method": "append"
-      }
-    },
-    {
-      "PXR_PLUGINPATH_NAME": {
-        "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}/plugin/hdPrman",
-        "method": "prepend"
-      }
-    },
+    { "HOUDINI_PATH": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}" },
     {
       "RMAN_PROCEDURALPATH": {
         "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}/openvdb",
@@ -45,8 +40,8 @@
       }
     },
     {
-      "RMAN_SHADERPATH": {
-        "value": "${RMANTREE}/lib/shaders",
+      "RMAN_TEXTUREPATH": {
+        "value": "${RFHTREE}/${RFH_PY_VERS}/${RFH_HOUDINI_VERS}/rtxplugins",
         "method": "prepend"
       }
     }
