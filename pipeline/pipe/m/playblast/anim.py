@@ -122,7 +122,7 @@ class AnimPlayblastDialog(PlayblastDialog):
         self._main_layout.insertWidget(3, custom_shot_widget)
 
     def _generate_config(self) -> MPlayblastConfig:
-        date = datetime.now().strftime("%m-%d-%y")
+        timestamp = datetime.now().strftime("%m-%d-%y_%H:%M:%S")
         shots: list[MShotPlayblastConfig] = []
 
         if self.is_shot_enabled(self.SG_ID):
@@ -135,7 +135,7 @@ class AnimPlayblastDialog(PlayblastDialog):
                     paths=self.save_locations_to_paths(
                         self.SG_ID,
                         (sl[0] for sl in sg_config.save_locs),
-                        f"{self._shot.code}_{date}",
+                        f"{self._shot.code}_{timestamp}",
                     ),
                     tails=(5, 5),
                 )
@@ -144,6 +144,11 @@ class AnimPlayblastDialog(PlayblastDialog):
         if self.is_shot_enabled(self.CUSTOM_ID):
             custom_config = next(
                 c for c in self._shot_dialog_configs if c.id == self.CUSTOM_ID
+            )
+            output_name = (
+                f"customPB_{self._shot.code}_{timestamp}"
+                if self._shot
+                else f"customPB_{timestamp}"
             )
             shots.append(
                 MShotPlayblastConfig(
@@ -157,7 +162,7 @@ class AnimPlayblastDialog(PlayblastDialog):
                     paths=self.save_locations_to_paths(
                         self.CUSTOM_ID,
                         (sl[0] for sl in custom_config.save_locs),
-                        f"customPB_{date}",
+                        output_name,
                     ),
                 )
             )
