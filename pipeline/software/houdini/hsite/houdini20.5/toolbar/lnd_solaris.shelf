@@ -33,6 +33,11 @@ fm.open_file()]]></script>
 HShotFileManager().open_file()]]></script>
   </tool>
 
+  <tool name="bobo_playblast" label="Playblast" icon="NETWORKS_scene">
+    <script scriptType="python"><![CDATA[from pipe.h.playblast.tool import launch_playblast
+launch_playblast()]]></script>
+  </tool>
+
   <tool name="lop_testgeometry_crag" label="Test Geometry: Crag" icon="SOP_testgeometry_crag">
     <toolMenuContext name="viewer">
       <contextNetType>LOP</contextNetType>
