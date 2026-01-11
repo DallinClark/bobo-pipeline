@@ -104,8 +104,8 @@ def _resolve_shot_code() -> str | None:
 
 
 def _build_output_base_path(department: str, shot_code: str) -> Path:
-    date_folder = datetime.now().strftime("%y.%m.%d")
-    timestamp = datetime.now().strftime("%y.%m.%d.%H:%M")
+    date_folder = datetime.now().strftime("%Y-%m-%d")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     return get_edit_path() / department / date_folder / f"{shot_code}_{timestamp}"
 
 
