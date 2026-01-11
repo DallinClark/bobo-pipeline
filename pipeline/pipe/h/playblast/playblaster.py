@@ -52,7 +52,6 @@ class HPlayblaster(Playblaster):
         settings = _get_flipbook_settings(scene_viewer, viewport)
 
         _configure_flipbook(settings, path, start_frame, end_frame)
-        _set_viewport_renderer_vk(viewport)
         overrides = _apply_viewport_overrides(viewport)
         try:
             _run_flipbook(scene_viewer, viewport, settings)
@@ -68,7 +67,7 @@ def _get_scene_viewer_and_viewport() -> tuple[hou.SceneViewer, hou.GeometryViewp
     scene_viewer_tab = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
     if scene_viewer_tab is None:
         raise RuntimeError("No Scene Viewer found for flipbook export.")
-
+    
     scene_viewer = cast(hou.SceneViewer, scene_viewer_tab)
     viewport = scene_viewer.curViewport()
     if viewport is None:
@@ -112,33 +111,6 @@ def _apply_flipbook_resolution(
 def _apply_flipbook_visibility(settings: hou.FlipbookSettings) -> None:
     settings.visibleTypes(hou.flipbookObjectType.Visible)
     settings.visibleObjects("*")
-
-
-def _set_viewport_renderer_vk(viewport: hou.GeometryViewport) -> None:
-    try:
-        settings = viewport.settings()
-    except Exception:
-        log.warning("Could not access viewport settings to set renderer.")
-        return
-
-    renderer_candidates: list[object] = []
-    for enum_name in ("viewportRenderer", "geometryViewportRenderer"):
-        enum = getattr(hou, enum_name, None)
-        if not enum:
-            continue
-        for member in ("VK", "Vulkan"):
-            if hasattr(enum, member):
-                renderer_candidates.append(getattr(enum, member))
-
-    renderer_candidates.extend(
-        ["Houdini VK", "VK", "Vulkan", "HD_HoudiniRendererPlugin"]
-    )
-
-    for candidate in renderer_candidates:
-        if _apply_renderer(settings, viewport, candidate):
-            return
-
-    log.warning("Could not set viewport renderer to VK; using current renderer.")
 
 
 def _apply_viewport_overrides(
@@ -288,24 +260,6 @@ def _restore_guides(
             settings.enableGuide(guide, bool(enabled))
         except Exception:
             continue
-
-
-def _apply_renderer(
-    settings: hou.GeometryViewportSettings,
-    viewport: hou.GeometryViewport,
-    renderer: object,
-) -> bool:
-    for target in (settings, viewport):
-        for method_name in ("setRenderer", "setRendererPlugin"):
-            if hasattr(target, method_name):
-                try:
-                    getattr(target, method_name)(renderer)
-                    if target is settings and hasattr(viewport, "setSettings"):
-                        viewport.setSettings(settings)
-                    return True
-                except Exception:
-                    continue
-    return False
 
 
 def _run_flipbook(
