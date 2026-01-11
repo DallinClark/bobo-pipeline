@@ -80,19 +80,7 @@ def _get_scene_viewer_and_viewport() -> tuple[hou.SceneViewer, hou.GeometryViewp
 def _get_flipbook_settings(
     scene_viewer: hou.SceneViewer, viewport: hou.GeometryViewport
 ) -> hou.FlipbookSettings:
-    settings = None
-    if hasattr(scene_viewer, "flipbookSettings"):
-        settings = scene_viewer.flipbookSettings()
-    elif hasattr(viewport, "flipbookSettings"):
-        settings = viewport.flipbookSettings()
-
-    if settings is None:
-        raise RuntimeError("Unable to access flipbook settings.")
-
-    if hasattr(settings, "stash"):
-        settings = settings.stash()
-
-    return settings
+    return scene_viewer.flipbookSettings().stash()
 
 
 def _configure_flipbook(
