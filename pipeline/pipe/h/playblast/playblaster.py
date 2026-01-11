@@ -90,129 +90,28 @@ def _configure_flipbook(
     end_frame: int,
 ) -> None:
     output_path = f"{path}.$F4.png"
-    if not _try_set_output_path(settings, output_path):
-        raise RuntimeError("Unable to set flipbook output path.")
-
-    if not _try_set_frame_range(settings, start_frame, end_frame):
-        raise RuntimeError("Unable to set flipbook frame range.")
-
-    _try_set_flag(settings, True, ("useFrameRange", "setUseFrameRange"))
-    _try_set_flag(
-        settings,
-        True,
-        ("useOutputFile", "setUseOutputFile", "setOutputToFile"),
-    )
-    _try_set_flag(
-        settings,
-        False,
-        ("useMPlay", "setUseMPlay", "setOutputToMPlay"),
-    )
+    settings.output(output_path)
+    settings.frameRange((start_frame, end_frame))
+    settings.outputToMPlay(False)
     _apply_flipbook_resolution(settings, DEFAULT_RESOLUTION[0], DEFAULT_RESOLUTION[1])
     _apply_flipbook_visibility(settings)
-    _try_set_flag(
-        settings,
-        False,
-        (
-            "showViewportHUD",
-            "setShowViewportHUD",
-            "showHUD",
-            "setShowHUD",
-            "showOverlay",
-            "setShowOverlay",
-            "displayOverlay",
-            "setDisplayOverlay",
-            "showText",
-            "setShowText",
-            "useViewportSettings",
-            "setUseViewportSettings",
-        ),
-    )
-
-
-def _try_set_output_path(settings: hou.FlipbookSettings, output_path: str) -> bool:
-    for method_name in ("output", "setOutput", "setOutputPath", "setOutputFile"):
-        if hasattr(settings, method_name):
-            try:
-                getattr(settings, method_name)(output_path)
-                return True
-            except TypeError:
-                continue
-    return False
-
-
-def _try_set_frame_range(
-    settings: hou.FlipbookSettings, start_frame: int, end_frame: int
-) -> bool:
-    if hasattr(settings, "frameRange"):
-        try:
-            settings.frameRange((start_frame, end_frame))
-            return True
-        except TypeError:
-            pass
-
-    if hasattr(settings, "setFrameRange"):
-        try:
-            settings.setFrameRange(start_frame, end_frame)
-            return True
-        except TypeError:
-            try:
-                settings.setFrameRange((start_frame, end_frame))
-                return True
-            except TypeError:
-                pass
-
-    return False
+    settings.beautyPassOnly(True)
 
 
 def _apply_flipbook_resolution(
     settings: hou.FlipbookSettings, width: int, height: int
 ) -> None:
-    _try_call(settings, "useResolution", True)
-    _try_call(settings, "setUseResolution", True)
-    _try_call(settings, "resolution", (width, height))
-    _try_call(settings, "setResolution", (width, height))
-    _try_call(settings, "outputZoom", 100)
-    _try_call(settings, "setOutputZoom", 100)
-    _try_call(settings, "useSheetSize", False)
-    _try_call(settings, "setUseSheetSize", False)
-    _try_call(settings, "cropOutMaskOverlay", True)
-    _try_call(settings, "setCropOutMaskOverlay", True)
-    _try_call(settings, "renderAllViewports", False)
-    _try_call(settings, "setRenderAllViewports", False)
+    settings.useResolution(True)
+    settings.resolution((width, height))
+    settings.outputZoom(100)
+    settings.useSheetSize(False)
+    settings.cropOutMaskOverlay(True)
+    settings.renderAllViewports(False)
 
 
 def _apply_flipbook_visibility(settings: hou.FlipbookSettings) -> None:
-    flipbook_type = getattr(hou, "flipbookObjectType", None)
-    if flipbook_type and hasattr(flipbook_type, "Visible"):
-        _try_call(settings, "visibleTypes", flipbook_type.Visible)
-        _try_call(settings, "setVisibleTypes", flipbook_type.Visible)
-
-    _try_call(settings, "visibleObjects", ["*"])
-    _try_call(settings, "setVisibleObjects", ["*"])
-
-
-def _try_call(settings: hou.FlipbookSettings, method_name: str, arg: object) -> bool:
-    if hasattr(settings, method_name):
-        try:
-            getattr(settings, method_name)(arg)
-            return True
-        except Exception:
-            return False
-    return False
-
-
-def _try_set_flag(
-    settings: hou.FlipbookSettings, value: bool, method_names: tuple[str, ...]
-) -> bool:
-    applied = False
-    for method_name in method_names:
-        if hasattr(settings, method_name):
-            try:
-                getattr(settings, method_name)(value)
-                applied = True
-            except TypeError:
-                continue
-    return applied
+    settings.visibleTypes(hou.flipbookObjectType.Visible)
+    settings.visibleObjects("*")
 
 
 def _set_viewport_renderer_vk(viewport: hou.GeometryViewport) -> None:
