@@ -152,18 +152,6 @@ def _apply_viewport_overrides(
 
     state: dict[str, object] = {"settings": settings, "guides": {}}
 
-    toggle_pairs = (
-        ("showBadges", "showsBadges"),
-        ("showName", "showsName"),
-        ("showCameraName", "showsCameraName"),
-        ("showStateStatus", "showsStateStatus"),
-    )
-    for getter, setter in toggle_pairs:
-        previous = _get_viewport_value(settings, getter)
-        if previous is not None:
-            state[getter] = previous
-            _set_viewport_value(settings, setter, False)
-
     display_ortho_grid = _get_viewport_value(settings, "displayOrthoGrid")
     if display_ortho_grid is not None:
         state["displayOrthoGrid"] = display_ortho_grid
@@ -193,16 +181,6 @@ def _restore_viewport_overrides(
     settings = state.get("settings")
     if not isinstance(settings, hou.GeometryViewportSettings):
         return
-
-    toggle_restore = (
-        ("showBadges", "showsBadges"),
-        ("showName", "showsName"),
-        ("showCameraName", "showsCameraName"),
-        ("showStateStatus", "showsStateStatus"),
-    )
-    for getter, setter in toggle_restore:
-        if getter in state:
-            _set_viewport_value(settings, setter, state[getter])
 
     if "displayOrthoGrid" in state:
         _set_viewport_value(settings, "setDisplayOrthoGrid", state["displayOrthoGrid"])
