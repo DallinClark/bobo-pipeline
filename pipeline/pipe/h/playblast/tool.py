@@ -68,10 +68,10 @@ def launch_playblast() -> None:
 
     custom_base = dialog.custom_output_base_path
     out_paths: dict[Playblaster.PRESET, list[Path | str]] = {
-        Playblaster.PRESET.H265: [output_base]
+        Playblaster.PRESET.EDIT_SQ: [output_base]
     }
     if custom_base is not None:
-        out_paths[Playblaster.PRESET.H265].append(custom_base)
+        out_paths[Playblaster.PRESET.EDIT_SQ].append(custom_base)
     playblaster = HPlayblaster().configure(shot, out_paths)
 
     try:
@@ -83,13 +83,13 @@ def launch_playblast() -> None:
         ).exec_()
         return
 
-    final_path = Path(str(output_base) + f".{Playblaster.PRESET.H265.ext}")
+    final_path = Path(str(output_base) + f".{Playblaster.PRESET.EDIT_SQ.ext}")
     if dialog.upload_to_shotgrid:
         _upload_stub(parent, final_path)
 
     message = f"Playblast saved to:\n{final_path}"
     if custom_base is not None:
-        custom_final = Path(str(custom_base) + f".{Playblaster.PRESET.H265.ext}")
+        custom_final = Path(str(custom_base) + f".{Playblaster.PRESET.EDIT_SQ.ext}")
         message = f"{message}\n\nAdditional export:\n{custom_final}"
     MessageDialog(parent, message, "Playblast").exec_()
 
