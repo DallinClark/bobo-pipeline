@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import hou
 from env_sg import DB_Config
-from shared.util import get_edit_path
 
 from pipe.db import DB
 from pipe.glui.dialogs import MessageDialog
@@ -37,6 +35,13 @@ def launch_playblast() -> None:
         MessageDialog(parent, "Could not connect to ShotGrid.", "Playblast").exec_()
         return
     default_shot_code = _resolve_shot_code()
+    if not default_shot_code:
+        MessageDialog(
+            parent,
+            "Could not determine the current shot from the scene.",
+            "Playblast",
+        ).exec_()
+        return
 
     dialog = HPlayblastDialog(parent, conn, default_shot_code)
     if not dialog.exec_():
@@ -56,10 +61,17 @@ def launch_playblast() -> None:
         ).exec_()
         return
 
-    output_base = _build_output_base_path(dialog.department, shot.code or shot_code)
+    output_base = dialog.output_base_path
+    if output_base is None:
+        MessageDialog(parent, "Unable to build export path.", "Playblast").exec_()
+        return
+
+    custom_base = dialog.custom_output_base_path
     out_paths: dict[Playblaster.PRESET, list[Path | str]] = {
         Playblaster.PRESET.H265: [output_base]
     }
+    if custom_base is not None:
+        out_paths[Playblaster.PRESET.H265].append(custom_base)
     playblaster = HPlayblaster().configure(shot, out_paths)
 
     try:
@@ -75,7 +87,11 @@ def launch_playblast() -> None:
     if dialog.upload_to_shotgrid:
         _upload_stub(parent, final_path)
 
-    MessageDialog(parent, f"Playblast saved to:\n{final_path}", "Playblast").exec_()
+    message = f"Playblast saved to:\n{final_path}"
+    if custom_base is not None:
+        custom_final = Path(str(custom_base) + f".{Playblaster.PRESET.H265.ext}")
+        message = f"{message}\n\nAdditional export:\n{custom_final}"
+    MessageDialog(parent, message, "Playblast").exec_()
 
 
 def _resolve_shot_code() -> str | None:
@@ -101,12 +117,6 @@ def _resolve_shot_code() -> str | None:
             return part
 
     return None
-
-
-def _build_output_base_path(department: str, shot_code: str) -> Path:
-    date_folder = datetime.now().strftime("%Y-%m-%d")
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    return get_edit_path() / department / date_folder / f"{shot_code}_{timestamp}"
 
 
 def _upload_stub(parent: QtWidgets.QWidget | None, movie_path: Path) -> None:
