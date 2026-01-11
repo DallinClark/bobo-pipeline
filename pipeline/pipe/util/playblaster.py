@@ -68,6 +68,15 @@ class Playblaster(metaclass=ABCMeta):
                 "crf": 20,
             },
         )
+        H265 = (
+            "mp4",
+            {
+                "vcodec": "libx265",
+                "preset": "slow",
+                "crf": 23,
+                "pix_fmt": "yuv420p",
+            },
+        )
 
     def __init__(self) -> None:
         pass

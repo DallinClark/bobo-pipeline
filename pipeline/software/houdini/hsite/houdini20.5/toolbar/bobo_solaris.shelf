@@ -9,5 +9,6 @@
     <memberTool name="open_asset"/>
     <memberTool name="open_set"/>
     <memberTool name="open_shot"/>
+    <memberTool name="bobo_playblast"/>
   </toolshelf>
 </shelfDocument>

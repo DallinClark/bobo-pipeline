@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import hou
 import re
 import sys
 
+import hou
 from Qt import QtWidgets
-
 from software.baseclass import DCCLocalizer
 
 
@@ -19,6 +18,12 @@ class _HoudiniLocalizer(DCCLocalizer):
         return None
 
     def is_headless(self) -> bool:
+        try:
+            if hasattr(hou, "isUIAvailable"):
+                return not hou.isUIAvailable()
+        except Exception:
+            pass
+
         return bool(re.match(r"^.*ython(?:\.exe)?3?", sys.executable))
 
 
