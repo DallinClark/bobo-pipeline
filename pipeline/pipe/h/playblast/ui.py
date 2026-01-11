@@ -9,6 +9,7 @@ from shared.util import get_edit_path
 
 from pipe.glui.dialogs import DialogButtons
 
+from .constants import DEFAULT_RESOLUTION
 from .paths import build_custom_output_base_path, build_output_base_path
 
 if TYPE_CHECKING:
@@ -50,6 +51,12 @@ class HPlayblastDialog(QtWidgets.QDialog, DialogButtons):
         )
         self._export_path_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         form_layout.addRow("Export Path", self._export_path_label)
+
+        self._resolution_label = QtWidgets.QLabel(
+            f"{DEFAULT_RESOLUTION[0]}x{DEFAULT_RESOLUTION[1]}"
+        )
+        self._resolution_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        form_layout.addRow("Resolution", self._resolution_label)
 
         self._custom_export_cb = QtWidgets.QCheckBox("Additional export path")
         self._custom_export_field = QtWidgets.QLineEdit()
