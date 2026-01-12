@@ -7,7 +7,7 @@ from shared.util import get_edit_path
 
 
 def _build_base_name(shot_code: str, timestamp: datetime) -> str:
-    timestamp_str = timestamp.strftime("%Y-%m-%d_%H-%M")
+    timestamp_str = timestamp.strftime("%m-%d-%Y_%H-%M")
     return f"{shot_code}_{timestamp_str}"
 
 
@@ -19,7 +19,7 @@ def build_output_base_path(
     if timestamp is None:
         timestamp = datetime.now()
 
-    date_folder = timestamp.strftime("%Y-%m-%d")
+    date_folder = timestamp.strftime("%m-%d-%Y")
     return (
         get_edit_path()
         / department
