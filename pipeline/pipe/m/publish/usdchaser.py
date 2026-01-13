@@ -524,8 +524,6 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 relative_path_str = None
                 try:
                     asset = conn.get_asset_by_attr("name", base_name)
-                    if base_name != name:
-                        add_variant_to_model(asset, name)
 
                     assert asset.path is not None
                     rig_path = str(asset.path).replace("\\", "/") + "/usd/main.usd"
@@ -550,6 +548,28 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                         f"    relative_path={relative_path_str} root_layer={root_layer.realPath}"
                     )
                     print(traceback.format_exc())
+                if name != base_name and relative_path_str:
+                    # Create a concrete rig instance for this namespace so the
+                    # class-based clips can bind to a real prim.
+                    character_parent = Sdf.CreatePrimInLayer(
+                        root_layer, Sdf.Path("/character")
+                    )
+                    character_parent.specifier = Sdf.SpecifierOver
+
+                    instance_prim_path = Sdf.Path(f"/character/{name}")
+                    instance_prim_spec = Sdf.CreatePrimInLayer(
+                        root_layer, instance_prim_path
+                    )
+                    instance_prim_spec.specifier = Sdf.SpecifierDef
+
+                    rig_prim_path = Sdf.Path(f"/character/{base_name}")
+                    instance_reference = Sdf.Reference(relative_path_str, rig_prim_path)
+                    instance_prim_spec.referenceList.appendedItems = [
+                        instance_reference
+                    ]
+                    instance_prim_spec.inheritPathList.prependedItems = [
+                        Sdf.Path(f"/__class__/character/{name}")
+                    ]
 
         elif self._chaser_args.mode == ChaserMode.CHAR:
             scale_down_geo(self._stage)
