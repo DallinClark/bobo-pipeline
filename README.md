@@ -1,12 +1,12 @@
-# bobo-pipeline
+# sandwich-pipeline
 
-An OS-agnostic, portable, extensible 3D pipeline for the BYU Center for Animation's 2026 Capstone film, *Honey Buisness*.
+An OS-agnostic, portable, extensible 3D pipeline for the BYU Center for Animation's 2027 Capstone film, *Sandwich Kwon Do*.
 
-`bobo-pipeline` is currently being used on EL8 and Windows 10 systems. It should also be functional on macOS systems, but that has not been tested.
+`sandwich-pipeline` is currently being used on EL9 and Windows 11 systems. It should also be functional on macOS systems, but that has not been tested.
 
 ## Repo structure
 ```
-bobo-pipeline/
+sandwich-pipeline/
 ├── Bobo Painter.lnk  # Linux and Windows launchers for DCCs. 
 ├── Bobaya.desktop       # These are at the root so they're easy for artists to locate
 ├── ...
@@ -22,7 +22,7 @@ bobo-pipeline/
 └── README.md
 ```
 
-## Setting up a copy of `bobo-pipeline`
+## Setting up a copy of `sandwich-pipeline`
 1. Fork this repo and clone it to the production location.
 1. Create an `pipeline/env.py` file following the specifications in `pipeline/env.py.md`. This will get things like ShotGrid auth set up, and provide OS-specific DCC executable paths.
 1. Install needed python libraries into `pipeline/lib/python/any`. (This will soon by managed via Poetry (Issue #137), for now see the list in `.githooks/setup-venv.sh`).
@@ -40,8 +40,8 @@ bobo-pipeline/
 1. Make a local copy of the git repo
    ```bash
    cd ~/Documents
-   git clone --recurse-submodules -c core.sshCommand='ssh -i ~/.ssh/github' git@github.com:DallinClark/bobo-pipeline.git
-   cd bobo-pipeline
+   git clone --recurse-submodules -c core.sshCommand='ssh -i ~/.ssh/github' git@github.com:joseph-wardle/sandwich-pipeline.git
+   cd sandwich-pipeline
    ```
 1. Configure the git repo to use the new SSH key and our git hooks
    ```bash
