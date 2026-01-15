@@ -25,7 +25,7 @@ sandwich-pipeline/
 ## Setting up a copy of `sandwich-pipeline`
 1. Fork this repo and clone it to the production location.
 1. Create an `pipeline/env.py` file following the specifications in `pipeline/env.py.md`. This will get things like ShotGrid auth set up, and provide OS-specific DCC executable paths.
-1. Install needed python libraries into `pipeline/lib/python/any`. (This will soon by managed via Poetry (Issue #137), for now see the list in `.githooks/setup-venv.sh`).
+1. Install needed python libraries into `pipeline/lib/python/any`. Use `uv sync` (or `.githooks/update-venv`) to set up the project environment.
 1. Clone branches for development locally, copy over the env files and get to work!
 
 ## Setting up a dev environment in the labs

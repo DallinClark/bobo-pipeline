@@ -1,3 +1,37 @@
+[project]
+name = "sandwich-pipeline"
+version = "0.1.0"
+description = "Pipeline for BYU Animation's Class of 2027 capstone film"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Scott Milner", email = "scottdmilner@gmail.com" }]
+dependencies = [
+    "attrs>=24.2.0,<25",
+    "cattrs>=23.2.3,<24",
+    "ffmpeg-python>=0.2.0,<0.3",
+    "qt-py>=1.4.1,<2",
+    "filelock>=3.17.0,<4",
+    "six>=1.17.0,<2",
+    "gitpython>=3.1.45,<4",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.5.7,<0.6",
+    "mypy>=1.11.1,<2",
+    "maya-stubs>=0.4.1,<0.5",
+    "types-usd>=24.5.1,<25",
+    "types-houdini>=19.5.1,<20",
+    "types-katana>=5.0.5.0,<6",
+    "types-mari>=5.0.5.0,<6",
+    "types-nuke>=13.2.8.0,<14",
+    "types-opencolorio>=2.2.1.2,<3",
+    "types-pyside2>=5.15.2.1.7,<6",
+    "types-substance-painter>=2023.8.3.0.0,<2024",
+    "nptyping>=2.5.0,<3",
+]
+
 [tool.mypy]
 exclude = [
     ".git",
@@ -53,37 +87,3 @@ exclude = [
     "timeline_marker",
     "pipeline/software/maya/scripts/**"
 ]
-
-[tool.poetry]
-name = "bobo-pipeline"
-version = "0.1.0"
-description = "Pipeline for BYU Animation's Class of 2025 capstone film"
-license = "BSD-3"
-authors = ["Scott Milner <scottdmilner@gmail.com>"]
-readme = "README.md"
-package-mode = false
-
-[tool.poetry.dependencies]
-python = "^3.9"
-attrs = "^24.2.0"
-cattrs = "^23.2.3"
-ffmpeg-python = "^0.2.0"
-qt-py = {extras = ["stubs"], version = "^1.4.1"}
-filelock = "^3.17.0"
-six = "^1.17.0"
-gitpython = "^3.1.45"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.5.7"
-mypy = "^1.11.1"
-maya-stubs = "^0.4.1"
-types-usd = "^24.5.1"
-types-houdini = "^19.5.1"
-types-katana = "^5.0.5.0"
-types-mari = "^5.0.5.0"
-types-nuke = "^13.2.8.0"
-types-opencolorio = "^2.2.1.2"
-types-pyside2 = "^5.15.2.1.7"
-types-substance-painter = "^2023.8.3.0.0"
-nptyping = "^2.5.0"
-qt-py = {extras = ["stubs"], version = "^1.4.1"}
