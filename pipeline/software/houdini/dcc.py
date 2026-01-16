@@ -6,19 +6,19 @@ import logging
 import os
 import shutil
 import sqlite3
-
 from contextlib import closing, contextmanager, suppress
-from filelock import FileLock
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from filelock import FileLock
 
 if TYPE_CHECKING:
     import typing
 
+from env import Executables
 from shared.util import get_production_path, resolve_mapped_path
 
 from ..baseclass import DCC
-from env import Executables
 
 log = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class HoudiniDCC(DCC):
                 ]
             ),
             # Splash file
-            "HOUDINI_SPLASH_FILE": str(pipe_path / "lib/splash/bobini_splash.png"),
+            "HOUDINI_SPLASH_FILE": str(pipe_path / "lib/splash/panini_splash.png"),
             # Project-specific preference overrides
             "HSITE": str(resolve_mapped_path(this_path.parent / "hsite")),
             # Job directory

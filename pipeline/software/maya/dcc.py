@@ -22,6 +22,7 @@ class MayaDCC(DCC):
     """Maya DCC class"""
 
     shelf_path: str
+    splash_path: str
 
     def __init__(
         self, is_python_shell: bool = False, extra_args: list[str] | None = None
@@ -33,6 +34,9 @@ class MayaDCC(DCC):
 
         self.shelf_path = str(
             Path(os.getenv("TMPDIR", os.getenv("TEMP", "tmp"))).resolve() / "shelves"
+        )
+        self.splash_path = str(
+            Path(os.getenv("TMPDIR", os.getenv("TEMP", "tmp"))).resolve() / "maya_splash"
         )
 
         env_vars: typing.Mapping[str, int | str | None] | None
@@ -92,6 +96,7 @@ class MayaDCC(DCC):
                 [
                     str(pth) + ("/%B" if system == "Linux" else "")
                     for pth in [
+                        Path(self.splash_path),
                         this_path.parent
                         / "scripts/studiolibrary/src/studiolibrary/resource/icons",
                         pipe_path / "lib/icon",
@@ -152,11 +157,41 @@ class MayaDCC(DCC):
                 launch_args = extra_args
 
         super().__init__(
-            launch_command, launch_args, env_vars, lambda: self.set_up_shelf_path()
+            launch_command, launch_args, env_vars, self._pre_launch_tasks
         )
+
+    def _pre_launch_tasks(self) -> None:
+        self.set_up_shelf_path()
+        self.set_up_splash_path()
 
     def set_up_shelf_path(self) -> None:
         prod_dir = str(Path(__file__).parent / "shelves")
         local_dir = self.shelf_path
 
         shutil.copytree(prod_dir, local_dir, dirs_exist_ok=True)
+
+    def set_up_splash_path(self) -> None:
+        splash_dir = Path(self.splash_path)
+        splash_dir.mkdir(parents=True, exist_ok=True)
+
+        src = Path(__file__).resolve().parents[2] / "lib/splash/mayo_splash.png"
+        if not src.exists():
+            log.warning("Missing Maya splash image at %s", src)
+            return
+
+        target_names = [
+            "MayaStartupImage.png",
+            "MayaStartupImage_150.png",
+            "MayaStartupImage_200.png",
+            "MayaEDUStartupImage.png",
+            "MayaEDUStartupImage_150.png",
+            "MayaEDUStartupImage_200.png",
+        ]
+        for name in target_names:
+            dest = splash_dir / name
+            if dest.exists() or dest.is_symlink():
+                dest.unlink()
+            try:
+                dest.symlink_to(src)
+            except OSError:
+                shutil.copy2(src, dest)
