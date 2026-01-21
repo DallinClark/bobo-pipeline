@@ -129,7 +129,7 @@ def color_from_symmetry_error(
 
     cmds.sets(viz_mesh, edit=True, forceElement="initialShadingGroup")
 
-    cmds.setAttr(f"{shape}.displayColors", f"{1}")
+    cmds.setAttr(f"{shape}.displayColors", 1)  # type: ignore
     cmds.setAttr(f"{shape}.displayColorChannel", "Diffuse", type="string")
 
     mfn_mesh.setVertexColors(vertex_colors, vertex_indices)
@@ -160,7 +160,7 @@ def color_by_gradient(shape: str, gradient: Gradient = OKLCH_HEATMAP_GRADIENT):
         vertex_indices.append(i)
 
     # make sure the target shape can show vertex colors
-    cmds.setAttr(f"{shape}.displayColors", f"{1}")
+    cmds.setAttr(f"{shape}.displayColors", 1)  # type: ignore
     cmds.setAttr(f"{shape}.displayColorChannel", "Diffuse", type="string")
 
     mfn_mesh.setVertexColors(vertex_colors, vertex_indices)
