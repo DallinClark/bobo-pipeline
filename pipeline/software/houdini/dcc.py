@@ -121,6 +121,8 @@ class HoudiniDCC(DCC):
             ),
             # RenderMan color config json file
             "RMAN_COLOR_CONFIG_DIR": str(pipe_path / "lib/ocio/love-v01"),
+            # Force Qt5 bindings in Houdini to avoid Qt6/PySide6 conflicts
+            "QT_PREFERRED_BINDING": "PySide2",
             # Explicitly set Tractor location
             "TRACTOR_ENGINE": "tractor-engine.cs.byu.edu:443",
         }

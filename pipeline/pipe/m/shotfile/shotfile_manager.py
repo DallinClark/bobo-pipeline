@@ -1,23 +1,22 @@
 from __future__ import annotations
 
 import logging
-import mayaUsd  # type: ignore[import-not-found]
-import maya.api.OpenMaya as om
-import maya.cmds as mc
-
 from abc import abstractmethod
 from pathlib import Path
+from typing import Iterable, Optional, cast
+
+import maya.api.OpenMaya as om
+import maya.cmds as mc
+import mayaUsd  # type: ignore[import-not-found]
+from env_sg import DB_Config
 from pxr import Sdf, Usd, UsdGeom
+from shared.util import get_production_path
 from timeline_marker.ui import TimelineMarker  # type: ignore[import-not-found]
-from typing import cast
 
 from pipe.db import DB
 from pipe.m.local import get_main_qt_window
 from pipe.struct.db import SGEntity, Shot
 from pipe.util import FileManager, log_errors
-from shared.util import get_production_path
-
-from env_sg import DB_Config
 
 from .timeline import shot_timeline_generator
 
@@ -26,6 +25,8 @@ log = logging.getLogger(__name__)
 
 class MShotFileManager(FileManager):
     MAYA_OVERRIDE = "maya_override.usd"
+    FOREST_LAYOUT_NAME = "Forest_layout"
+    FOREST_OVERRIDE_USD = "/groups/bobo/set/Forest_layout/maya.usd"
     shot: Shot
 
     def __init__(self, **kwargs) -> None:
@@ -42,6 +43,57 @@ class MShotFileManager(FileManager):
     @classmethod
     def get_stage(cls) -> Usd.Stage:
         return mayaUsd.ufe.getStage(cls.get_stage_shape())
+
+    @classmethod
+    def _normalize_usd_path(cls, path: str) -> str:
+        return path.replace("\\", "/")
+
+    @classmethod
+    def _path_has_layout_name(cls, path: str, layout_name: str) -> bool:
+        parts = [part for part in cls._normalize_usd_path(path).split("/") if part]
+        return layout_name in parts
+
+    @classmethod
+    def _resolve_env_usd_path(cls, layout_path: str) -> str:
+        if cls._path_has_layout_name(layout_path, cls.FOREST_LAYOUT_NAME):
+            return cls.FOREST_OVERRIDE_USD
+        return "/".join((layout_path, "main.usd"))
+
+    @classmethod
+    def _find_root_layer_path(cls, scene_path: Path) -> Optional[Path]:
+        for parent in scene_path.parents:
+            candidate = parent / "maya_root.usd"
+            if candidate.exists():
+                return candidate
+        return None
+
+    @classmethod
+    def _guard_forest_layout_before_open(cls, scene_path: Path) -> None:
+        root_layer_path = cls._find_root_layer_path(scene_path)
+        if not root_layer_path:
+            return
+
+        root_layer = Sdf.Layer.FindOrOpen(str(root_layer_path))
+        if not root_layer:
+            return
+
+        updated = False
+        new_paths: list[str] = []
+        for sub_path in list(cast(Iterable[str], root_layer.subLayerPaths)):
+            if cls._path_has_layout_name(
+                sub_path, cls.FOREST_LAYOUT_NAME
+            ) and cls._normalize_usd_path(sub_path).endswith("/main.usd"):
+                if sub_path != cls.FOREST_OVERRIDE_USD:
+                    new_paths.append(cls.FOREST_OVERRIDE_USD)
+                    updated = True
+                else:
+                    new_paths.append(sub_path)
+            else:
+                new_paths.append(sub_path)
+
+        if updated:
+            root_layer.subLayerPaths[:] = new_paths
+            root_layer.Save()
 
     @classmethod
     @log_errors
@@ -118,6 +170,7 @@ class MShotFileManager(FileManager):
         return shot.code, "mb"
 
     def _open_file(self, path: Path) -> None:
+        self._guard_forest_layout_before_open(path)
         mc.file(str(path), open=True, force=True)
 
     def _post_open_file(self, entity: SGEntity) -> None:
@@ -194,8 +247,9 @@ class MShotFileManager(FileManager):
             for env_stub in env_stubs:
                 layout = self._conn.get_env_by_stub(env_stub)
                 if layout and layout.path:
+                    env_path = self._resolve_env_usd_path(layout.path)
                     env_file_layer = Sdf.Layer.FindOrOpenRelativeToLayer(
-                        root_layer, "/".join((layout.path, "main.usd"))
+                        root_layer, env_path
                     )
                     if env_file_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
                         root_layer.subLayerPaths.append(env_file_layer.identifier)
@@ -210,8 +264,9 @@ class MShotFileManager(FileManager):
                     env_stub = self._conn.get_sequence_by_stub(self.shot.sequence).set
 
             if env_stub and (env := self._conn.get_env_by_stub(env_stub)) and env.path:
+                env_path = self._resolve_env_usd_path(env.path)
                 env_file_layer = Sdf.Layer.FindOrOpenRelativeToLayer(
-                    root_layer, "/".join((env.path, "main.usd"))
+                    root_layer, env_path
                 )
                 if env_file_layer.identifier not in root_layer.subLayerPaths:  # type: ignore[operator]
                     root_layer.subLayerPaths.append(env_file_layer.identifier)
