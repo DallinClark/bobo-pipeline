@@ -94,6 +94,8 @@ def color_from_symmetry_error(
     viz_mesh = cmds.duplicate(mesh_transform, name=f"{mesh_transform}_SYM")[0]
 
     shape = get_shape(viz_mesh)
+    if shape is None:
+        return
     msel: MSelectionList = om2.MSelectionList()
     msel.add(shape)
     shape_obj: MObject = msel.getDependNode(0)
@@ -136,6 +138,14 @@ def color_from_symmetry_error(
 
     # handle undo with duplicated mesh and deletion of original
     cmds.hide(mesh_transform)
+    return
+
+
+def visualize_symmetry_of_selected():
+    selection = cmds.ls(selection=True)
+    for object in selection:
+        if cmds.nodeType(object) == "transform":
+            color_from_symmetry_error(object)
     return
 
 
