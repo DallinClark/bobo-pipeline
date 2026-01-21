@@ -6,19 +6,19 @@ import logging
 import os
 import shutil
 import sqlite3
-
 from contextlib import closing, contextmanager, suppress
-from filelock import FileLock
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from filelock import FileLock
 
 if TYPE_CHECKING:
     import typing
 
+from env import Executables
 from shared.util import get_production_path, resolve_mapped_path
 
 from ..baseclass import DCC
-from env import Executables
 
 log = logging.getLogger(__name__)
 
@@ -121,6 +121,8 @@ class HoudiniDCC(DCC):
             ),
             # RenderMan color config json file
             "RMAN_COLOR_CONFIG_DIR": str(pipe_path / "lib/ocio/love-v01"),
+            # Force Qt5 bindings in Houdini to avoid Qt6/PySide6 conflicts
+            "QT_PREFERRED_BINDING": "PySide2",
             # Explicitly set Tractor location
             "TRACTOR_ENGINE": "tractor-engine.cs.byu.edu:443",
         }
