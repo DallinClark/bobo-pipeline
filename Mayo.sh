@@ -4,7 +4,7 @@ set -euo pipefail
 log_dir="${TMPDIR:-/tmp}"
 log_file="${log_dir%/}/pipe-launch.log"
 
-uv_shared="/srv/tools/uv/current/uv"
+uv_shared="/srv/tools/bin/uv"
 
 cmd=(pipeline maya)
 
