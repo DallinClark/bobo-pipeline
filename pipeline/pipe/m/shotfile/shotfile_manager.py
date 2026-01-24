@@ -26,7 +26,8 @@ log = logging.getLogger(__name__)
 class MShotFileManager(FileManager):
     MAYA_OVERRIDE = "maya_override.usd"
     FOREST_LAYOUT_NAME = "Forest_layout"
-    FOREST_OVERRIDE_USD = "/groups/bobo/set/Forest_layout/maya.usd"
+    FOREST_OVERRIDE_USD = "/groups/bobo/production/set/Forest_layout/maya.usd"
+    LEGACY_FOREST_OVERRIDE_USD = "/groups/bobo/set/Forest_layout/maya.usd"
     shot: Shot
 
     def __init__(self, **kwargs) -> None:
@@ -55,7 +56,10 @@ class MShotFileManager(FileManager):
 
     @classmethod
     def _resolve_env_usd_path(cls, layout_path: str) -> str:
-        if cls._path_has_layout_name(layout_path, cls.FOREST_LAYOUT_NAME):
+        normalized_path = cls._normalize_usd_path(layout_path)
+        if normalized_path == cls.LEGACY_FOREST_OVERRIDE_USD:
+            return cls.FOREST_OVERRIDE_USD
+        if cls._path_has_layout_name(normalized_path, cls.FOREST_LAYOUT_NAME):
             return cls.FOREST_OVERRIDE_USD
         return "/".join((layout_path, "main.usd"))
 
@@ -80,10 +84,14 @@ class MShotFileManager(FileManager):
         updated = False
         new_paths: list[str] = []
         for sub_path in list(cast(Iterable[str], root_layer.subLayerPaths)):
-            if cls._path_has_layout_name(
-                sub_path, cls.FOREST_LAYOUT_NAME
-            ) and cls._normalize_usd_path(sub_path).endswith("/main.usd"):
-                if sub_path != cls.FOREST_OVERRIDE_USD:
+            normalized_path = cls._normalize_usd_path(sub_path)
+            if normalized_path == cls.LEGACY_FOREST_OVERRIDE_USD:
+                new_paths.append(cls.FOREST_OVERRIDE_USD)
+                updated = True
+            elif cls._path_has_layout_name(
+                normalized_path, cls.FOREST_LAYOUT_NAME
+            ) and normalized_path.endswith("/main.usd"):
+                if normalized_path != cls.FOREST_OVERRIDE_USD:
                     new_paths.append(cls.FOREST_OVERRIDE_USD)
                     updated = True
                 else:
