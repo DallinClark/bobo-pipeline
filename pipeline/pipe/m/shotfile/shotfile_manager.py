@@ -26,7 +26,9 @@ log = logging.getLogger(__name__)
 class MShotFileManager(FileManager):
     MAYA_OVERRIDE = "maya_override.usd"
     FOREST_LAYOUT_NAME = "Forest_layout"
-    FOREST_OVERRIDE_USD = "/groups/bobo/production/set/Forest_layout/maya.usd"
+    FOREST_OVERRIDE_USD = str(
+        get_production_path() / "set" / "Forest_layout" / "maya.usd"
+    )
     LEGACY_FOREST_OVERRIDE_USD = "/groups/bobo/set/Forest_layout/maya.usd"
     shot: Shot
 
@@ -60,7 +62,15 @@ class MShotFileManager(FileManager):
         if normalized_path == cls.LEGACY_FOREST_OVERRIDE_USD:
             return cls.FOREST_OVERRIDE_USD
         if cls._path_has_layout_name(normalized_path, cls.FOREST_LAYOUT_NAME):
-            return cls.FOREST_OVERRIDE_USD
+            forest_override = cls.FOREST_OVERRIDE_USD
+            if Path(forest_override).exists():
+                return forest_override
+            log.warning(
+                "Forest override USD not found at %s; falling back to layout path",
+                forest_override,
+            )
+        if normalized_path.endswith(".usd"):
+            return layout_path
         return "/".join((layout_path, "main.usd"))
 
     @classmethod
