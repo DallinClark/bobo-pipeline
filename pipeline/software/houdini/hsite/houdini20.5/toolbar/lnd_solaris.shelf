@@ -161,5 +161,14 @@ loptoolutils.referenceTestAsset(node, asset_name)]]></script>
     <memberToolshelf name="shelf_1"/>
     <memberToolshelf name="shelf_1"/>
     <memberToolshelf name="shelf_2"/>
+    <memberToolshelf name="create"/>
+    <memberToolshelf name="characters"/>
+    <memberToolshelf name="hairtools"/>
+    <memberToolshelf name="liquid_dynamics"/>
+    <memberToolshelf name="kinefx"/>
+    <memberToolshelf name="simplefx"/>
+    <memberToolshelf name="collisions"/>
+    <memberToolshelf name="RenderManRIS"/>
+    <memberToolshelf name="RenderMan26"/>
   </shelfSet>
 </shelfDocument>
