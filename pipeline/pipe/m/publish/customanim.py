@@ -2,22 +2,23 @@ from __future__ import annotations
 
 import json
 import logging
-
 from pathlib import Path
-from pxr import Sdf
 from typing import TYPE_CHECKING
+
+from pxr import Sdf
 
 if TYPE_CHECKING:
     from typing import Any
+
     from pipe.struct.db import Shot
 
 import maya.cmds as mc
+from shared.util import get_production_path
+from software.houdini import HoudiniDCC
 
 from pipe.glui.dialogs import MessageDialog
 from pipe.m.util import maintain_selection
 from pipe.struct.timeline import Timeline
-from software.houdini import HoudiniDCC
-from shared.util import get_production_path
 
 from .publisher import Publisher
 from .usdchaser import ChaserMode, ExportChaser
@@ -53,7 +54,7 @@ class AnimPublisher(Publisher):
             return False
 
         # Check if we want to do a full animation publish or just a rig
-        sel = mc.ls(sl=True, long=True)
+        sel = mc.ls(selection=True, long=True)
         if not sel:
             MessageDialog(
                 self._window,
@@ -70,10 +71,11 @@ class AnimPublisher(Publisher):
 
     def _get_save_path(self) -> Path | None:
         rig_name = self._rig_root.split("|")[-1]  # get the short name
+        if not self._shot.path:
+            return None
         save_path = get_production_path() / self._shot.path / f"rigs/usd/{rig_name}.usd"
         save_path.parent.mkdir(parents=True, exist_ok=True)
         return save_path
-
 
     def _presave(self) -> bool:
         # Make sure only the rig hierarchy is selected

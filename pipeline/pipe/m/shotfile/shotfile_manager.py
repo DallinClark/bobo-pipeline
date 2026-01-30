@@ -51,6 +51,20 @@ class MShotFileManager(FileManager):
         return path.replace("\\", "/")
 
     @classmethod
+    def _shot_code_from_scene_path(cls, scene_path: Optional[str]) -> Optional[str]:
+        if not scene_path:
+            return None
+        path = Path(scene_path)
+        try:
+            shot_index = path.parts.index("shot")
+            if shot_index + 1 < len(path.parts):
+                return path.parts[shot_index + 1]
+        except ValueError:
+            pass
+        stem = path.stem
+        return stem.split(".")[0] if stem else None
+
+    @classmethod
     def _path_has_layout_name(cls, path: str, layout_name: str) -> bool:
         parts = [part for part in cls._normalize_usd_path(path).split("/") if part]
         return layout_name in parts
@@ -248,33 +262,42 @@ class MShotFileManager(FileManager):
 
         # set session USD target layer to the override layer
         try:
-            shot_code = ""
-            try:
-                shot_code = mc.fileInfo("code", query=True)[0]
-            except IndexError:
-                mc.error(
-                    "Could not find shot code in fileInfo! USD edit target not set"
-                )
-            if shot_code:
-                mc.mayaUsdEditTarget(  # type: ignore[attr-defined]
-                    cls.get_stage_shape(),
-                    edit=True,
-                    editTarget="/".join(["shot", shot_code, "set", cls.MAYA_OVERRIDE]),
-                )
+            shot_code: Optional[str] = None
+            info = mc.fileInfo("code", query=True)
+            if isinstance(info, (list, tuple)):
+                if info:
+                    shot_code = info[0]
+            elif isinstance(info, str):
+                shot_code = info
+            if not shot_code:
+                scene_path = mc.file(query=True, sceneName=True)
+                scene_path_str = scene_path if isinstance(scene_path, str) else ""
+                shot_code = cls._shot_code_from_scene_path(scene_path_str)
+                if shot_code:
+                    mc.fileInfo("code", shot_code)
+                else:
+                    mc.warning("Could not determine shot code; USD edit target not set")
+                    return
+            assert shot_code is not None
+            mc.mayaUsdEditTarget(  # type: ignore[attr-defined]
+                cls.get_stage_shape(),
+                edit=True,
+                editTarget="/".join(["shot", shot_code, "set", cls.MAYA_OVERRIDE]),
+            )
 
-                conn = DB.Get(DB_Config)
-                shot = conn.get_shot_by_code(shot_code)
+            conn = DB.Get(DB_Config)
+            shot = conn.get_shot_by_code(shot_code)
 
-                # Import Timeline
-                frames, colors, comments = shot_timeline_generator(shot.cut_duration)
-                TimelineMarker.clear()
-                TimelineMarker.set(frames, colors, comments)
-                mc.playbackOptions(
-                    animationStartTime=frames[0],
-                    animationEndTime=frames[-1],
-                    minTime=frames[0],
-                    maxTime=frames[-1],
-                )
+            # Import Timeline
+            frames, colors, comments = shot_timeline_generator(shot.cut_duration)
+            TimelineMarker.clear()
+            TimelineMarker.set(frames, colors, comments)
+            mc.playbackOptions(
+                animationStartTime=frames[0],
+                animationEndTime=frames[-1],
+                minTime=frames[0],
+                maxTime=frames[-1],
+            )
         except Exception:
             mc.error("Warning! Could not set edit target!")
 
