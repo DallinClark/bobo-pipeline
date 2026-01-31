@@ -30,11 +30,11 @@ def shot_timeline_generator(
 ) -> tuple[list[int], list[tuple[int, int, int]], list[str]]:
     return timeline_generator(
         [
-            ("Rest Pose @Origin", (70, 0, 0), 15),
-            ("Rest Pose -> Windup", (150, 0, 0), 15),
-            ("Hold Windup", (255, 0, 0), 10),
-            ("Windup", (128, 128, 0), 15),
-            ("Head", (128, 255, 128), 5),
+            ("Rest Pose @Origin", (70, 0, 0), 8),
+            ("Rest Pose -> Windup", (150, 0, 0), 8),
+            ("Hold Windup", (255, 0, 0), 5),
+            ("Windup", (128, 128, 0), 8),
+            ("Head", (128, 255, 128), 2),
         ],
         [
             ("Animate!", (0, 255, 0), shot_duration),
