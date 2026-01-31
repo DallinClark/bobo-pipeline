@@ -39,4 +39,4 @@
 	branch = main
 [submodule "pipeline/lib/y-rig"]
 	path = pipeline/lib/y-rig
-	url = https://github.com/michaelharmonart/y-rig.git
+	url = git@github.com:michaelharmonart/y-rig.git
