@@ -41,3 +41,6 @@
 	path = pipeline/software/maya/scripts/aperture_git
 	url = git@github.com:michaelharmonart/aperture.git
 	branch = main
+[submodule "pipeline/lib/y-rig"]
+	path = pipeline/lib/y-rig
+	url = https://github.com/michaelharmonart/y-rig.git
