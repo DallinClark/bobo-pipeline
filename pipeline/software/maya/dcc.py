@@ -35,17 +35,16 @@ class MayaDCC(DCC):
             Path(os.getenv("TMPDIR", os.getenv("TEMP", "tmp"))).resolve() / "shelves"
         )
 
-        env_vars: typing.Mapping[str, int | str | None] | None                 #############
+        env_vars: typing.Mapping[str, int | str | None] | None  #############
 
         module_paths = []  # Initialize an empty list for module paths
         # add the production path plus the folders where we put our modules
-        module_paths.append(str(get_production_path() / "maya/module"))  
+        module_paths.append(str(get_production_path() / "maya/module"))
         module_paths.append(str(pipe_path / "lib/y-rig/third_party/mgear/release"))
         # adding the preexisting path, if it exists
         existing_module_path = os.environ.get("MAYA_MODULE_PATH")
         if existing_module_path:
             module_paths.extend(existing_module_path.split(os.pathsep))
-
 
         env_vars = {
             "DCC": str(this_path.parent.name),
