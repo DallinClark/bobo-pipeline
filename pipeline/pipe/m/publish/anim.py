@@ -2,23 +2,25 @@ from __future__ import annotations
 
 import json
 import logging
-
 from pathlib import Path
-from pxr import Sdf
 from typing import TYPE_CHECKING
+
+from pxr import Sdf
 
 if TYPE_CHECKING:
     from typing import Any
+
     from pipe.struct.db import Shot
 
 import maya.cmds as mc
+from shared.util import get_production_path
+from software.houdini import HoudiniDCC
 
 from pipe.glui.dialogs import MessageDialog
 from pipe.m.util import maintain_selection
 from pipe.struct.timeline import Timeline
-from software.houdini import HoudiniDCC
-from shared.util import get_production_path
 
+from .anim_lock import confirm_anim_republish_allowed
 from .publisher import Publisher
 from .usdchaser import ChaserMode, ExportChaser
 
@@ -50,6 +52,14 @@ class AnimPublisher(Publisher):
 
     def _prepublish(self) -> bool:
         if not self._init_success:
+            return False
+
+        if not confirm_anim_republish_allowed(
+            parent=self._window,
+            sequence_code=self._shot.sequence.code if self._shot.sequence else None,
+            shot_code=self._shot.code,
+            publish_path=self._get_save_path(),
+        ):
             return False
 
         cache_sets = mc.ls("::" + CACHE_SET, sets=True)
