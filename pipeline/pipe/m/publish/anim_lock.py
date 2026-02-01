@@ -79,6 +79,27 @@ def confirm_anim_republish_allowed(
     publish_path: Path | None,
     lock_file: Path = LOCK_FILE,
 ) -> bool:
+    details = []
+    if shot_code:
+        details.append(f"Shot: {shot_code}")
+    if sequence_code:
+        details.append(f"Sequence: {sequence_code}")
+    if publish_path:
+        details.append(f"Target: {publish_path}")
+
+    message = "Confirm animation publish?"
+    if details:
+        message = f"{message}\n" + "\n".join(details)
+
+    confirm = MessageDialog(
+        parent,
+        message,
+        "Confirm Publish",
+        has_cancel_button=True,
+    )
+    if confirm.exec_() != QtWidgets.QDialog.Accepted:
+        return False
+
     if not sequence_code and not shot_code:
         return True
 
