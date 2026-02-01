@@ -20,6 +20,7 @@ from pipe.glui.dialogs import MessageDialog
 from pipe.m.util import maintain_selection
 from pipe.struct.timeline import Timeline
 
+from .anim_lock import confirm_anim_republish_allowed
 from .publisher import Publisher
 from .usdchaser import ChaserMode, ExportChaser
 
@@ -67,6 +68,14 @@ class AnimPublisher(Publisher):
 
         # Select only this rig
         mc.select(self._rig_root, hierarchy=True)
+
+        if not confirm_anim_republish_allowed(
+            parent=self._window,
+            sequence_code=self._shot.sequence.code if self._shot.sequence else None,
+            shot_code=self._shot.code,
+            publish_path=self._get_save_path(),
+        ):
+            return False
         return True
 
     def _get_save_path(self) -> Path | None:
@@ -74,7 +83,6 @@ class AnimPublisher(Publisher):
         if not self._shot.path:
             return None
         save_path = get_production_path() / self._shot.path / f"rigs/usd/{rig_name}.usd"
-        save_path.parent.mkdir(parents=True, exist_ok=True)
         return save_path
 
     def _presave(self) -> bool:
