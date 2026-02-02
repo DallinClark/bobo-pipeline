@@ -54,6 +54,21 @@ class AnimPublisher(Publisher):
         if not self._init_success:
             return False
 
+        # Check if we want to do a full animation publish or just a rig
+        sel = mc.ls(selection=True, long=True)
+        if not sel:
+            MessageDialog(
+                self._window,
+                "Please select a rig root to publish.",
+                "No Selection",
+            ).exec_()
+            return False
+
+        self._rig_root = sel[0]
+
+        # Select only this rig
+        mc.select(self._rig_root, hierarchy=True)
+
         if not confirm_anim_republish_allowed(
             parent=self._window,
             sequence_code=self._shot.sequence.code if self._shot.sequence else None,
@@ -61,20 +76,18 @@ class AnimPublisher(Publisher):
             publish_path=self._get_save_path(),
         ):
             return False
-
-        cache_sets = mc.ls("::" + CACHE_SET, sets=True)
-        prop_sets = mc.ls("::" + PROP_SET, sets=True)
-
-        mc.select(*cache_sets, *prop_sets, replace=True)
-
         return True
 
     def _get_save_path(self) -> Path | None:
+        rig_name = self._rig_root.split("|")[-1]  # get the short name
         if not self._shot.path:
             return None
-        return get_production_path() / self._shot.path / "anim/usd/main.usd"
+        save_path = get_production_path() / self._shot.path / f"rigs/usd/{rig_name}.usd"
+        return save_path
 
     def _presave(self) -> bool:
+        # Make sure only the rig hierarchy is selected
+        mc.select(self._rig_root, hierarchy=True)
         return True
 
     def _get_mayausd_kwargs(self) -> dict[str, Any]:
