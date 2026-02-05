@@ -101,7 +101,7 @@ class HShotFileManager(HFileManager):
             self._post_open_file(shot)
 
             hou.hipFile.save()
-        except Exception:
+        except Exception as exc:
             tb = traceback.format_exc()
             log.exception(
                 "Failed to setup %s shot file for %s at %s",
@@ -109,24 +109,195 @@ class HShotFileManager(HFileManager):
                 shot.code,
                 path,
             )
-            message = (
-                f"Shot setup failed for {shot.code} ({self._department}).\n"
-                f"File: {path}\n\n"
-                f"{tb}\n"
-                "The scene may have been saved in a blank state."
+            message, details, error_id = self._build_setup_error(
+                shot=shot,
+                path=path,
+                exc=exc,
+                tb=tb,
             )
-            try:
-                if not pipe.h.local.is_headless():
-                    hou.ui.displayMessage(
-                        message,
-                        severity=hou.severityType.Error,
-                        title="Shot Setup Error",
-                    )
-                else:
-                    print(message)
-            except Exception:
-                print(message)
+            log.error("Shot setup error id: %s", error_id)
+            self._show_setup_error(
+                title="Shot Setup Error",
+                message=message,
+                details=details,
+            )
             raise
+
+    def _build_setup_error(
+        self,
+        *,
+        shot: Shot,
+        path: Path,
+        exc: Exception,
+        tb: str,
+    ) -> tuple[str, str, str]:
+        error_id, summary, suggestion = self._classify_setup_exception(exc, tb)
+
+        message_lines = [
+            f"Shot setup couldn't complete for {shot.code} ({self._department}).",
+            summary,
+            suggestion,
+            "The scene may have been saved in a blank state.",
+            f"Error ID: {error_id}",
+        ]
+        message = "\n".join(line for line in message_lines if line)
+
+        details = (
+            f"Error ID: {error_id}\n"
+            f"Shot: {shot.code}\n"
+            f"Department: {self._department}\n"
+            f"File: {path}\n"
+            f"Exception: {type(exc).__name__}: {exc}\n\n"
+            f"{tb}"
+        )
+        return message, details, error_id
+
+    def _classify_setup_exception(
+        self,
+        exc: Exception,
+        tb: str,
+    ) -> tuple[str, str, str]:
+        if isinstance(exc, StopIteration):
+            if "get_env_by_stub" in tb:
+                return (
+                    "SHOT_SETUP_ENV_NOT_FOUND",
+                    "The environment assigned to this shot could not be found.",
+                    "Check the shot's set(s) or sequence environment assignment in ShotGrid.",
+                )
+            if "get_sequence_by_stub" in tb:
+                return (
+                    "SHOT_SETUP_SEQUENCE_NOT_FOUND",
+                    "The sequence assigned to this shot could not be found in ShotGrid.",
+                    "Check the shot's sequence assignment.",
+                )
+            return (
+                "SHOT_SETUP_ENTITY_NOT_FOUND",
+                "Required ShotGrid data could not be found.",
+                "Check the shot's ShotGrid links or ask production to verify.",
+            )
+
+        if isinstance(exc, hou.OperationFailed):
+            exc_text = str(exc)
+            if (
+                "Invalid node type name" in exc_text
+                or "Unknown operator type" in exc_text
+                or "Invalid operator type" in exc_text
+            ):
+                return (
+                    "SHOT_SETUP_HDA_MISSING",
+                    "A required Houdini asset could not be created.",
+                    "Make sure the Bobo Load Layers HDA is installed and up to date.",
+                )
+            if "Permission denied" in exc_text or "Access is denied" in exc_text:
+                return (
+                    "SHOT_SETUP_PERMISSION_DENIED",
+                    "The scene could not be saved due to permissions.",
+                    "Check folder permissions or contact Pipeline.",
+                )
+
+        if isinstance(exc, PermissionError):
+            return (
+                "SHOT_SETUP_PERMISSION_DENIED",
+                "The scene could not be saved due to permissions.",
+                "Check folder permissions or contact Pipeline.",
+            )
+
+        if (
+            isinstance(exc, AttributeError)
+            and "createNode" in tb
+            and "NoneType" in str(exc)
+        ):
+            return (
+                "SHOT_SETUP_STAGE_MISSING",
+                "USD stage context is missing in this scene.",
+                "Start from a LOP template or ensure `/stage` exists.",
+            )
+
+        if isinstance(exc, TypeError) and "_set_playbar_ranges" in tb:
+            return (
+                "SHOT_SETUP_CUT_RANGE_INVALID",
+                "Shot cut range is invalid or missing.",
+                "Check cut in/out values on the shot in ShotGrid.",
+            )
+
+        return (
+            "SHOT_SETUP_UNEXPECTED",
+            "An unexpected error occurred during shot setup.",
+            "Contact Pipeline and include the Error ID.",
+        )
+
+    def _show_setup_error(self, *, title: str, message: str, details: str) -> None:
+        try:
+            if pipe.h.local.is_headless():
+                print(message)
+                if details:
+                    print("\nDetails:\n" + details)
+                return
+
+            try:
+                hou.ui.displayMessage(
+                    message,
+                    severity=hou.severityType.Error,
+                    title=title,
+                    details=details,
+                )
+                return
+            except TypeError:
+                # Older Houdini builds may not support the details argument.
+                pass
+
+            try:
+                from Qt import QtCore, QtWidgets
+            except Exception:
+                hou.ui.displayMessage(
+                    f"{message}\n\nDetails:\n{details}",
+                    severity=hou.severityType.Error,
+                    title=title,
+                )
+                return
+
+            parent = pipe.h.local.get_main_qt_window()
+            dialog = QtWidgets.QDialog(parent)
+            dialog.setWindowTitle(title)
+            dialog.setWindowFlags(dialog.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+
+            layout = QtWidgets.QVBoxLayout(dialog)
+            label = QtWidgets.QLabel(message)
+            label.setWordWrap(True)
+            layout.addWidget(label)
+
+            toggle = QtWidgets.QToolButton()
+            toggle.setText("Show Details")
+            toggle.setCheckable(True)
+            toggle.setArrowType(QtCore.Qt.RightArrow)
+            layout.addWidget(toggle)
+
+            details_edit = QtWidgets.QPlainTextEdit()
+            details_edit.setReadOnly(True)
+            details_edit.setPlainText(details)
+            details_edit.setVisible(False)
+            details_edit.setMinimumHeight(240)
+            layout.addWidget(details_edit)
+
+            buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
+            buttons.accepted.connect(dialog.accept)
+            layout.addWidget(buttons)
+
+            def _toggle_details(checked: bool) -> None:
+                details_edit.setVisible(checked)
+                toggle.setText("Hide Details" if checked else "Show Details")
+                toggle.setArrowType(
+                    QtCore.Qt.DownArrow if checked else QtCore.Qt.RightArrow
+                )
+                dialog.adjustSize()
+
+            toggle.toggled.connect(_toggle_details)
+
+            dialog.exec_()
+        except Exception:
+            print(message)
+            if details:
+                print("\nDetails:\n" + details)
 
     def _get_stage(self) -> hou.Node:
         stage: hou.Node = hou.node("/stage")  # type: ignore[assignment]
