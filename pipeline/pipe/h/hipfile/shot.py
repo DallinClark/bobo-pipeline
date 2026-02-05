@@ -112,21 +112,93 @@ class HShotFileManager(HFileManager):
             message = (
                 f"Shot setup failed for {shot.code} ({self._department}).\n"
                 f"File: {path}\n\n"
-                f"{tb}\n"
                 "The scene may have been saved in a blank state."
             )
-            try:
-                if not pipe.h.local.is_headless():
-                    hou.ui.displayMessage(
-                        message,
-                        severity=hou.severityType.Error,
-                        title="Shot Setup Error",
-                    )
-                else:
-                    print(message)
-            except Exception:
-                print(message)
+            details = (
+                f"Shot: {shot.code}\n"
+                f"Department: {self._department}\n"
+                f"File: {path}\n\n"
+                f"{tb}"
+            )
+            self._show_setup_error(
+                title="Shot Setup Error",
+                message=message,
+                details=details,
+            )
             raise
+
+    def _show_setup_error(self, *, title: str, message: str, details: str) -> None:
+        try:
+            if pipe.h.local.is_headless():
+                print(message)
+                if details:
+                    print("\nDetails:\n" + details)
+                return
+
+            try:
+                hou.ui.displayMessage(
+                    message,
+                    severity=hou.severityType.Error,
+                    title=title,
+                    details=details,
+                )
+                return
+            except TypeError:
+                # Older Houdini builds may not support the details argument.
+                pass
+
+            try:
+                from Qt import QtCore, QtWidgets
+            except Exception:
+                hou.ui.displayMessage(
+                    f"{message}\n\nDetails:\n{details}",
+                    severity=hou.severityType.Error,
+                    title=title,
+                )
+                return
+
+            parent = pipe.h.local.get_main_qt_window()
+            dialog = QtWidgets.QDialog(parent)
+            dialog.setWindowTitle(title)
+            dialog.setWindowFlags(dialog.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+
+            layout = QtWidgets.QVBoxLayout(dialog)
+            label = QtWidgets.QLabel(message)
+            label.setWordWrap(True)
+            layout.addWidget(label)
+
+            toggle = QtWidgets.QToolButton()
+            toggle.setText("Show Details")
+            toggle.setCheckable(True)
+            toggle.setArrowType(QtCore.Qt.RightArrow)
+            layout.addWidget(toggle)
+
+            details_edit = QtWidgets.QPlainTextEdit()
+            details_edit.setReadOnly(True)
+            details_edit.setPlainText(details)
+            details_edit.setVisible(False)
+            details_edit.setMinimumHeight(240)
+            layout.addWidget(details_edit)
+
+            buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
+            buttons.accepted.connect(dialog.accept)
+            layout.addWidget(buttons)
+
+            def _toggle_details(checked: bool) -> None:
+                details_edit.setVisible(checked)
+                toggle.setText("Hide Details" if checked else "Show Details")
+                toggle.setArrowType(
+                    QtCore.Qt.DownArrow if checked else QtCore.Qt.RightArrow
+                )
+                dialog.adjustSize()
+
+            toggle.toggled.connect(_toggle_details)
+
+            dialog.exec_()
+        except Exception:
+            print(message)
+            if details:
+                print("\nDetails:\n" + details)
 
     def _get_stage(self) -> hou.Node:
         stage: hou.Node = hou.node("/stage")  # type: ignore[assignment]
