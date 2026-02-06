@@ -3,25 +3,23 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
-from Qt.QtWidgets import QCheckBox, QWidget
-from pipe.db import DB
-from typing import Optional
-from pxr import Usd, Sdf, UsdGeom
+from typing import TYPE_CHECKING, Optional, cast
 
-import maya.cmds as cmds
 import maya.api.OpenMaya as om
-from pxr import Gf, Vt
+import maya.cmds as cmds
+from pxr import Gf, Sdf, Usd, UsdGeom, Vt
+from Qt.QtWidgets import QCheckBox, QWidget
 
+from pipe.db import DB
 
 if TYPE_CHECKING:
     from typing import Any, Sequence
-from pipe.glui.dialogs import FilteredListDialog, MessageDialog
-from pipe.struct.db import Asset, SGEntity
 from shared.util import get_production_path
 
-from .publisher import Publisher
+from pipe.glui.dialogs import FilteredListDialog, MessageDialog
+from pipe.struct.db import Asset, SGEntity
 
+from .publisher import Publisher
 
 log = logging.getLogger(__name__)
 
@@ -57,10 +55,10 @@ class PrevisAssetPublisher(Publisher):
         super().__init__(PublishPrevisAssetDialog)
 
     def _get_entity_list(self) -> list[str]:
-        return self._conn.get_asset_name_list(sorted=True)
+        return self._conn.get_asset_display_name_list(sorted=True)
 
-    def _get_entity_from_name(self, name: str) -> SGEntity | None:
-        return self._conn.get_asset_by_name(name)
+    def _get_entity_from_name(self, display_name: str) -> SGEntity | None:
+        return self._conn.get_asset_by_display_name(display_name)
 
     def _get_save_path(self) -> Path | None:
         cast(PublishPrevisAssetDialog, self._dialog)

@@ -3,28 +3,30 @@ from __future__ import annotations
 import logging
 import os
 from math import log2
-from Qt import QtCore, QtWidgets
-from Qt.QtGui import QIcon, QPixmap, QRegExpValidator
-from Qt.QtCore import QRegExp
+from re import findall
+from typing import TYPE_CHECKING
+
 from PySide6.QtCore import QEventLoop  # type: ignore[import-not-found]
+from Qt import QtCore, QtWidgets
+from Qt.QtCore import QRegExp
+from Qt.QtGui import QIcon, QPixmap, QRegExpValidator
 from Qt.QtWidgets import (
     QComboBox,
     QLabel,
     QLayout,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QScrollArea,
-    QPushButton,
     QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from re import findall
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import typing
 
 import substance_painter as sp
+from env_sg import DB_Config
 
 from pipe.db import DB
 from pipe.glui.dialogs import ButtonPair, MessageDialog
@@ -33,8 +35,6 @@ from pipe.sp.local import get_main_qt_window
 from pipe.struct.db import Asset
 from pipe.struct.material import DisplacementSource, NormalSource, NormalType
 from pipe.util import checkbox_callback_helper, dict_index
-
-from env_sg import DB_Config
 
 log = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         texture_set_layout = QVBoxLayout()
 
         # Get asset names (assumed sorted)
-        asset_names = self._conn.get_asset_name_list(sorted=True)
+        asset_display_names = self._conn.get_asset_display_name_list(sorted=True)
 
         # Add widgets for each texture set
         for ts in sp.textureset.all_texture_sets():
@@ -106,7 +106,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
 
             # Dropdown to select asset
             asset_dropdown = QComboBox()
-            asset_dropdown.addItems(asset_names)
+            asset_dropdown.addItems(asset_display_names)
 
             # Store dropdown in a dictionary
             self._tex_set_dropdowns[ts] = asset_dropdown
@@ -142,7 +142,7 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             # Filter the items based on the text
             filtered_assets = [
                 asset
-                for asset in self._conn.get_asset_name_list()
+                for asset in self._conn.get_asset_display_name_list()
                 if text.lower() in asset.lower()
             ]
             asset_dropdown.clear()  # Clear existing items
@@ -152,12 +152,12 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
         self._tex_set_asset_dict = {}
 
         for ts, dropdown in self._tex_set_dropdowns.items():
-            selected_asset = dropdown.currentText()
+            selected_asset_display_name = dropdown.currentText()
 
-            if selected_asset not in self._tex_set_asset_dict.keys():
-                self._tex_set_asset_dict[selected_asset] = []
+            if selected_asset_display_name not in self._tex_set_asset_dict.keys():
+                self._tex_set_asset_dict[selected_asset_display_name] = []
 
-            self._tex_set_asset_dict[selected_asset].append(ts)
+            self._tex_set_asset_dict[selected_asset_display_name].append(ts)
 
         self.clear_layout()
         self._setup_asset_ui()
@@ -188,10 +188,10 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
 
     def _setup_asset_ui(self):
         # loops though every asset that was selected in the first prompt, and lets them set export options per texture set
-        for i, curr_asset_name in enumerate(self._tex_set_asset_dict.keys()):
+        for i, curr_asset_display_name in enumerate(self._tex_set_asset_dict.keys()):
             self.clear_layout()
 
-            self.setWindowTitle(f"{curr_asset_name} Publish Textures")
+            self.setWindowTitle(f"{curr_asset_display_name} Publish Textures")
 
             # Make sure window always stays on top
             self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
@@ -214,11 +214,13 @@ class SubstanceExportWindow(QMainWindow, ButtonPair):
             lock_warning.setWordWrap(True)
             self._main_layout.addWidget(lock_warning)
 
-            self._curr_asset = self._conn.get_asset_by_name(curr_asset_name)
+            self._curr_asset = self._conn.get_asset_by_display_name(
+                curr_asset_display_name
+            )
 
             # Texture set widgets
             texture_set_layout = QtWidgets.QVBoxLayout()
-            for ts in self._tex_set_asset_dict[curr_asset_name]:
+            for ts in self._tex_set_asset_dict[curr_asset_display_name]:
                 widget = TexSetWidget(self, ts)
                 self._tex_set_dict[ts] = widget
                 texture_set_layout.addWidget(widget)

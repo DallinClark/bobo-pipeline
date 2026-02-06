@@ -34,8 +34,8 @@ _con.register_structure_hook_factory(
 )
 
 
-def _normalize_pipe_name(name: Optional[str]) -> str:
-    """Normalize a ShotGrid display name into a pipe-safe name.
+def normalize_display_name(name: Optional[str]) -> str:
+    """Normalize a ShotGrid display name into a pipeline-safe name.
 
     Current rules:
     - lower-case the string
@@ -115,10 +115,11 @@ class SGEntityStub(SGDiffable):
 @attrs.frozen
 class AssetStub(SGEntityStub):
     """Represent "stubs" that come from ShotGrid
-    Stubs are JSON objects with 3 fields: id, name, and type (which is always Asset in this case)
+    Stubs are JSON objects with 3 fields: id, name (display name), and type
+    (which is always Asset in this case)
     """
 
-    disp_name: str = field(metadata={_SG_NAME: "name"})
+    display_name: str = field(metadata={_SG_NAME: "name"})
 
 
 @attrs.define
@@ -165,8 +166,8 @@ class Asset(SGEntity):
 
     @property
     def name(self) -> str:
-        """Pipe-safe name derived from the ShotGrid display name."""
-        return _normalize_pipe_name(self.display_name)
+        """Normalized name derived from the ShotGrid display name."""
+        return normalize_display_name(self.display_name)
 
     @property
     def tex_path(self) -> Optional[str]:
@@ -182,8 +183,8 @@ class Environment(SGEntity):
 
     @property
     def name(self) -> str:
-        """Pipe-safe name derived from the ShotGrid display name."""
-        return _normalize_pipe_name(self.display_name)
+        """Normalized name derived from the ShotGrid display name."""
+        return normalize_display_name(self.display_name)
 
 
 @attrs.define

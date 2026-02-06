@@ -7,20 +7,20 @@ import shutil
 import traceback
 from functools import wraps
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import maya.cmds as mc
+from env_sg import DB_Config
 
 import pipe
 from pipe.db import DB
 from pipe.glui.dialogs import FilteredListDialog, MessageDialog
 from pipe.m.util import maintain_selection
 from pipe.struct.db import SGEntity
-from env_sg import DB_Config
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
+
     from Qt.QtWidgets import QWidget
 
 log = logging.getLogger(__name__)
@@ -79,8 +79,8 @@ class Publisher:
         return []
 
     @_assert_not_none
-    def _get_entity_from_name(self, name: str) -> SGEntity | None:
-        """Turn the string chosen in the dialog into a SG entity"""
+    def _get_entity_from_name(self, display_name: str) -> SGEntity | None:
+        """Turn the chosen display name into a SG entity"""
         return None
 
     @_assert_not_none
@@ -110,7 +110,7 @@ class Publisher:
         following functions:
           - `prepublish(self)`
           - `get_entity_list(self) -> list[str]`
-          - `get_entity_from_name(self, disp_name: str) -> SGEntity`
+          - `get_entity_from_name(self, display_name: str) -> SGEntity`
           - `get_save_path(self) -> Path`
           - `presave(self)`
           - `get_mayausd_kwargs(self) -> dict[str, Any]`

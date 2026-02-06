@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Iterable, Literal, Optional, Protocol, TypedDict, Union
+
 from typing_extensions import NotRequired, Unpack
 
 from pipe.struct.db import (
@@ -76,7 +77,11 @@ class T_GetAssetById(Protocol):
 
 
 class T_GetAssetByName(Protocol):
-    def __call__(self, name: str) -> Asset: ...
+    def __call__(self, normalized_name: str) -> Asset: ...
+
+
+class T_GetAssetByDisplayName(Protocol):
+    def __call__(self, display_name: str) -> Asset: ...
 
 
 class T_GetAssetByStub(Protocol):
@@ -84,6 +89,14 @@ class T_GetAssetByStub(Protocol):
 
 
 class T_GetAssetNameList(Protocol):
+    def __call__(
+        self,
+        child_mode: DBInterface.ChildQueryMode = DBInterface.ChildQueryMode.LEAVES,
+        sorted: bool = False,
+    ) -> list[str]: ...
+
+
+class T_GetAssetDisplayNameList(Protocol):
     def __call__(
         self,
         child_mode: DBInterface.ChildQueryMode = DBInterface.ChildQueryMode.LEAVES,
