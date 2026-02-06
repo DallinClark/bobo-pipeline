@@ -34,6 +34,18 @@ _con.register_structure_hook_factory(
 )
 
 
+def _normalize_pipe_name(name: Optional[str]) -> str:
+    """Normalize a ShotGrid display name into a pipe-safe name.
+
+    Current rules:
+    - lower-case the string
+    - replace spaces with underscores
+    """
+    if not name:
+        return ""
+    return name.strip().lower().replace(" ", "_")
+
+
 @attrs.define
 class SGDiffable(Diffable):
     @classmethod
@@ -147,9 +159,14 @@ class Asset(SGEntity):
     version = None
 
     @property
-    def disp_name(self) -> str:
-        """Alias for code"""
+    def display_name(self) -> str:
+        """ShotGrid display name (code)."""
         return self.code or ""
+
+    @property
+    def name(self) -> str:
+        """Pipe-safe name derived from the ShotGrid display name."""
+        return _normalize_pipe_name(self.display_name)
 
     @property
     def tex_path(self) -> Optional[str]:
@@ -159,9 +176,14 @@ class Asset(SGEntity):
 @attrs.define
 class Environment(SGEntity):
     @property
-    def disp_name(self) -> str:
-        """Alias for code"""
+    def display_name(self) -> str:
+        """ShotGrid display name (code)."""
         return self.code or ""
+
+    @property
+    def name(self) -> str:
+        """Pipe-safe name derived from the ShotGrid display name."""
+        return _normalize_pipe_name(self.display_name)
 
 
 @attrs.define
