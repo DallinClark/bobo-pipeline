@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import attrs
-import cattrs
-
-
-from attrs import field
-
 # We need to always import typing for defining the structs
 # attrs doesn't support `|` syntax in 3.9
 from typing import Any, Optional, Type, TypeVar
+
+import attrs
+import cattrs
+from attrs import field
 
 from pipe.struct.util import Diffable
 
@@ -113,7 +111,6 @@ class AssetStub(SGEntityStub):
 
 @attrs.define
 class Asset(SGEntity):
-    name: str = field(metadata={_SG_NAME: "sg_pipe_name"})
     type: str = field(metadata={_SG_NAME: "sg_asset_type"})
     material_variants: set[str] = field(
         metadata={
@@ -155,24 +152,12 @@ class Asset(SGEntity):
         return self.code or ""
 
     @property
-    def is_variant(self) -> bool:
-        return "_" in self.name
-
-    @property
     def tex_path(self) -> Optional[str]:
         return f"{self.path}/tex/"
-
-    @property
-    def variant_name(self) -> Optional[str]:
-        if not self.is_variant:
-            return None
-        return self.name.split("_")[1]
 
 
 @attrs.define
 class Environment(SGEntity):
-    name: str = field(metadata={_SG_NAME: "sg_pipe_name"})
-
     @property
     def disp_name(self) -> str:
         """Alias for code"""
