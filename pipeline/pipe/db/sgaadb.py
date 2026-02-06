@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
 from functools import partialmethod as pm
 from typing import TYPE_CHECKING, Optional
@@ -107,7 +108,34 @@ class SGaaDB(DBInterface):
         """Load the list of assets from SG to local cache"""
         with self._cache_lock:
             query = _AssetListQuery(self._id)
-            self._sg_entity_lists[Asset.__name__] = query.exec(self._sg)
+            asset_list = query.exec(self._sg)
+            self._sg_entity_lists[Asset.__name__] = asset_list
+            self._log_asset_name_collisions(asset_list)
+
+    @staticmethod
+    def _log_asset_name_collisions(asset_list: list[dict]) -> None:
+        """Log collisions where display names normalize to the same asset.name."""
+        normalized_names: dict[str, list[tuple[Optional[int], Optional[str]]]] = (
+            defaultdict(list)
+        )
+        for asset in asset_list:
+            code = asset.get("code")
+            normalized = normalize_display_name(code)
+            if not normalized:
+                continue
+            normalized_names[normalized].append((asset.get("id"), code))
+
+        for normalized, entries in normalized_names.items():
+            if len(entries) < 2:
+                continue
+            details = ", ".join(
+                f"id={asset_id} code={code!r}" for asset_id, code in entries
+            )
+            log.error(
+                "Asset name collision after normalization: name=%r assets=[%s]",
+                normalized,
+                details,
+            )
 
     def _load_sg_user_list(self) -> None:
         """Load the list of assets from SG to local cache"""
