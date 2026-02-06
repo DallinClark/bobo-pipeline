@@ -39,8 +39,8 @@ def shot_timeline_generator(
             ("Rest Pose @Origin", (70, 0, 0), 8),
             ("Rest Pose -> Windup", (150, 0, 0), 8),
             ("Hold Windup", (255, 0, 0), 5),
-            ("Windup", (128, 128, 0), 8),
-            ("Head", (128, 255, 128), 2),
+            ("Windup", (128, 128, 0), 5),
+            ("Head", (128, 255, 128), 5),
         ],
         # Roll segments starting at start_frame.
         [
