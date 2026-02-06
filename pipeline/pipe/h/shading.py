@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import hou
-import os
+from env_sg import DB_Config
 
 from pipe.db import DB
 from pipe.struct.db import Asset
-
-from env_sg import DB_Config
 
 _MATLIB_NAME = "Material_Library"
 _MATNAME = "matname"
@@ -34,8 +33,7 @@ class MatlibManager:
     def _asset(self) -> Asset:
         """Get asset based off of the path of the current hipfile"""
         asset_name = str(hou.contextOption("ASSET"))
-        a = self._conn.get_asset_by_attr("name", asset_name)
-        return a
+        return self._conn.get_asset_by_name(asset_name)
 
     @property
     def _hip(self) -> Path:

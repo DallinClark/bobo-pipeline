@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import re
-
-from typing import TYPE_CHECKING
-from shared.util import get_production_path
+import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from shared.util import get_production_path
+
 from pipe.glui.dialogs import MessageDialog
 
 if TYPE_CHECKING:
@@ -29,7 +30,9 @@ class RigPublisher(Publisher):
         super().__init__(use_sg_entity=False)
 
     def _get_entity_list(self) -> list[str]:
-        return self._conn.get_asset_name_list_by_type(["Character", "Rigged Prop"])
+        return self._conn.get_asset_display_name_list_by_type(
+            ["Character", "Rigged Prop"]
+        )
 
     def _get_mayausd_kwargs(self) -> dict[str, Any]:
         kwargs = {
@@ -49,7 +52,7 @@ class RigPublisher(Publisher):
         return True
 
     def _get_save_path(self) -> Path | None:
-        asset = self._conn.get_asset_by_name(self._selected_item)
+        asset = self._conn.get_asset_by_display_name(self._selected_item)
 
         try:
             assert asset.path is not None

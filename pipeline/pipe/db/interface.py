@@ -11,15 +11,15 @@ if TYPE_CHECKING:
 from pipe.struct.db import (
     Asset,
     AssetStub,
-    User,
     Environment,
     EnvironmentStub,
-    SGEntity,
-    SGEntityStub,
     Sequence,
     SequenceStub,
+    SGEntity,
+    SGEntityStub,
     Shot,
     ShotStub,
+    User,
 )
 
 
@@ -119,8 +119,13 @@ class DBInterface(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def get_asset_by_name(self, attr_val: str | int) -> Asset:
-        """Get an asset by its name"""
+    def get_asset_by_name(self, name: str) -> Asset:
+        """Get an asset by its normalized name (asset.name)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_asset_by_display_name(self, display_name: str) -> Asset:
+        """Get an asset by its ShotGrid display name (asset.display_name / code)"""
         raise NotImplementedError
 
     @abstractmethod
@@ -153,17 +158,36 @@ class DBInterface(metaclass=ABCMeta):
     def get_asset_name_list(
         self, child_mode: DBInterface.ChildQueryMode, sorted: bool
     ) -> list[str]:
-        """Get a list of asset names"""
+        """Get a list of normalized asset names (asset.name)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_asset_display_name_list(
+        self, child_mode: DBInterface.ChildQueryMode, sorted: bool
+    ) -> list[str]:
+        """Get a list of asset display names (asset.display_name / code)"""
         raise NotImplementedError
 
     @abstractmethod
     def get_assets_by_name(self, names: typing.Iterable[str]) -> list[Asset]:
-        """Get a list of assets from a list of names"""
+        """Get a list of assets from a list of normalized names (asset.name)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_assets_by_display_name(self, names: typing.Iterable[str]) -> list[Asset]:
+        """Get a list of assets from a list of display names (asset.display_name / code)"""
         raise NotImplementedError
 
     @abstractmethod
     def get_asset_name_list_by_type(self, types: list[str], sorted: bool) -> list[str]:
-        """Get a list of asset names given asset types"""
+        """Get a list of normalized asset names given asset types (asset.name)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_asset_display_name_list_by_type(
+        self, types: list[str], sorted: bool
+    ) -> list[str]:
+        """Get a list of asset display names (asset.display_name / code) given asset types"""
         raise NotImplementedError
 
     @abstractmethod

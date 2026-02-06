@@ -523,7 +523,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 asset = None
                 relative_path_str = None
                 try:
-                    asset = conn.get_asset_by_attr("name", base_name)
+                    asset = conn.get_asset_by_name(base_name)
 
                     assert asset.path is not None
                     rig_path = str(asset.path).replace("\\", "/") + "/usd/main.usd"

@@ -2,23 +2,23 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
+
 from Qt.QtCore import QRegExp
 from Qt.QtGui import QRegExpValidator
 from Qt.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
-from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from typing import Any, Sequence
 
 import maya.cmds as mc
+from shared.util import get_production_path
 
 from pipe.glui.dialogs import FilteredListDialog, MessageDialog
 from pipe.struct.db import SGEntity, Shot
-from shared.util import get_production_path
 
 from .publisher import Publisher
-from .usdchaser import ExportChaser, ChaserMode
-
+from .usdchaser import ChaserMode, ExportChaser
 
 log = logging.getLogger(__name__)
 
@@ -60,8 +60,8 @@ class CameraPublisher(Publisher):
     def _get_entity_list(self) -> list[str]:
         return self._conn.get_shot_code_list(sorted=True)
 
-    def _get_entity_from_name(self, name: str) -> SGEntity | None:
-        return self._conn.get_shot_by_code(name)
+    def _get_entity_from_name(self, display_name: str) -> SGEntity | None:
+        return self._conn.get_shot_by_code(display_name)
 
     def _get_save_path(self) -> Path | None:
         try:

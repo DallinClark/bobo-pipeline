@@ -104,7 +104,7 @@ class MAnimShotFileManager(MShotFileManager):
                 if (get_production_path() / ".." / rig_path).exists():
                     mc.file(rig_path, reference=True, namespace=asset.name)
                 else:
-                    print(f'Unable to find rig for asset "{asset.disp_name}"')
+                    print(f'Unable to find rig for asset "{asset.display_name}"')
 
         self._import_env()
 

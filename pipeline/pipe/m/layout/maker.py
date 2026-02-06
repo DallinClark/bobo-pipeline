@@ -1,18 +1,20 @@
-import maya.cmds as mc
-import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
-from pxr import UsdGeom, Usd, Kind
-from PySide6 import QtWidgets  # type: ignore[import-not-found]
-import maya.OpenMayaUI as omui
-from shiboken6 import wrapInstance  # type: ignore[import-not-found]
-from env_sg import DB_Config
-from pipe.glui.dialogs import FilteredListDialog
-from pipe.db import DB
-from shared.util import get_production_path
-from pipe.struct.db import Environment
-from .file_manager import HOUDINI_TO_MAYA_SCALE
+import os
 import shutil
 
-import os
+import maya.cmds as mc
+import maya.OpenMayaUI as omui
+import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
+from env_sg import DB_Config
+from pxr import Kind, Usd, UsdGeom
+from PySide6 import QtWidgets  # type: ignore[import-not-found]
+from shared.util import get_production_path
+from shiboken6 import wrapInstance  # type: ignore[import-not-found]
+
+from pipe.db import DB
+from pipe.glui.dialogs import FilteredListDialog
+from pipe.struct.db import Environment
+
+from .file_manager import HOUDINI_TO_MAYA_SCALE
 
 
 class SelectFromGroup(FilteredListDialog):
@@ -159,20 +161,20 @@ class LayoutMaker:
         selected_layout = layout_dialog.get_selected_item()
 
         conn = DB.Get(DB_Config)
-        asset_list = conn.get_asset_name_list(sorted=True)
+        asset_display_names = conn.get_asset_display_name_list(sorted=True)
 
         asset_dialog = SelectFromGroup(
-            asset_list, "Reference Asset", "Select your asset"
+            asset_display_names, "Reference Asset", "Select your asset"
         )
         if not asset_dialog.exec_():
             return  # User cancelled
 
-        selected_asset_name = asset_dialog.get_selected_item()
-        if not selected_asset_name:
+        selected_asset_display_name = asset_dialog.get_selected_item()
+        if not selected_asset_display_name:
             mc.warning("No asset selected.")
             return
 
-        selected_asset = conn.get_asset_by_name(selected_asset_name)
+        selected_asset = conn.get_asset_by_display_name(selected_asset_display_name)
 
         # Define the reference prim under the selected layout group
         base_path = f"/{env_prim.GetName()}/{set_prim.GetName()}/{selected_layout}"

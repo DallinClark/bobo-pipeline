@@ -106,7 +106,7 @@ class PublishAssetDialog(FilteredListDialog):
     def _on_item_selected(self) -> None:
         selected = self.get_selected_item()
         if self._conn and selected:
-            asset = self._conn.get_asset_by_name(selected)
+            asset = self._conn.get_asset_by_display_name(selected)
         else:
             return
         self._populate_geo_var(asset)
@@ -131,7 +131,7 @@ class AssetPublisher(Publisher):
     _component_export_dir: Path | None
     _component_hip_path: Path | None
     _component_basename: str | None
-    _asset_pipe_name: str | None
+    _asset_name: str | None
     _houdini_result: dict[str, Any] | None
 
     def __init__(self) -> None:
@@ -141,28 +141,28 @@ class AssetPublisher(Publisher):
         self._component_export_dir = None
         self._component_hip_path = None
         self._component_basename = None
-        self._asset_pipe_name = None
+        self._asset_name = None
         self._houdini_result = None
 
     @staticmethod
     def _compute_component_basename(
         asset: Asset, variant: str, is_substance: bool
     ) -> tuple[str, str]:
-        pipe_name = (asset.name or "").strip()
-        if not pipe_name or pipe_name.lower() == "none":
-            pipe_name = (asset.disp_name or "").strip()
-        if not pipe_name and asset.path:
-            pipe_name = Path(asset.path).name
-        if not pipe_name:
-            pipe_name = "asset"
+        name = (asset.name or "").strip()
+        if not name or name == "none":
+            name = ""
+        if not name and asset.path:
+            name = Path(asset.path).name
+        if not name:
+            name = "asset"
 
-        base_name = pipe_name
+        base_name = name
         if variant and variant != "main":
             base_name = f"{base_name}_{variant}"
         if is_substance:
             base_name = f"{base_name}_SUBSTANCE"
 
-        return pipe_name, base_name
+        return name, base_name
 
     def _prepublish(self) -> bool:
         checker = ModelChecker.get()
@@ -189,18 +189,18 @@ class AssetPublisher(Publisher):
         return True
 
     def _get_entity_list(self) -> list[str]:
-        return self._conn.get_asset_name_list(sorted=True)
+        return self._conn.get_asset_display_name_list(sorted=True)
 
-    def _get_entity_from_name(self, name: str) -> SGEntity | None:
-        return self._conn.get_asset_by_name(name)
+    def _get_entity_from_name(self, display_name: str) -> SGEntity | None:
+        return self._conn.get_asset_by_display_name(display_name)
 
     def _get_asset(self) -> Asset | None:
         """Get the asset from the database."""
         dialog = cast(PublishAssetDialog, self._dialog)
-        asset_name = dialog.get_selected_item()
-        if not asset_name:
+        asset_display_name = dialog.get_selected_item()
+        if not asset_display_name:
             return None
-        return self._conn.get_asset_by_name(asset_name)
+        return self._conn.get_asset_by_display_name(asset_display_name)
 
     def _get_variant_name(self) -> str | None:
         """Get the variant name from the dialog."""
@@ -244,11 +244,11 @@ class AssetPublisher(Publisher):
             log.info(f"Updating new geo variant: {variant_name}")
             self._conn.update_asset(asset)
 
-        pipe_name, basename = self._compute_component_basename(
+        name, basename = self._compute_component_basename(
             asset, variant_name, self._is_substance_only
         )
         publish_dir = get_production_path() / asset.path
-        self._asset_pipe_name = pipe_name
+        self._asset_name = name
         self._component_basename = basename
         return publish_dir / f"{basename}.usd"
 
@@ -288,7 +288,7 @@ class AssetPublisher(Publisher):
             asset = cast(Asset, self._entity)
             override_info = {
                 "user": os.getlogin(),
-                "asset": asset.disp_name,
+                "asset": asset.display_name,
                 "path": str(self._publish_path),
             }
             data = bytes(json.dumps(override_info), encoding="utf-8")
@@ -346,15 +346,11 @@ class AssetPublisher(Publisher):
                 f"Houdini executable not found at {Executables.hython}"
             )
 
-        asset_pipe_name = (
-            self._asset_pipe_name
-            or (asset.name or "").strip()
-            or (asset.disp_name or "").strip()
-        )
-        if not asset_pipe_name and asset.path:
-            asset_pipe_name = Path(asset.path).name
-        if not asset_pipe_name:
-            asset_pipe_name = component_name
+        asset_name = self._asset_name or (asset.name or "").strip()
+        if not asset_name and asset.path:
+            asset_name = Path(asset.path).name
+        if not asset_name:
+            asset_name = component_name
 
         command = [
             str(Executables.hython),
@@ -369,13 +365,13 @@ class AssetPublisher(Publisher):
             "--component-name",
             component_name,
             "--asset-name",
-            asset_pipe_name,
+            asset_name,
             "--variant",
             self._geo_variant,
         ]
 
-        if asset_pipe_name and asset_pipe_name != component_name:
-            command.extend(["--root-prim", asset_pipe_name])
+        if asset_name and asset_name != component_name:
+            command.extend(["--root-prim", asset_name])
 
         dcc = HoudiniDCC(is_python_shell=True)
         env = dcc._get_env_vars()

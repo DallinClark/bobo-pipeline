@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
-import threading
 import os
-
+import threading
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
 from functools import partialmethod as pm
 from typing import TYPE_CHECKING, Optional
@@ -17,22 +17,23 @@ from pipe.struct.db import (
     SGEntityStub,
     Shot,
     ShotStub,
-    Version,
-    User,
     Task,
+    User,
+    Version,
+    normalize_display_name,
 )
 
 if TYPE_CHECKING:
     import typing
     from typing import Any, Callable, Iterable, Optional
-    from typing_extensions import Unpack
-    from .typing import AttrMappingKwargs, Filter
-    from .typing import *  # noqa: F403
 
-from .interface import DBInterface
+    from typing_extensions import Unpack
+
+    from .typing import *  # noqa: F403
+    from .typing import AttrMappingKwargs, Filter
 
 from . import shotgun_api3
-
+from .interface import DBInterface
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +108,34 @@ class SGaaDB(DBInterface):
         """Load the list of assets from SG to local cache"""
         with self._cache_lock:
             query = _AssetListQuery(self._id)
-            self._sg_entity_lists[Asset.__name__] = query.exec(self._sg)
+            asset_list = query.exec(self._sg)
+            self._sg_entity_lists[Asset.__name__] = asset_list
+            self._log_asset_name_collisions(asset_list)
+
+    @staticmethod
+    def _log_asset_name_collisions(asset_list: list[dict]) -> None:
+        """Log collisions where display names normalize to the same asset.name."""
+        normalized_names: dict[str, list[tuple[Optional[int], Optional[str]]]] = (
+            defaultdict(list)
+        )
+        for asset in asset_list:
+            code = asset.get("code")
+            normalized = normalize_display_name(code)
+            if not normalized:
+                continue
+            normalized_names[normalized].append((asset.get("id"), code))
+
+        for normalized, entries in normalized_names.items():
+            if len(entries) < 2:
+                continue
+            details = ", ".join(
+                f"id={asset_id} code={code!r}" for asset_id, code in entries
+            )
+            log.error(
+                "Asset name collision after normalization: name=%r assets=[%s]",
+                normalized,
+                details,
+            )
 
     def _load_sg_user_list(self) -> None:
         """Load the list of assets from SG to local cache"""
@@ -250,13 +278,51 @@ class SGaaDB(DBInterface):
 
     get_asset_attr_list: T_GetAssetAttrList = pm(get_entity_attr_list, Asset)  # type: ignore[assignment] # noqa: F405
     get_asset_by_attr: T_GetAssetByAttr = pm(get_entity_by_attr, Asset)  # type: ignore[assignment] # noqa: F405
-    get_asset_by_name: T_GetAssetByName = pm(get_asset_by_attr, "code")  # type: ignore[assignment] # noqa: F405
+    get_asset_by_display_name: T_GetAssetByDisplayName = pm(get_asset_by_attr, "code")  # type: ignore[assignment] # noqa: F405
     get_asset_by_id: T_GetAssetById = pm(get_asset_by_attr, "id")  # type: ignore[assignment] # noqa: F405
     get_asset_by_stub: T_GetAssetByStub = pm(get_entity_by_stub, Asset)  # type: ignore[assignment] # noqa: F405
-    get_asset_name_list: T_GetCodeList = pm(get_asset_attr_list, "code")  # type: ignore[assignment] # noqa: F405
+    get_asset_display_name_list: T_GetAssetDisplayNameList = pm(
+        get_asset_attr_list, "code"
+    )  # type: ignore[assignment] # noqa: F405
     get_assets_by_stub: T_GetAssetsByStub = pm(get_entities_by_stub, Asset)  # type: ignore[assignment] # noqa: F405
 
+    def get_asset_by_name(self, name: str) -> Asset:
+        target = normalize_display_name(name)
+        return Asset.from_sg(
+            next(
+                asset
+                for asset in self._sg_entity_lists[Asset.__name__]
+                if normalize_display_name(asset.get("code")) == target
+            )
+        )
+
+    def get_asset_name_list(
+        self,
+        child_mode: DBInterface.ChildQueryMode = DBInterface.ChildQueryMode.LEAVES,
+        sorted: bool = False,
+    ) -> list[str]:
+        display_names = self.get_asset_display_name_list(
+            child_mode=child_mode, sorted=False
+        )
+        names = [normalize_display_name(display_name) for display_name in display_names]
+        if sorted:
+            names.sort()
+        return names
+
     def get_assets_by_name(self, names: Iterable[str]) -> list[Asset]:
+        targets = {normalize_display_name(name) for name in names}
+        return [
+            Asset.from_sg(i)
+            for i in set(
+                [
+                    a
+                    for a in self._sg_entity_lists[Asset.__name__]
+                    if normalize_display_name(a.get("code")) in targets
+                ]
+            )
+        ]
+
+    def get_assets_by_display_name(self, names: Iterable[str]) -> list[Asset]:
         return [
             Asset.from_sg(i)
             for i in set(
@@ -342,7 +408,7 @@ class SGaaDB(DBInterface):
         print(raw_tasks)
         return [Task.from_sg(task) for task in raw_tasks]
 
-    def get_asset_name_list_by_type(
+    def get_asset_display_name_list_by_type(
         self, types: list[str], sorted: bool = False
     ) -> list[str]:
         mapper = self._entity_attr_custom_mappers.get(
@@ -359,6 +425,15 @@ class SGaaDB(DBInterface):
         if sorted:
             arr.sort()
         return arr
+
+    def get_asset_name_list_by_type(
+        self, types: list[str], sorted: bool = False
+    ) -> list[str]:
+        display_names = self.get_asset_display_name_list_by_type(types, sorted=False)
+        names = [normalize_display_name(display_name) for display_name in display_names]
+        if sorted:
+            names.sort()
+        return names
 
     get_user_attr_list: T_GetAttrList = pm(get_entity_attr_list, User)  # type: ignore[assignment] # noqa: F405
     get_user_by_attr: T_GetUserByAttr = pm(get_entity_by_attr, User)  # type: ignore[assignment] # noqa: F405
@@ -470,7 +545,6 @@ class _AssetListQuery(_Query):
     def _base_fields(self) -> list[str]:
         return [
             "code",  # display name
-            "sg_pipe_name",  # internal name
             "sg_path",  # asset path
             "id",  # asset id
             "parents",  # parent assets
@@ -538,7 +612,6 @@ class _EnvironmentListQuery(_Query):
     def _base_fields(self) -> list[str]:
         return [
             "code",  # display name
-            "sg_pipe_name",  # internal name
             "sg_path",  # environment path
             "id",  # asset id
             "shots",  # shots environment present in

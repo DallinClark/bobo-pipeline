@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import attrs
-import cattrs
-
-
-from attrs import field
-
 # We need to always import typing for defining the structs
 # attrs doesn't support `|` syntax in 3.9
 from typing import Any, Optional, Type, TypeVar
+
+import attrs
+import cattrs
+from attrs import field
 
 from pipe.struct.util import Diffable
 
@@ -34,6 +32,18 @@ _con.register_structure_hook_factory(
         },
     ),
 )
+
+
+def normalize_display_name(name: Optional[str]) -> str:
+    """Normalize a ShotGrid display name into a pipeline-safe name.
+
+    Current rules:
+    - lower-case the string
+    - replace spaces with underscores
+    """
+    if not name:
+        return ""
+    return name.strip().lower().replace(" ", "_")
 
 
 @attrs.define
@@ -105,15 +115,15 @@ class SGEntityStub(SGDiffable):
 @attrs.frozen
 class AssetStub(SGEntityStub):
     """Represent "stubs" that come from ShotGrid
-    Stubs are JSON objects with 3 fields: id, name, and type (which is always Asset in this case)
+    Stubs are JSON objects with 3 fields: id, name (display name), and type
+    (which is always Asset in this case)
     """
 
-    disp_name: str = field(metadata={_SG_NAME: "name"})
+    display_name: str = field(metadata={_SG_NAME: "name"})
 
 
 @attrs.define
 class Asset(SGEntity):
-    name: str = field(metadata={_SG_NAME: "sg_pipe_name"})
     type: str = field(metadata={_SG_NAME: "sg_asset_type"})
     material_variants: set[str] = field(
         metadata={
@@ -150,33 +160,31 @@ class Asset(SGEntity):
     version = None
 
     @property
-    def disp_name(self) -> str:
-        """Alias for code"""
+    def display_name(self) -> str:
+        """ShotGrid display name (code)."""
         return self.code or ""
 
     @property
-    def is_variant(self) -> bool:
-        return "_" in self.name
+    def name(self) -> str:
+        """Normalized name derived from the ShotGrid display name."""
+        return normalize_display_name(self.display_name)
 
     @property
     def tex_path(self) -> Optional[str]:
         return f"{self.path}/tex/"
 
-    @property
-    def variant_name(self) -> Optional[str]:
-        if not self.is_variant:
-            return None
-        return self.name.split("_")[1]
-
 
 @attrs.define
 class Environment(SGEntity):
-    name: str = field(metadata={_SG_NAME: "sg_pipe_name"})
+    @property
+    def display_name(self) -> str:
+        """ShotGrid display name (code)."""
+        return self.code or ""
 
     @property
-    def disp_name(self) -> str:
-        """Alias for code"""
-        return self.code or ""
+    def name(self) -> str:
+        """Normalized name derived from the ShotGrid display name."""
+        return normalize_display_name(self.display_name)
 
 
 @attrs.define
