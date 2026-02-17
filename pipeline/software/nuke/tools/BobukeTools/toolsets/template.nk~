@@ -35,7 +35,7 @@ define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
 }
 Root {
  inputs 0
- name /groups/dungeons/pipeline/pipeline/software/nuke/tools/NungeonTools/toolsets/shotTemplate.nk
+ name /groups/bobo/pipeline/pipeline/software/nuke/tools/BobukeTools/toolsets/shotTemplate.nk
  frame 1013
  first_frame 1001
  last_frame 1101
