@@ -1,13 +1,13 @@
-import nuke
-from Qt import QtWidgets, QtCore, QtGui
-
 import os
 import random
+import re
 import time
 from functools import partial
-from pipe.db import DB
+
+import nuke
 from env_sg import DB_Config
-import re
+from pipe.db import DB
+from Qt import QtCore, QtGui, QtWidgets
 
 
 class CascadingComboBox(QtWidgets.QWidget):
@@ -180,7 +180,7 @@ class CascadingComboBox(QtWidgets.QWidget):
         base_path = r"/groups/dungeons/production/shot"
         shot_path = os.path.join(base_path, shot_num, "render")
         items_list = []  # Will store tuples of (creation_time, list_item)
-        default_thumb = r"/groups/dungeons/pipeline/pipeline/software/nuke/tools/NungeonTools/images/noThumbnailIcon.jpg"
+        default_thumb = r"/groups/bobo/pipeline/pipeline/software/nuke/tools/BobukeTools/images/noThumbnailIcon.jpg"
 
         if os.path.exists(shot_path):
             for folder_name in os.listdir(shot_path):
@@ -313,7 +313,7 @@ class CascadingComboBox(QtWidgets.QWidget):
 
                 layer_path = os.path.join(shot_path, layer_name)
                 if os.path.isdir(layer_path):
-                    default_thumb = r"/groups/dungeons/pipeline/pipeline/software/nuke/tools/NungeonTools/images/noThumbnailIcon.jpg"
+                    default_thumb = r"/groups/bobo/pipeline/pipeline/software/nuke/tools/BobukeTools/images/noThumbnailIcon.jpg"
                     thumbnail_path = default_thumb
 
                     # Check for a thumb folder inside the layer folder.
