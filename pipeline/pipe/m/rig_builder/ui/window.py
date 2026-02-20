@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 import Qt
-from maya import cmds
-from maya.api.OpenMaya import MSceneMessage
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin  # type: ignore
 from maya.OpenMayaUI import MQtUtil
-from Qt.QtCompat import wrapInstance
-from Qt.QtCore import QObject
 from Qt.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
@@ -16,7 +12,6 @@ from Qt.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
-    QSizePolicy,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -33,8 +28,8 @@ WORKSPACE_CONTROL_NAME = WINDOW_OBJECT_NAME + "WorkspaceControl"
 # This uiScript is called by Maya to recreate the widget when restoring layout.
 # It must be a string that Maya can evaluate via Python.
 UI_SCRIPT = """
-import rig_builder.ui.window
-rig_builder.ui.window._restore()
+import pipe.m.rig_builder.ui.window
+pipe.m.rig_builder.ui.window._restore()
 """
 
 
@@ -46,7 +41,7 @@ def _restore() -> None:
     _window_instance = RigBuilderWindow(parent=get_maya_main_window())
 
     # Tell Maya this is a restore operation
-    _window_instance.show(
+    _window_instance.show(  # type: ignore
         dockable=True,
         workspaceControlName=WORKSPACE_CONTROL_NAME,
         restore=True,
@@ -73,7 +68,7 @@ def launch() -> None:
     delete_workspace_control(WORKSPACE_CONTROL_NAME)
 
     _window_instance = RigBuilderWindow(parent=get_maya_main_window())
-    _window_instance.show(
+    _window_instance.show(  # type: ignore
         dockable=True,
         uiScript=UI_SCRIPT,
         workspaceControlName=WORKSPACE_CONTROL_NAME,
@@ -105,12 +100,15 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.main_splitter.addWidget(self.top_container)
 
         self.top_layout = QVBoxLayout(self.top_container)
-        self.top_layout.setContentsMargins(0, 8, 0, 8)
+        self.top_layout.setContentsMargins(0, 0, 0, 8)
         self.build_label = QLabel()
         self.build_label.setText("Build")
         self.top_layout.addWidget(self.build_label)
         self.build_tabs = QTabWidget()
         self.top_layout.addWidget(self.build_tabs)
+        self.test = QLabel()
+        self.test.setText("Test")
+        self.build_tabs.addTab(self.test, "Test")
 
         # Build Options
         self.build_horizontal_layout = QHBoxLayout()
@@ -129,6 +127,7 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.main_splitter.addWidget(self.mid_container)
 
         self.mid_layout = QVBoxLayout(self.mid_container)
+        self.mid_layout.setContentsMargins(0, 8, 0, 8)
         self.test_label = QLabel()
         self.test_label.setText("Test")
         self.mid_layout.addWidget(self.test_label)
@@ -165,6 +164,7 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.bottom_container = QWidget()
         self.main_splitter.addWidget(self.bottom_container)
         self.bottom_layout = QVBoxLayout(self.bottom_container)
+        self.bottom_layout.setContentsMargins(0, 8, 0, 0)
         self.rig_build_log_box = QPlainTextEdit()
         self.rig_build_log_box.setPlainText("Rig Build Log")
         self.rig_build_log_box.setReadOnly(True)
