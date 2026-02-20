@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from logging import getLogger
 
 from maya import cmds
+
+log = getLogger(__name__)
 
 
 class RigBuildTest(ABC):
@@ -15,8 +18,19 @@ class RigBuildTest(ABC):
         """Should be implemented in all tests, returns True if the test passed."""
         pass
 
+    def log_warn(self, message: str):
+        log.warn(f"{self.name}: {message}")
+
+    def log_success(self):
+        log.info(f"{self.name}: PASSED")
+
 
 class TestHiddenJoints(RigBuildTest):
+    """
+    Checks that the scene has no visible joint nodes that aren't intentional
+    (a joint with display mode set to none that has a shape is fine).
+    """
+
     def __init__(self):
         super().__init__("No visible joints without shapes")
 
@@ -30,10 +44,11 @@ class TestHiddenJoints(RigBuildTest):
                 continue
             if cmds.getAttr(f"{joint}.drawStyle") != 2:
                 problem_joints.append(joint)
-
         if problem_joints:
+            self.log_warn(f"Scene has visible joints: {problem_joints}")
             return False
         else:
+            self.log_success()
             return True
 
 

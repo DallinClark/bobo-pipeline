@@ -1,7 +1,8 @@
 from __future__ import annotations
-
+import logging
+from Qt import QtGui
 from maya.OpenMayaUI import MQtUtil
-from Qt.QtWidgets import QWidget
+from Qt.QtWidgets import QPlainTextEdit, QWidget
 
 from .core import delete_workspace_control, get_maya_main_window
 from .window_ui import RigBuilderWindowUI
@@ -24,13 +25,13 @@ def _restore() -> None:
     global _window_instance
 
     # Always recreate the widget on restore
-    _window_instance = RigBuilderWindow(parent=get_maya_main_window())
+    _window_instance = RigBuilderWindow(parent=get_maya_main_window())  # type: ignore
 
     # Tell Maya this is a restore operation
     _window_instance.show(
-        dockable=True,
-        workspaceControlName=WORKSPACE_CONTROL_NAME,
-        restore=True,
+        dockable=True,  # type: ignore
+        workspaceControlName=WORKSPACE_CONTROL_NAME,  # type: ignore
+        restore=True,  # type: ignore
     )
     # Locate the workspace control that Maya already created.
     workspace_ptr = MQtUtil.findControl(WORKSPACE_CONTROL_NAME)
@@ -53,11 +54,11 @@ def launch() -> None:
 
     delete_workspace_control(WORKSPACE_CONTROL_NAME)
 
-    _window_instance = RigBuilderWindow(parent=get_maya_main_window())
+    _window_instance = RigBuilderWindow(parent=get_maya_main_window())  # type: ignore
     _window_instance.show(
-        dockable=True,
-        uiScript=UI_SCRIPT,
-        workspaceControlName=WORKSPACE_CONTROL_NAME,
+        dockable=True,  # type: ignore
+        uiScript=UI_SCRIPT,  # type: ignore
+        workspaceControlName=WORKSPACE_CONTROL_NAME,  # type: ignore
     )
 
 
@@ -70,4 +71,7 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.connect_ui()
 
     def connect_ui(self):
-        pass
+        self.rig_test_button.clicked.connect(self.test_list.run_tests)
+        test_logger = logging.getLogger("pipe.m.rig_builder.test")
+        test_logger.setLevel(logging.DEBUG)
+        self.rig_build_log_box.connect_logger(test_logger)

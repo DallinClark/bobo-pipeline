@@ -7,7 +7,6 @@ from Qt.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
-    QListView,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -19,6 +18,7 @@ from Qt.QtWidgets import (
 
 from .rig_select import RigSelect
 from .test_select import TestSelectList
+from .logbox import RigBuildLogBox
 
 
 class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
@@ -111,7 +111,6 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.main_splitter.addWidget(self.bottom_container)
         self.bottom_layout = QVBoxLayout(self.bottom_container)
         self.bottom_layout.setContentsMargins(0, 8, 0, 0)
-        self.rig_build_log_box = QPlainTextEdit()
-        self.rig_build_log_box.setPlainText("Rig Build Log")
-        self.rig_build_log_box.setReadOnly(True)
+
+        self.rig_build_log_box = RigBuildLogBox()
         self.bottom_layout.addWidget(self.rig_build_log_box)
