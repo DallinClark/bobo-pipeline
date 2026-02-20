@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from Qt.QtWidgets import QSplitter
 from Qt.QtCore import QObject
 from Qt.QtCompat import wrapInstance
 from maya.OpenMayaUI import MQtUtil
@@ -6,7 +8,7 @@ import Qt
 from maya import cmds
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin # type: ignore
 from maya.api.OpenMaya import MSceneMessage
-from Qt.QtWidgets import QWidget, QVBoxLayout, QLabel, QTabWidget, QCheckBox, QHBoxLayout, QPushButton, QListView, QDoubleSpinBox, QSizePolicy
+from Qt.QtWidgets import QWidget, QVBoxLayout, QLabel, QTabWidget, QCheckBox, QHBoxLayout, QPushButton, QListView, QDoubleSpinBox, QSizePolicy, QProgressBar, QPlainTextEdit
 
 from .core import get_maya_main_window, delete_workspace_control
 
@@ -74,43 +76,61 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         main_layout = QVBoxLayout(self)
         self.setLayout(main_layout)
 
+        self.main_splitter = QSplitter()
+        self.main_splitter.setOrientation(Qt.QtCore.Qt.Vertical)
+        main_layout.addWidget(self.main_splitter)
 
         # Build Section
+        self.top_container = QWidget()
+        self.main_splitter.addWidget(self.top_container)
+
+        self.top_layout = QVBoxLayout(self.top_container)
+        self.top_layout.setContentsMargins(0,8,0,8)
         self.build_label = QLabel()
         self.build_label.setText("Build")
-        main_layout.addWidget(self.build_label)
-
+        self.top_layout.addWidget(self.build_label)
         self.build_tabs = QTabWidget()
-        main_layout.addWidget(self.build_tabs)
+        self.top_layout.addWidget(self.build_tabs)
 
         # Build Options
         self.build_horizontal_layout = QHBoxLayout()
-        main_layout.addLayout(self.build_horizontal_layout)
+        self.top_layout.addLayout(self.build_horizontal_layout)
 
         self.dev_build_switch = QCheckBox()
         self.dev_build_switch.setText("Dev Build")
-        self.build_horizontal_layout.addWidget(self.dev_build_switch)
+        self.build_horizontal_layout.addWidget(self.dev_build_switch, 1)
 
         self.dev_build_switch = QPushButton()
         self.dev_build_switch.setText("Build Rig")
-        self.build_horizontal_layout.addWidget(self.dev_build_switch)
+        self.build_horizontal_layout.addWidget(self.dev_build_switch, 2)
+
+
 
         # Test Section
+        self.mid_container = QWidget()
+        self.main_splitter.addWidget(self.mid_container)
+
+        self.mid_layout = QVBoxLayout(self.mid_container)
         self.test_label = QLabel()
         self.test_label.setText("Test")
-        main_layout.addWidget(self.test_label)
+        self.mid_layout.addWidget(self.test_label)
 
         self.test_list = QListView()
-        main_layout.addWidget(self.test_list)
+        self.mid_layout.addWidget(self.test_list)
+
+        self.rig_test_button = QPushButton()
+        self.rig_test_button.setText("Run Selected Tests")
+        self.mid_layout.addWidget(self.rig_test_button)
+
 
         # Publish Section
         self.publish_label = QLabel()
         self.publish_label.setText("Publish")
-        main_layout.addWidget(self.publish_label)
+        self.mid_layout.addWidget(self.publish_label)
 
         # Publish Options
         self.publish_horizontal_layout = QHBoxLayout()
-        main_layout.addLayout(self.publish_horizontal_layout)
+        self.mid_layout.addLayout(self.publish_horizontal_layout)
 
         self.rig_version_spinbox = QDoubleSpinBox()
         self.rig_version_spinbox.setPrefix("v")
@@ -119,5 +139,17 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
 
         self.rig_publish_button = QPushButton()
         self.rig_publish_button.setText("Build Test and Publish")
-        self.rig_publish_button
         self.publish_horizontal_layout.addWidget(self.rig_publish_button, 2)
+
+
+        # Build Log Section
+        self.rig_build_progress_bar = QProgressBar()
+        self.mid_layout.addWidget(self.rig_build_progress_bar)
+
+        self.bottom_container = QWidget()
+        self.main_splitter.addWidget(self.bottom_container)
+        self.bottom_layout = QVBoxLayout(self.bottom_container)
+        self.rig_build_log_box = QPlainTextEdit()
+        self.rig_build_log_box.setPlainText("Rig Build Log")
+        self.rig_build_log_box.setReadOnly(True)
+        self.bottom_layout.addWidget(self.rig_build_log_box)
