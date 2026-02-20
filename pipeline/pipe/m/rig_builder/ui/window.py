@@ -1,16 +1,29 @@
 from __future__ import annotations
 
-from Qt.QtWidgets import QSplitter
-from Qt.QtCore import QObject
-from Qt.QtCompat import wrapInstance
-from maya.OpenMayaUI import MQtUtil
 import Qt
 from maya import cmds
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin # type: ignore
 from maya.api.OpenMaya import MSceneMessage
-from Qt.QtWidgets import QWidget, QVBoxLayout, QLabel, QTabWidget, QCheckBox, QHBoxLayout, QPushButton, QListView, QDoubleSpinBox, QSizePolicy, QProgressBar, QPlainTextEdit
+from maya.app.general.mayaMixin import MayaQWidgetDockableMixin  # type: ignore
+from maya.OpenMayaUI import MQtUtil
+from Qt.QtCompat import wrapInstance
+from Qt.QtCore import QObject
+from Qt.QtWidgets import (
+    QCheckBox,
+    QDoubleSpinBox,
+    QHBoxLayout,
+    QLabel,
+    QListView,
+    QPlainTextEdit,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QSplitter,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from .core import get_maya_main_window, delete_workspace_control
+from .core import delete_workspace_control, get_maya_main_window
 
 _window_instance: RigBuilderWindow | None = None
 
@@ -23,6 +36,7 @@ UI_SCRIPT = """
 import rig_builder.ui.window
 rig_builder.ui.window._restore()
 """
+
 
 def _restore() -> None:
     """Called by Maya's workspaceControl restore mechanism."""
@@ -50,6 +64,7 @@ def close() -> None:
     if _window_instance is not None:
         _window_instance.close()
 
+
 def launch() -> None:
     global _window_instance
     if _window_instance is not None:
@@ -58,7 +73,12 @@ def launch() -> None:
     delete_workspace_control(WORKSPACE_CONTROL_NAME)
 
     _window_instance = RigBuilderWindow(parent=get_maya_main_window())
-    _window_instance.show(dockable=True, uiScript=UI_SCRIPT, workspaceControlName=WORKSPACE_CONTROL_NAME,)
+    _window_instance.show(
+        dockable=True,
+        uiScript=UI_SCRIPT,
+        workspaceControlName=WORKSPACE_CONTROL_NAME,
+    )
+
 
 class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
     def __init__(
@@ -85,7 +105,7 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.main_splitter.addWidget(self.top_container)
 
         self.top_layout = QVBoxLayout(self.top_container)
-        self.top_layout.setContentsMargins(0,8,0,8)
+        self.top_layout.setContentsMargins(0, 8, 0, 8)
         self.build_label = QLabel()
         self.build_label.setText("Build")
         self.top_layout.addWidget(self.build_label)
@@ -104,8 +124,6 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.dev_build_switch.setText("Build Rig")
         self.build_horizontal_layout.addWidget(self.dev_build_switch, 2)
 
-
-
         # Test Section
         self.mid_container = QWidget()
         self.main_splitter.addWidget(self.mid_container)
@@ -121,7 +139,6 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.rig_test_button = QPushButton()
         self.rig_test_button.setText("Run Selected Tests")
         self.mid_layout.addWidget(self.rig_test_button)
-
 
         # Publish Section
         self.publish_label = QLabel()
@@ -140,7 +157,6 @@ class RigBuilderWindow(MayaQWidgetDockableMixin, QWidget):
         self.rig_publish_button = QPushButton()
         self.rig_publish_button.setText("Build Test and Publish")
         self.publish_horizontal_layout.addWidget(self.rig_publish_button, 2)
-
 
         # Build Log Section
         self.rig_build_progress_bar = QProgressBar()
