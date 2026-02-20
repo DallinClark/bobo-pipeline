@@ -7,7 +7,6 @@ from Qt.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
-    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QSplitter,
@@ -16,9 +15,9 @@ from Qt.QtWidgets import (
     QWidget,
 )
 
+from .logbox import RigBuildLogBox
 from .rig_select import RigSelect
 from .test_select import TestSelectList
-from .logbox import RigBuildLogBox
 
 
 class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):

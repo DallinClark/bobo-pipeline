@@ -1,8 +1,7 @@
 from __future__ import annotations
 import logging
-from Qt import QtGui
 from maya.OpenMayaUI import MQtUtil
-from Qt.QtWidgets import QPlainTextEdit, QWidget
+from Qt.QtWidgets import QWidget
 
 from .core import delete_workspace_control, get_maya_main_window
 from .window_ui import RigBuilderWindowUI

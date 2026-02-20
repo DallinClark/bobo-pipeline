@@ -1,5 +1,5 @@
 from Qt.QtGui import QStandardItem, QStandardItemModel
-from Qt.QtWidgets import QFrame, QHBoxLayout, QListView, QVBoxLayout, QWidget
+from Qt.QtWidgets import QHBoxLayout, QListView, QWidget
 
 
 class RigSelectList(QListView):

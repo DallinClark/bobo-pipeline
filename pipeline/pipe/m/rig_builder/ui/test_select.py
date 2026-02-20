@@ -1,7 +1,8 @@
+from enum import Enum
 from typing import Sequence
 
 from Qt import QtCore
-from Qt.QtGui import QStandardItem, QStandardItemModel
+from Qt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
 from Qt.QtWidgets import QListView
 
 from ..test import RIG_BUILD_TESTS, RigBuildTest
@@ -17,8 +18,17 @@ class TestItem(QStandardItem):
         self.setCheckState(QtCore.Qt.CheckState.Checked)
 
     def run(self):
-        self.test.run()
-        pass
+        result = self.test.run()
+        self.update_status(result)
+
+    def update_status(self, passed: bool):
+        if passed:
+            self.setBackground(QBrush(QColor(21, 112, 78)))
+        else:
+            self.setBackground(QBrush(QColor(153, 62, 23)))
+
+    def clear_status(self):
+        self.setBackground(QBrush())
 
 
 class TestSelectList(QListView):
