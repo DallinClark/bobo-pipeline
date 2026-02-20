@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from logging import getLogger
+from typing import Counter
 
 from maya import cmds
+from maya.api.OpenMaya import MFn, MFnDagNode, MItDag
 
 log = getLogger(__name__)
 
@@ -52,4 +55,51 @@ class TestHiddenJoints(RigBuildTest):
             return True
 
 
-RIG_BUILD_TESTS = [TestHiddenJoints()]
+class TestUnknownNodes(RigBuildTest):
+    """
+    Checks that the scene has no nodes of an unkown type (due to a missing plugin or otherwise).
+    """
+
+    def __init__(self):
+        super().__init__("No unkown nodes")
+
+    def run(self):
+        unkown_nodes = cmds.ls(type="unkown")
+        if unkown_nodes:
+            self.log_warn(f"Scene has unkown nodes: {unkown_nodes}")
+            return False
+        else:
+            self.log_success()
+            return True
+
+
+class TestDuplicateDagNames(RigBuildTest):
+    """
+    Checks that the scene has no duplicate DAG names (these types of nodes may cause problems for third party tools).
+    """
+
+    def __init__(self):
+        super().__init__("No duplicate DAG names")
+
+    def run(self):
+        def iter_dag_names(dag_iterator: MItDag) -> Iterator[str]:
+            while not dag_iterator.isDone():
+                current_node = dag_iterator.currentItem()
+                dag_fn = MFnDagNode(current_node)
+                short_name: str = dag_fn.name()
+                yield short_name
+                dag_iterator.next()
+
+        dag_iterator = MItDag(MItDag.kDepthFirst)
+        counter = Counter(iter_dag_names(dag_iterator))
+        duplicates = [name for name, count in counter.items() if count > 1]
+
+        if duplicates:
+            self.log_warn(f"Scene has duplicate DAG node names: {duplicates}")
+            return False
+        else:
+            self.log_success()
+            return True
+
+
+RIG_BUILD_TESTS = [TestHiddenJoints(), TestUnknownNodes(), TestDuplicateDagNames()]
