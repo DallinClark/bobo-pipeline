@@ -70,6 +70,10 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.connect_ui()
 
     def connect_ui(self):
+        self.enable_tests_button.clicked.connect(self.test_list.enable_all_tests)
+        self.disable_tests_button.clicked.connect(self.test_list.disable_all_tests)
+
+        self.rig_test_button.clicked.connect(self.rig_build_log_box.clear_log)
         self.rig_test_button.clicked.connect(self.test_list.run_tests)
         test_logger = logging.getLogger("pipe.m.rig_builder.test")
         test_logger.setLevel(logging.DEBUG)

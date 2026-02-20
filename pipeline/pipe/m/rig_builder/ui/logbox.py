@@ -40,6 +40,9 @@ class RigBuildLogBox(QPlainTextEdit):
         self._connected_loggers: list[logging.Logger] = []
         self.destroyed.connect(self._on_destroyed)
 
+    def clear_log(self):
+        self.clear()
+
     def connect_logger(self, logger: logging.Logger):
         logger.addHandler(self.log_handler)
         self._connected_loggers.append(logger)

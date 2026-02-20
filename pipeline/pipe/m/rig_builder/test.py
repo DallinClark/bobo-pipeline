@@ -31,7 +31,7 @@ class RigBuildTest(ABC):
 class TestHiddenJoints(RigBuildTest):
     """
     Checks that the scene has no visible joint nodes that aren't intentional
-    (a joint with display mode set to none that has a shape is fine).
+    (a joint with display mode set to none is fine).
     """
 
     def __init__(self):
@@ -41,10 +41,6 @@ class TestHiddenJoints(RigBuildTest):
         visible_joints = cmds.ls(type="joint", visible=True)
         problem_joints: list[str] = []
         for joint in visible_joints:
-            joint_shapes = cmds.listRelatives(joint, children=True, shapes=True)
-            if not joint_shapes:
-                problem_joints.append(joint)
-                continue
             if cmds.getAttr(f"{joint}.drawStyle") != 2:
                 problem_joints.append(joint)
         if problem_joints:
