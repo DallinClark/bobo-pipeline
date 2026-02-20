@@ -17,9 +17,12 @@ from Qt.QtWidgets import (
     QWidget,
 )
 
+from .rig_select import RigSelect
+from .test_select import TestSelectList
+
 
 class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
-    def __init__(self, parent, window_object_name: str) -> None:
+    def __init__(self, parent: QWidget | None, window_object_name: str) -> None:
         super().__init__(parent=parent)
         self.window_object_name = window_object_name
         self.setup_ui()
@@ -47,9 +50,10 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.top_layout.addWidget(self.build_label)
         self.build_tabs = QTabWidget()
         self.top_layout.addWidget(self.build_tabs)
-        self.test = QLabel()
-        self.test.setText("Test")
-        self.build_tabs.addTab(self.test, "Test")
+        self.character_select = RigSelect()
+        self.build_tabs.addTab(self.character_select, "Character")
+        self.prop_select = RigSelect()
+        self.build_tabs.addTab(self.prop_select, "Prop")
 
         # Build Options
         self.build_horizontal_layout = QHBoxLayout()
@@ -73,7 +77,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.test_label.setText("Test")
         self.mid_layout.addWidget(self.test_label)
 
-        self.test_list = QListView()
+        self.test_list = TestSelectList()
         self.mid_layout.addWidget(self.test_list)
 
         self.rig_test_button = QPushButton()

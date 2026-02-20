@@ -1,4 +1,4 @@
-from . import window
-from . import core
-from .window import launch, close
-__all__ = ["window", "core", "launch", "close"]
+from . import core, rig_select, window, window_ui
+from .window import close, launch
+
+__all__ = ["window", "window_ui", "core", "rig_select", "launch", "close"]

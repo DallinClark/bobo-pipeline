@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from maya.OpenMayaUI import MQtUtil
+from Qt.QtWidgets import QWidget
 
 from .core import delete_workspace_control, get_maya_main_window
 from .window_ui import RigBuilderWindowUI
@@ -26,7 +27,7 @@ def _restore() -> None:
     _window_instance = RigBuilderWindow(parent=get_maya_main_window())
 
     # Tell Maya this is a restore operation
-    _window_instance.show(  # type: ignore
+    _window_instance.show(
         dockable=True,
         workspaceControlName=WORKSPACE_CONTROL_NAME,
         restore=True,
@@ -53,7 +54,7 @@ def launch() -> None:
     delete_workspace_control(WORKSPACE_CONTROL_NAME)
 
     _window_instance = RigBuilderWindow(parent=get_maya_main_window())
-    _window_instance.show(  # type: ignore
+    _window_instance.show(
         dockable=True,
         uiScript=UI_SCRIPT,
         workspaceControlName=WORKSPACE_CONTROL_NAME,
@@ -63,7 +64,7 @@ def launch() -> None:
 class RigBuilderWindow(RigBuilderWindowUI):
     def __init__(
         self,
-        parent,
+        parent: QWidget | None,
     ) -> None:
         super().__init__(parent=parent, window_object_name=WINDOW_OBJECT_NAME)
         self.connect_ui()
