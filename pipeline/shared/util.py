@@ -126,6 +126,10 @@ def get_rigging_path() -> Path:
     return get_character_path() / "Rigging"
 
 
+def get_rig_build_path() -> Path:
+    return get_production_path() / "rig_build"
+
+
 def resolve_mapped_path(path: str | Path) -> Path:
     """Windows mapped drive workaround. Adapated from: https://bugs.python.org/msg309160"""
     path = Path(path).resolve()
