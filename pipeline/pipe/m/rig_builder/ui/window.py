@@ -15,7 +15,7 @@ WORKSPACE_CONTROL_NAME = WINDOW_OBJECT_NAME + "WorkspaceControl"
 # This uiScript is called by Maya to recreate the widget when restoring layout.
 # It must be a string that Maya can evaluate via Python.
 UI_SCRIPT = """
-import pipe.m.rig_builder.ui.window
+import pipe.m.rig_builder.ui
 pipe.m.rig_builder.ui.window._restore()
 """
 

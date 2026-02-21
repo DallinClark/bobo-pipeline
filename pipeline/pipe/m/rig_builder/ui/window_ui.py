@@ -32,6 +32,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
 
         # ---------- MAIN LAYOUT ----------
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(8, 4, 8, 0)
         self.setLayout(main_layout)
 
         self.main_splitter = QSplitter()
@@ -43,7 +44,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.main_splitter.addWidget(self.top_container)
 
         self.top_layout = QVBoxLayout(self.top_container)
-        self.top_layout.setContentsMargins(0, 0, 0, 8)
+        self.top_layout.setContentsMargins(0, 0, 0, 4)
         self.build_label = QLabel()
         self.build_label.setText("Build")
         self.top_layout.addWidget(self.build_label)
@@ -71,7 +72,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.main_splitter.addWidget(self.mid_container)
 
         self.mid_layout = QVBoxLayout(self.mid_container)
-        self.mid_layout.setContentsMargins(0, 8, 0, 8)
+        self.mid_layout.setContentsMargins(0, 0, 0, 4)
         self.test_label = QLabel()
         self.test_label.setText("Test")
         self.mid_layout.addWidget(self.test_label)
@@ -119,7 +120,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.bottom_container = QWidget()
         self.main_splitter.addWidget(self.bottom_container)
         self.bottom_layout = QVBoxLayout(self.bottom_container)
-        self.bottom_layout.setContentsMargins(0, 8, 0, 0)
+        self.bottom_layout.setContentsMargins(0, 4, 0, 0)
 
         self.rig_build_log_box = RigBuildLogBox()
         self.bottom_layout.addWidget(self.rig_build_log_box)

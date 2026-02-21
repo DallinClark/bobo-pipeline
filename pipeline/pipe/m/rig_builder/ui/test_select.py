@@ -58,6 +58,7 @@ class TestSelectList(QListView):
         super().__init__()
         self.setResizeMode(QListView.Adjust)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setMinimumSize(32, 22)
         self.item_model = TestSelectListModel(self)
         self.setModel(self.item_model)
         self.setSelectionMode(QListView.SingleSelection)

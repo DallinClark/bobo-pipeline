@@ -32,6 +32,7 @@ class RigSelect(QWidget):
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(4, 4, 4, 4)
         main_layout.setSpacing(4)
+        self.setMinimumSize(32, 28)
         self.setLayout(main_layout)
 
         self.rig_panel = RigSelectList()
