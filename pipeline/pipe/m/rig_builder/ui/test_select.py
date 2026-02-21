@@ -1,9 +1,8 @@
-from enum import Enum
 from typing import Sequence
 
 from Qt import QtCore
 from Qt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
-from Qt.QtWidgets import QListView
+from Qt.QtWidgets import QApplication, QListView
 
 from ..test import RIG_BUILD_TESTS, RigBuildTest
 
@@ -77,12 +76,17 @@ class TestSelectList(QListView):
         self.item_model.appendRow(item)
         self.test_items.append(item)
 
+    def clear_test_status(self):
+        for test_item in self.test_items:
+            test_item.clear_status()
+
     def run_tests(self, selected_only: bool = True):
+        self.clear_test_status()
+        QApplication.processEvents()
         for test_item in self.test_items:
             if test_item.is_enabled():
                 test_item.run()
-            else:
-                test_item.clear_status()
+                QApplication.processEvents()
 
     def enable_all_tests(self):
         for test_item in self.test_items:

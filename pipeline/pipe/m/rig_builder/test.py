@@ -3,10 +3,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from logging import getLogger
-from typing import Counter
+from typing import Counter, DefaultDict
 
 from maya import cmds
-from maya.api.OpenMaya import MFn, MFnDagNode, MItDag
+from maya.api.OpenMaya import MFnDagNode, MItDag
 
 log = getLogger(__name__)
 
@@ -78,18 +78,27 @@ class TestDuplicateDagNames(RigBuildTest):
         super().__init__("No duplicate DAG names")
 
     def run(self):
-        def iter_dag_names(dag_iterator: MItDag) -> Iterator[str]:
+        def iter_dag_nodes(dag_iterator: MItDag) -> Iterator[MFnDagNode]:
             while not dag_iterator.isDone():
                 current_node = dag_iterator.currentItem()
                 dag_fn = MFnDagNode(current_node)
-                short_name: str = dag_fn.name()
-                yield short_name
+                yield dag_fn
                 dag_iterator.next()
 
         dag_iterator = MItDag(MItDag.kDepthFirst)
-        counter = Counter(iter_dag_names(dag_iterator))
-        duplicates = [name for name, count in counter.items() if count > 1]
+        short_name_counter = Counter()
+        name_to_paths = DefaultDict(list[str])
+        for dag_fn in iter_dag_nodes(dag_iterator):
+            short_name = dag_fn.name()
+            full_path = dag_fn.fullPathName()
+            short_name_counter[short_name] += 1
+            name_to_paths[short_name].append(full_path)
 
+        duplicates = [
+            name_to_paths[name]
+            for name, count in short_name_counter.items()
+            if count > 1
+        ]
         if duplicates:
             self.log_warn(f"Scene has duplicate DAG node names: {duplicates}")
             return False

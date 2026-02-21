@@ -3,6 +3,7 @@ import logging
 from maya.OpenMayaUI import MQtUtil
 from Qt.QtWidgets import QWidget
 
+from ...local import get_main_qt_window
 from .core import delete_workspace_control, get_maya_main_window
 from .window_ui import RigBuilderWindowUI
 
@@ -53,7 +54,7 @@ def launch() -> None:
 
     delete_workspace_control(WORKSPACE_CONTROL_NAME)
 
-    _window_instance = RigBuilderWindow(parent=get_maya_main_window())  # type: ignore
+    _window_instance = RigBuilderWindow(parent=get_main_qt_window())  # type: ignore
     _window_instance.show(
         dockable=True,  # type: ignore
         uiScript=UI_SCRIPT,  # type: ignore

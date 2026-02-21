@@ -1,6 +1,8 @@
 from Qt.QtGui import QStandardItem, QStandardItemModel
 from Qt.QtWidgets import QHBoxLayout, QListView, QWidget
 
+from ....db.sgaadb import SGaaDB
+
 
 class RigSelectList(QListView):
     def __init__(self):
@@ -41,6 +43,7 @@ class RigSelect(QWidget):
         pass
 
     def populate_rigs(self):
+        # characters = SGaaDB.get_asset_display_name_list_by_type(types=["Character"])
         rigs = [
             "Mr. Yoon",
             "Goon",

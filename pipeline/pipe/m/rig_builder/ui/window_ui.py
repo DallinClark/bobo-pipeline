@@ -62,9 +62,9 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.dev_build_switch.setText("Dev Build")
         self.build_horizontal_layout.addWidget(self.dev_build_switch, 1)
 
-        self.dev_build_switch = QPushButton()
-        self.dev_build_switch.setText("Build Rig")
-        self.build_horizontal_layout.addWidget(self.dev_build_switch, 2)
+        self.build_rig_button = QPushButton()
+        self.build_rig_button.setText("Build Rig")
+        self.build_horizontal_layout.addWidget(self.build_rig_button, 2)
 
         # Test Section
         self.mid_container = QWidget()
