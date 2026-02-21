@@ -1,0 +1,19 @@
+[scripts]
+dirs = ["/groups/bobo/pipeline/piper/scripts"]
+
+[goto]
+shot = [
+  "{root}/production/shot/{id}",
+]
+asset = [
+  "{root}/production/asset/{id}",
+  "{root}/production/asset/*/{id}",
+  "{root}/production/asset/*/*/{id}",
+  "{root}/production/assets/{id}",
+  "{root}/production/assets/*/{id}",
+  "{root}/production/character/{id}",
+]
+environment = [
+  "{root}/production/set/{id}",
+  "{root}/production/asset/environment/{id}",
+]
