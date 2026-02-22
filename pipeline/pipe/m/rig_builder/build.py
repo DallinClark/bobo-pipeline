@@ -36,7 +36,11 @@ class RigBuilder:
         self._progress_slot = progress_slot
 
     def build_rig(
-        self, rig_name: str, rig_variant: str | None = None, dev_build: bool = False
+        self,
+        rig_name: str,
+        rig_type: str,
+        rig_variant: str | None = None,
+        dev_build: bool = False,
     ):
         """
         This function is meant to call the rig build of an external rigging library (currently y-rig).
@@ -50,5 +54,6 @@ class RigBuilder:
 
         with redirect_external_logger(build_logger, log):
             build_from_file(
-                get_rig_build_path() / "character/yoon/data/template.sgt", dev_build
+                get_rig_build_path() / rig_type / rig_name / "data/template.sgt",
+                dev_build,
             )
