@@ -28,7 +28,7 @@ def redirect_external_logger(
 
 class RigBuilder:
     def __init__(self) -> None:
-        self._progress_slot = None
+        self._progress_slot: Callable[[float], None] | None = None
         pass
 
     def connect_progress(self, progress_slot: Callable[[float], None]):
