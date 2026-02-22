@@ -1,10 +1,19 @@
 from __future__ import annotations
+
 import logging
+
+from maya import cmds
 from maya.OpenMayaUI import MQtUtil
 from Qt.QtWidgets import QWidget
 
+from .. import build
+
 from ...local import get_main_qt_window
-from .core import delete_workspace_control, get_maya_main_window
+from .core import (
+    check_and_restore_workspace_control,
+    delete_workspace_control,
+    get_maya_main_window,
+)
 from .window_ui import RigBuilderWindowUI
 
 _window_instance: RigBuilderWindow | None = None
@@ -27,12 +36,6 @@ def _restore() -> None:
     # Always recreate the widget on restore
     _window_instance = RigBuilderWindow(parent=get_maya_main_window())  # type: ignore
 
-    # Tell Maya this is a restore operation
-    _window_instance.show(
-        dockable=True,  # type: ignore
-        workspaceControlName=WORKSPACE_CONTROL_NAME,  # type: ignore
-        restore=True,  # type: ignore
-    )
     # Locate the workspace control that Maya already created.
     workspace_ptr = MQtUtil.findControl(WORKSPACE_CONTROL_NAME)
     # Get a pointer to our widget so we can hand it to Maya.
@@ -49,8 +52,6 @@ def close() -> None:
 
 def launch() -> None:
     global _window_instance
-    if _window_instance is not None:
-        _window_instance.close()
 
     delete_workspace_control(WORKSPACE_CONTROL_NAME)
 
@@ -78,4 +79,12 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.rig_test_button.clicked.connect(self.test_list.run_tests)
         test_logger = logging.getLogger("pipe.m.rig_builder.test")
         test_logger.setLevel(logging.DEBUG)
-        self.rig_build_log_box.connect_logger(test_logger)
+        self.rig_build_log_box.connect_test_logger(test_logger)
+
+        self.build_rig_button.clicked.connect(self._build_rig)
+        build_logger = logging.getLogger("pipe.m.rig_builder.build")
+        build_logger.setLevel(logging.DEBUG)
+        self.rig_build_log_box.connect_logger(build_logger)
+
+    def _build_rig(self):
+        build.build_rig("yoon")

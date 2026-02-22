@@ -67,6 +67,10 @@ ignore_missing_imports = true
 module = "substance_painter_plugins"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "yrig"
+ignore_missing_imports = true
+
 [tool.ruff]
 exclude = [
     ".git",
@@ -88,4 +92,19 @@ exclude = [
     "studiolibrary",
     "timeline_marker",
     "pipeline/software/maya/scripts/**"
+]
+
+[tool.ty.rules]
+unused-type-ignore-comment = "ignore"
+
+[tool.ty.environment]
+extra-paths = [
+    "pipeline/software/maya/scripts/",
+    "pipeline/",
+]
+
+[tool.pyright]
+extraPaths = [
+    "pipeline/software/maya/scripts/",
+    "pipeline/",
 ]
