@@ -10,6 +10,7 @@ class RigItem(QStandardItem):
         super().__init__(display_name if use_display_name else name)
         self.setEditable(False)
         self.setSelectable(True)
+        self.setData(name, QtCore.Qt.UserRole)
 
 
 class RigSelectList(QListView):
@@ -59,3 +60,9 @@ class RigSelect(QWidget):
         if self.rig_panel.item_model.rowCount() > 0:
             first_index = self.rig_panel.item_model.index(0, 0)
             self.rig_panel.setCurrentIndex(first_index)
+
+    def get_selected_rig(self) -> str | None:
+        index = self.rig_panel.currentIndex()
+        if not index.isValid():
+            return None
+        return index.data(QtCore.Qt.UserRole)
