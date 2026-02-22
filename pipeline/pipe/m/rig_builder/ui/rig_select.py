@@ -29,8 +29,9 @@ class RigSelectList(QListView):
 
 
 class RigSelect(QWidget):
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, name: str, parent: QWidget | None = None):
         super().__init__(parent=parent)
+        self.name = name
         self.setup_ui()
         pass
 
@@ -66,3 +67,6 @@ class RigSelect(QWidget):
         if not index.isValid():
             return None
         return index.data(QtCore.Qt.UserRole)
+
+    def get_rig_type(self) -> str:
+        return self.name

@@ -15,6 +15,7 @@ from Qt.QtWidgets import (
     QWidget,
 )
 
+from .rig_type_tabs import RigTypeTabWidget
 from .logbox import RigBuildLogBox
 from .progress_bar import RigBuildProgressBar
 from .rig_select import RigSelect
@@ -49,12 +50,10 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.build_label = QLabel()
         self.build_label.setText("Build")
         self.top_layout.addWidget(self.build_label)
-        self.build_tabs = QTabWidget()
+        self.build_tabs = RigTypeTabWidget()
         self.top_layout.addWidget(self.build_tabs)
-        self.character_select = RigSelect()
-        self.build_tabs.addTab(self.character_select, "Character")
-        self.prop_select = RigSelect()
-        self.build_tabs.addTab(self.prop_select, "Prop")
+        self.character_select = self.build_tabs.create_tab("character", "Character")
+        self.prop_select = self.build_tabs.create_tab("prop", "Prop")
 
         # Build Options
         self.build_horizontal_layout = QHBoxLayout()

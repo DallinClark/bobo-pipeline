@@ -104,7 +104,11 @@ class RigBuilderWindow(RigBuilderWindowUI):
             if self.dev_build_switch.checkState() == QtCore.Qt.CheckState.Checked
             else False
         )
-        rig_builder.build_rig("yoon", dev_build=dev_build)
+        current_tab = self.build_tabs.get_current_tab()
+        rig_type = current_tab.get_rig_type()
+        selected_rig = current_tab.get_selected_rig()
+        if selected_rig is not None:
+            rig_builder.build_rig(selected_rig, rig_type=rig_type, dev_build=dev_build)
         rig_builder.connect_progress(self.rig_build_progress_bar.update_progress)
 
     def _build_test_publish(self):

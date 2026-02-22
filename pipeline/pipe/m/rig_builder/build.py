@@ -52,8 +52,20 @@ class RigBuilder:
         # 1. Grab the external logger
         build_logger = logging.getLogger("yrig")
 
+        rig_build_filepath = (
+            get_rig_build_path() / rig_type / rig_name / "data/template.sgt"
+        )
+
+        if not rig_build_filepath.exists():
+            log.error(
+                f"Couldn't find the build data for {rig_name}. The build file should be located at {rig_build_filepath}"
+            )
+            raise FileNotFoundError(
+                f"Couldn't find the build data for {rig_name}. The build file should be located at {rig_build_filepath}"
+            )
+
         with redirect_external_logger(build_logger, log):
             build_from_file(
-                get_rig_build_path() / rig_type / rig_name / "data/template.sgt",
+                get_rig_build_path() / rig_type / rig_name / "data/guide.sgt",
                 dev_build,
             )
