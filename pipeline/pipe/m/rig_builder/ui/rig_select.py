@@ -5,6 +5,13 @@ from Qt.QtWidgets import QHBoxLayout, QListView, QWidget
 from ....db.sgaadb import SGaaDB
 
 
+class RigItem(QStandardItem):
+    def __init__(self, name: str, display_name: str, use_display_name: bool = False):
+        super().__init__(display_name if use_display_name else name)
+        self.setEditable(False)
+        self.setSelectable(True)
+
+
 class RigSelectList(QListView):
     def __init__(self):
         super().__init__()
@@ -15,10 +22,8 @@ class RigSelectList(QListView):
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setSpacing(2)
 
-    def add_item(self, label: str):
-        item = QStandardItem(label)
-        item.setEditable(False)
-        item.setSelectable(True)
+    def add_item(self, name: str, display_name: str):
+        item = RigItem(name, display_name)
         self.item_model.appendRow(item)
 
 
@@ -26,7 +31,6 @@ class RigSelect(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent=parent)
         self.setup_ui()
-        self.populate_rigs()
         pass
 
     def setup_ui(self):
@@ -44,15 +48,11 @@ class RigSelect(QWidget):
 
         pass
 
-    def populate_rigs(self):
-        # characters = SGaaDB.get_asset_display_name_list_by_type(types=["Character"])
-        rigs = [
-            "Mr. Yoon",
-            "Goon",
-            "Mr. Wichman",
-        ]
-        for rig in rigs:
-            self.rig_panel.add_item(rig)
+    def populate_rigs(self, database: SGaaDB, type: str):
+        rig_names = database.get_asset_name_list_by_type([type])
+        rig_display_names = database.get_asset_display_name_list_by_type([type])
+        for rig_name, rig_display_name in zip(rig_names, rig_display_names):
+            self.rig_panel.add_item(rig_name, rig_display_name)
         self.select_first_item()
 
     def select_first_item(self):

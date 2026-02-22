@@ -7,6 +7,7 @@ from maya import cmds
 from maya.OpenMayaUI import MQtUtil
 from Qt.QtWidgets import QWidget
 
+from pipe.db import DB
 from ...local import get_main_qt_window
 from .. import build
 from .core import (
@@ -15,6 +16,8 @@ from .core import (
     get_maya_main_window,
 )
 from .window_ui import RigBuilderWindowUI
+
+from env_sg import DB_Config
 
 _window_instance: RigBuilderWindow | None = None
 
@@ -72,6 +75,10 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.connect_ui()
 
     def connect_ui(self):
+        self.conn_ = DB.Get(DB_Config)
+        self.character_select.populate_rigs(self.conn_, type="Character")
+        self.prop_select.populate_rigs(self.conn_, type="Rigged Prop")
+
         self.enable_tests_button.clicked.connect(self.test_list.enable_all_tests)
         self.disable_tests_button.clicked.connect(self.test_list.disable_all_tests)
 

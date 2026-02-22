@@ -5,6 +5,7 @@ from Qt.QtCore import QObject, Signal
 
 from .test import RigBuildTest
 
+
 class ProgressManager(QObject):
     progress_changed: Signal = Signal(float)
 
@@ -28,13 +29,13 @@ class ProgressManager(QObject):
 class RigBuildProgressManager(ProgressManager):
     def __init__(
         self,
-        rig_builder: RigBuilder,
     ):
         super().__init__()
         self.reset_progress()
 
     def update_progress(self):
         self.progress_changed.emit(self._progress)
+
 
 class TestProgressManager(ProgressManager):
     def __init__(
