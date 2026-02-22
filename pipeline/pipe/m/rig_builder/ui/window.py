@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 
+from Qt import QtCore
 from maya import cmds
 from maya.OpenMayaUI import MQtUtil
 from Qt.QtWidgets import QWidget
 
-from .. import build
-
 from ...local import get_main_qt_window
+from .. import build
 from .core import (
     check_and_restore_workspace_control,
     delete_workspace_control,
@@ -80,11 +80,25 @@ class RigBuilderWindow(RigBuilderWindowUI):
         test_logger = logging.getLogger("pipe.m.rig_builder.test")
         test_logger.setLevel(logging.DEBUG)
         self.rig_build_log_box.connect_test_logger(test_logger)
+        self.test_list.connect_progress(self.rig_build_progress_bar.update_progress)
 
+        self.build_rig_button.clicked.connect(self.rig_build_log_box.clear_log)
         self.build_rig_button.clicked.connect(self._build_rig)
         build_logger = logging.getLogger("pipe.m.rig_builder.build")
         build_logger.setLevel(logging.DEBUG)
         self.rig_build_log_box.connect_logger(build_logger)
 
+        self.rig_publish_button.clicked.connect(self._build_test_publish)
+
     def _build_rig(self):
-        build.build_rig("yoon")
+        rig_builder = build.RigBuilder()
+        dev_build = (
+            True
+            if self.dev_build_switch.checkState() == QtCore.Qt.CheckState.Checked
+            else False
+        )
+        rig_builder.build_rig("yoon", dev_build=dev_build)
+        rig_builder.connect_progress(self.rig_build_progress_bar.update_progress)
+
+    def _build_test_publish(self):
+        pass

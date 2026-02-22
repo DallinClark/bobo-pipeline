@@ -1,3 +1,4 @@
+from Qt import QtCore
 from Qt.QtGui import QStandardItem, QStandardItemModel
 from Qt.QtWidgets import QHBoxLayout, QListView, QWidget
 
@@ -7,11 +8,11 @@ from ....db.sgaadb import SGaaDB
 class RigSelectList(QListView):
     def __init__(self):
         super().__init__()
-
         self.item_model = QStandardItemModel(self)
         self.setModel(self.item_model)
         self.setSelectionMode(QListView.SingleSelection)
 
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setSpacing(2)
 
     def add_item(self, label: str):

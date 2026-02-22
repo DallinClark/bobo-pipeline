@@ -1,9 +1,10 @@
-from typing import Sequence
+from typing import Any, Callable, Sequence
 
 from Qt import QtCore
 from Qt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
 from Qt.QtWidgets import QApplication, QListView
 
+from ..progress import TestProgressManager
 from ..test import RIG_BUILD_TESTS, RigBuildTest
 
 
@@ -67,6 +68,8 @@ class TestSelectList(QListView):
         self.test_items: list[TestItem] = []
         self.populate_tests(RIG_BUILD_TESTS)
 
+        self._progress_slot = None
+
     def populate_tests(self, tests: Sequence[RigBuildTest]):
         for test in tests:
             self.add_item(test)
@@ -84,9 +87,15 @@ class TestSelectList(QListView):
     def run_tests(self, selected_only: bool = True):
         self.clear_test_status()
         QApplication.processEvents()
+        progress_manager = TestProgressManager(
+            [test_item.test for test_item in self.test_items if test_item.is_enabled()],
+        )
+        if self._progress_slot is not None:
+            progress_manager.progress_changed.connect(self._progress_slot)
         for test_item in self.test_items:
             if test_item.is_enabled():
                 test_item.run()
+                progress_manager.update_progress()
                 QApplication.processEvents()
 
     def enable_all_tests(self):
@@ -96,3 +105,7 @@ class TestSelectList(QListView):
     def disable_all_tests(self):
         for test_item in self.test_items:
             test_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+
+    def connect_progress(self, progress_slot: Callable[[float], None]):
+        """Stores the slot (e.g., progress_bar.update_progress) to connect later."""
+        self._progress_slot = progress_slot

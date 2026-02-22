@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import logging
+from typing import Callable
 from shared.util import get_rig_build_path
 
 log = logging.getLogger(__name__)
@@ -25,16 +26,29 @@ def redirect_external_logger(
         external_logger.propagate = original_propagate
 
 
-def build_rig(rig_name: str, rig_variant: str | None = None):
-    """
-    This function is meant to call the rig build of an external rigging library (currently y-rig).
-    However I hope that it is easy enough to change that if needed the underlying rig build system
-    could be replaced without any trouble.
-    """
-    from yrig.build.mgear_api import build_from_file
+class RigBuilder:
+    def __init__(self) -> None:
+        self._progress_slot = None
+        pass
 
-    # 1. Grab the external logger
-    build_logger = logging.getLogger("yrig")
+    def connect_progress(self, progress_slot: Callable[[float], None]):
+        """Stores the slot (e.g., progress_bar.update_progress) to connect later."""
+        self._progress_slot = progress_slot
 
-    with redirect_external_logger(build_logger, log):
-        build_from_file(get_rig_build_path() / "character/yoon/data/template.sgt")
+    def build_rig(
+        self, rig_name: str, rig_variant: str | None = None, dev_build: bool = False
+    ):
+        """
+        This function is meant to call the rig build of an external rigging library (currently y-rig).
+        However I hope that it is easy enough to change that if needed the underlying rig build system
+        could be replaced without any trouble.
+        """
+        from yrig.build.mgear_api import build_from_file
+
+        # 1. Grab the external logger
+        build_logger = logging.getLogger("yrig")
+
+        with redirect_external_logger(build_logger, log):
+            build_from_file(
+                get_rig_build_path() / "character/yoon/data/template.sgt", dev_build
+            )

@@ -3,7 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from logging import getLogger
-from typing import Counter, DefaultDict
+from time import sleep
+from typing import Counter, DefaultDict, Sequence
 
 from maya import cmds
 from maya.api.OpenMaya import MFnDagNode, MItDag

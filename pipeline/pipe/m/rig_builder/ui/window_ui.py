@@ -16,6 +16,7 @@ from Qt.QtWidgets import (
 )
 
 from .logbox import RigBuildLogBox
+from .progress_bar import RigBuildProgressBar
 from .rig_select import RigSelect
 from .test_select import TestSelectList
 
@@ -114,10 +115,10 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.publish_horizontal_layout.addWidget(self.rig_publish_button, 2)
 
         # Build Log Section
-        self.rig_build_progress_bar = QProgressBar()
+        self.rig_build_progress_bar = RigBuildProgressBar()
         self.mid_layout.addWidget(self.rig_build_progress_bar)
 
-        self.bottom_container = QWidget()
+        self.bottom_container: QWidget = QWidget()
         self.main_splitter.addWidget(self.bottom_container)
         self.bottom_layout = QVBoxLayout(self.bottom_container)
         self.bottom_layout.setContentsMargins(0, 4, 0, 0)

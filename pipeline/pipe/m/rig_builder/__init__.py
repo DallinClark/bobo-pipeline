@@ -1,7 +1,8 @@
-from . import build, test, ui
+from . import build, progress, test, ui
 
 __all__ = [
     "build",
+    "progress",
     "test",
     "ui",
 ]
