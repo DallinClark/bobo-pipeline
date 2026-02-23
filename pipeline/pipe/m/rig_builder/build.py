@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import logging
 from typing import Callable
+from .progress import RigBuildProgressManager
 from shared.util import get_rig_build_path
 
 log = logging.getLogger(__name__)
@@ -57,12 +58,11 @@ class RigBuilder:
         )
 
         if not rig_build_filepath.exists():
-            log.error(
-                f"Couldn't find the build data for {rig_name}. The build file should be located at {rig_build_filepath}"
-            )
-            raise FileNotFoundError(
-                f"Couldn't find the build data for {rig_name}. The build file should be located at {rig_build_filepath}"
-            )
+            error_message = f"Couldn't find the build data for {rig_name}. The build file should be located at {rig_build_filepath}"
+            log.error(error_message)
+            raise FileNotFoundError(error_message)
+
+        progress_manager = RigBuildProgressManager()
 
         with redirect_external_logger(build_logger, log):
             build_from_file(

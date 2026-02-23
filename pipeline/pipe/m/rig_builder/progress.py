@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Sequence
+from typing import Sequence
 
 from Qt.QtCore import QObject, Signal
 
@@ -11,7 +10,7 @@ class ProgressManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self._progress = 0
+        self._progress: float = 0
 
     def reset_progress(self):
         self._progress = 0
@@ -21,7 +20,6 @@ class ProgressManager(QObject):
         """Gives a progress between 0 and 1"""
         return self._progress
 
-    @abstractmethod
     def update_progress(self):
         pass
 
@@ -43,7 +41,7 @@ class TestProgressManager(ProgressManager):
         tests: Sequence[RigBuildTest],
     ):
         super().__init__()
-        self._total_tests = len(tests)
+        self._total_tests: int = len(tests)
         self.reset_progress()
 
     def update_progress(self):
