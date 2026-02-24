@@ -5,7 +5,7 @@ import traceback
 from enum import IntEnum
 from math import isclose
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 import attrs
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
@@ -522,33 +522,75 @@ class ExportChaser(mayaUsdLib.ExportChaser):
 
                 asset = None
                 relative_path_str = None
+                rig_prim_path = Sdf.Path(f"/character/{base_name}")
                 try:
                     asset = conn.get_asset_by_attr("name", base_name)
-
                     assert asset.path is not None
-                    rig_path = str(asset.path).replace("\\", "/") + "/usd/main.usd"
+
+                    asset_path = str(asset.path).replace("\\", "/").rstrip("/")
+                    # Support both "packaged" rigs (.../usd/main.usd) and
+                    # legacy/direct rigs (.../<name>.usd).
+                    rig_candidates: list[tuple[str, Sdf.Path, bool]] = [
+                        (
+                            f"{asset_path}/usd/main.usd",
+                            Sdf.Path(f"/character/{base_name}"),
+                            True,
+                        ),
+                        (
+                            f"{asset_path}/usd/{base_name}.usd",
+                            Sdf.Path("/ROOT/MODEL"),
+                            False,
+                        ),
+                        (
+                            f"{asset_path}/{base_name}.usd",
+                            Sdf.Path("/ROOT/MODEL"),
+                            False,
+                        ),
+                    ]
+
                     walk_up_len = (
                         len(root_layer_path.relative_to(get_production_path()).parts)
                         - 1
                     )
+                    walk_up = "../" * walk_up_len
 
-                    relative_path_str = "../" * walk_up_len + rig_path
-                    relative_path = Sdf.Path(relative_path_str)
-                    if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
-                        root_layer.subLayerPaths.append(str(relative_path))
+                    selected_rig_path = None
+                    add_as_sublayer = False
+                    for (
+                        rig_path,
+                        candidate_prim_path,
+                        candidate_is_sublayer,
+                    ) in rig_candidates:
+                        if (get_production_path() / rig_path).exists():
+                            selected_rig_path = rig_path
+                            rig_prim_path = candidate_prim_path
+                            add_as_sublayer = candidate_is_sublayer
+                            break
+
+                    if not selected_rig_path:
+                        raise FileNotFoundError(
+                            f"Could not find rig entrypoint for asset `{base_name}` under `{asset_path}`"
+                        )
+
+                    relative_path_str = walk_up + selected_rig_path
+                    if add_as_sublayer:
+                        sub_layer_paths = cast(list[str], root_layer.subLayerPaths)
+                        if relative_path_str not in sub_layer_paths:
+                            root_layer.subLayerPaths.append(relative_path_str)
                     print(
-                        f"[chaser] added rig sublayer for {name}: {relative_path_str}"
+                        f"[chaser] resolved rig path for {name}: {relative_path_str} (prim={rig_prim_path})"
                     )
                 except Exception:
                     print(f"[chaser] asset link failed for {name} (base={base_name})")
-                    print(
-                        f"    asset={getattr(asset, 'path', None)} rig_path={rig_path if 'rig_path' in locals() else None}"
-                    )
+                    print(f"    asset={getattr(asset, 'path', None)}")
                     print(
                         f"    relative_path={relative_path_str} root_layer={root_layer.realPath}"
                     )
                     print(traceback.format_exc())
-                if name != base_name and relative_path_str:
+                if relative_path_str and (
+                    name != base_name
+                    or rig_prim_path != Sdf.Path(f"/character/{base_name}")
+                ):
                     # Create a concrete rig instance for this namespace so the
                     # class-based clips can bind to a real prim.
                     character_parent = Sdf.CreatePrimInLayer(
@@ -562,7 +604,6 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     )
                     instance_prim_spec.specifier = Sdf.SpecifierDef
 
-                    rig_prim_path = Sdf.Path(f"/character/{base_name}")
                     instance_reference = Sdf.Reference(relative_path_str, rig_prim_path)
                     instance_prim_spec.referenceList.appendedItems = [
                         instance_reference
