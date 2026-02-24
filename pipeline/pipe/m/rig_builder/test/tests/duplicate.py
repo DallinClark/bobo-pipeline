@@ -1,9 +1,10 @@
 from collections import Counter
-from typing import DefaultDict, Iterator
+from typing import DefaultDict
 
-from maya.api.OpenMaya import MFnDagNode, MItDag
+from maya.api.OpenMaya import MItDag
 
 from .. import RigBuildTest
+from ..common import iter_dag_nodes
 
 
 class TestDuplicateDagNames(RigBuildTest):
@@ -15,13 +16,6 @@ class TestDuplicateDagNames(RigBuildTest):
         super().__init__("No duplicate DAG names")
 
     def run(self):
-        def iter_dag_nodes(dag_iterator: MItDag) -> Iterator[MFnDagNode]:
-            while not dag_iterator.isDone():
-                current_node = dag_iterator.currentItem()
-                dag_fn = MFnDagNode(current_node)
-                yield dag_fn
-                dag_iterator.next()
-
         dag_iterator = MItDag(MItDag.kDepthFirst)
         short_name_counter = Counter()
         name_to_paths = DefaultDict(list[str])

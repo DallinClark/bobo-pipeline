@@ -1,4 +1,5 @@
 from maya import cmds
+from maya.api.OpenMaya import MDagPath, MSelectionList
 
 from .. import RigBuildTest
 
@@ -13,7 +14,17 @@ class TestHiddenJoints(RigBuildTest):
         super().__init__("No visible joints without shapes")
 
     def run(self):
-        visible_joints = cmds.ls(type="joint", visible=True)
+        visiblity_on_joints = cmds.ls(type="joint", visible=True)
+
+        visible_joints: list[str] = []
+        for joint in visiblity_on_joints:
+            sel: MSelectionList = MSelectionList()
+            sel.add(joint)
+            joint_dag: MDagPath = sel.getDagPath(0)
+            if not joint_dag.isVisible():
+                continue
+            visible_joints.append(joint_dag.partialPathName())
+
         problem_joints: list[str] = []
         for joint in visible_joints:
             if cmds.getAttr(f"{joint}.drawStyle") != 2:
