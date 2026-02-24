@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 import logging
 from typing import Callable
+
+from maya import cmds
 from .progress import RigBuildProgressManager
 from shared.util import get_rig_build_path
 
@@ -66,6 +68,7 @@ class RigBuilder:
         if self._progress_slot is not None:
             progress_manager.progress_changed.connect(self._progress_slot)
         with redirect_external_logger(build_logger, log):
+            cmds.file(newFile=True, force=True)
             build_from_file(
                 rig_build_filepath,
                 dev_build,
