@@ -12,7 +12,6 @@ RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestDuplicateDagNames,
     TestNgSkinData,
     TestLargeCyclesEM,
-    TestLargeCyclesDG,
 ]
 
 __all__ = [

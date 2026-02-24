@@ -26,9 +26,12 @@ class TestLargeCyclesEM(RigBuildTest):
             if node in processed_nodes:
                 continue
             cycle_cluster: list[str] = cmds.evaluationManager(cycleCluster=node)  # type: ignore
-            processed_nodes = processed_nodes.union(cycle_cluster)
-            if len(cycle_cluster) > self.CYCLE_THRESHOLD:
-                large_cycle_clusters.append(cycle_cluster)
+            if cycle_cluster:
+                processed_nodes.update(cycle_cluster)
+                if len(cycle_cluster) > self.CYCLE_THRESHOLD:
+                    large_cycle_clusters.append(cycle_cluster)
+            else:
+                processed_nodes.add(node)
 
         cycle_sizes_and_names = (
             (len(cluster), cluster[0]) for cluster in large_cycle_clusters
@@ -69,9 +72,12 @@ class TestLargeCyclesDG(RigBuildTest):
             if node in processed_nodes:
                 continue
             cycle_cluster: list[str] = cmds.cycleCheck(node, list=True)  # type: ignore
-            processed_nodes = processed_nodes.union(cycle_cluster)
-            if len(cycle_cluster) > self.CYCLE_THRESHOLD:
-                large_cycle_clusters.append(cycle_cluster)
+            if cycle_cluster:
+                processed_nodes.update(cycle_cluster)
+                if len(cycle_cluster) > self.CYCLE_THRESHOLD:
+                    large_cycle_clusters.append(cycle_cluster)
+            else:
+                processed_nodes.add(node)
 
         cycle_sizes_and_names = (
             (len(cluster), cluster[0]) for cluster in large_cycle_clusters
