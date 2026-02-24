@@ -30,7 +30,7 @@ class TestRunner:
 
 
 class RigBuildTest(ABC):
-    def __init__(self, name: str):
+    def __init__(self, name: str = "Test"):
         self.name = name
         pass
 

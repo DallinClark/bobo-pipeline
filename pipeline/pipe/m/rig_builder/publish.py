@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 
 class RigPublisher:
     def __init__(self) -> None:
+        self._progress_slot: Callable[[float], None] | None = None
         pass
 
     def connect_progress(self, progress_slot: Callable[[float], None]):
@@ -20,8 +21,8 @@ class RigPublisher:
         rig_builder = RigBuilder()
         rig_builder.build_rig(rig_name, rig_type)
 
-    def _run_tests(self, tests: Iterable[RigBuildTest]) -> bool:
-        test_runner = TestRunner(tests)
+    def _run_tests(self, tests: Iterable[type[RigBuildTest]]) -> bool:
+        test_runner = TestRunner(test() for test in tests)
         return test_runner.run_tests()
 
     def _publish_rig(self, rig_name: str):

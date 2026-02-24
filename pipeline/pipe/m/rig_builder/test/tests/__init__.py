@@ -1,13 +1,17 @@
-from .duplicates import TestDuplicateDagNames
-from .joints import TestHiddenJoints
-from .ng import TestNgSkinData
-from .nodes import TestUnknownNodes
+from pipe.m.rig_builder.test.core import RigBuildTest
 
-RIG_BUILD_TESTS = [
-    TestHiddenJoints(),
-    TestUnknownNodes(),
-    TestDuplicateDagNames(),
-    TestNgSkinData(),
+from .cycle import TestLargeCycles
+from .duplicate import TestDuplicateDagNames
+from .joint import TestHiddenJoints
+from .ng import TestNgSkinData
+from .node import TestUnknownNodes
+
+RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
+    TestHiddenJoints,
+    TestUnknownNodes,
+    TestDuplicateDagNames,
+    TestNgSkinData,
+    TestLargeCycles,
 ]
 
 __all__ = [
@@ -16,4 +20,5 @@ __all__ = [
     "TestHiddenJoints",
     "TestNgSkinData",
     "TestUnknownNodes",
+    "TestLargeCycles",
 ]

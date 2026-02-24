@@ -66,7 +66,7 @@ class TestSelectList(QListView):
         self.setSpacing(2)
 
         self.test_items: list[TestItem] = []
-        self.populate_tests(RIG_BUILD_TESTS)
+        self.populate_tests([test() for test in RIG_BUILD_TESTS])
 
         self._progress_manager: TestProgressManager | None = None
         self._progress_slot = None
