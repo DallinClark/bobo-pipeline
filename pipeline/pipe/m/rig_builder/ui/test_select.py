@@ -37,9 +37,9 @@ class TestItem(QStandardItem):
 
     def update_status(self, passed: bool):
         if passed:
-            self.setBackground(QBrush(QColor(21, 112, 78)))
+            self.setBackground(QBrush(QColor(0, 94, 75)))
         else:
-            self.setBackground(QBrush(QColor(153, 62, 23)))
+            self.setBackground(QBrush(QColor(130, 42, 50)))
 
     def clear_status(self):
         self.setBackground(QBrush())

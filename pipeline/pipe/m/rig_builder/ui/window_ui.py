@@ -41,6 +41,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         # Build Section
         self.top_container = QWidget()
         self.main_splitter.addWidget(self.top_container)
+        self.main_splitter.setStretchFactor(0, 1)
 
         self.top_layout = QVBoxLayout(self.top_container)
         self.top_layout.setContentsMargins(0, 0, 0, 4)
@@ -67,6 +68,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         # Test Section
         self.mid_container = QWidget()
         self.main_splitter.addWidget(self.mid_container)
+        self.main_splitter.setStretchFactor(1, 2)
 
         self.mid_layout = QVBoxLayout(self.mid_container)
         self.mid_layout.setContentsMargins(0, 0, 0, 4)
@@ -116,6 +118,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
 
         self.bottom_container: QWidget = QWidget()
         self.main_splitter.addWidget(self.bottom_container)
+        self.main_splitter.setStretchFactor(2, 1)
         self.bottom_layout = QVBoxLayout(self.bottom_container)
         self.bottom_layout.setContentsMargins(0, 4, 0, 0)
 

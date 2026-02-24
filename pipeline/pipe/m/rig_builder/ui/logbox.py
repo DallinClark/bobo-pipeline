@@ -41,6 +41,7 @@ class RigBuildLogBox(QPlainTextEdit):
         self.setPlainText("Rig Build Log")
         self.setReadOnly(True)
         self.setMinimumSize(32, 24)
+        self.setBaseSize(128, 64)
         self._connections: list[tuple[logging.Logger, logging.Handler]] = []
         self.destroyed.connect(self._on_destroyed)
 
