@@ -103,8 +103,34 @@ extra-paths = [
     "pipeline/",
 ]
 
+[tool.ty.src]
+exclude = [
+    ".git",
+    "MOPS",
+    "pipeline/software/nuke/tools/NukeSurvivalToolkit_publicRelease",
+    "VFX-LYNX",
+    "ae_SVG",
+    "dwpicker",
+    "dwpicker_git",
+    "lib/python",
+    "mayacapture",
+    "maya-timeline-marker_git",
+    "modelChecker",
+    "modelChecker_git",
+    'pin_shift.py',
+    "rjg",
+    'y-rig',
+    "shotgun_api3",
+    "studiolibrary",
+    "timeline_marker",
+    "pipeline/software/maya/scripts/*"
+]
+
+
 [tool.pyright]
 extraPaths = [
     "pipeline/software/maya/scripts/",
     "pipeline/",
 ]
+typeCheckingMode = "standard"
+reportMissingModuleSource = "information"
