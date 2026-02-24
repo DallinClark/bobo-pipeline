@@ -8,12 +8,15 @@ from Qt.QtWidgets import QWidget
 
 from ...local import get_main_qt_window
 from .. import build
+from .. import publish
 from .core import (
     delete_workspace_control,
     get_maya_main_window,
 )
 from .window_ui import RigBuilderWindowUI
 from ..database import DBWorker
+
+log = logging.getLogger(__name__)
 
 _window_instance: RigBuilderWindow | None = None
 
@@ -73,21 +76,18 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.load_data_async()  # Start loading after UI is initialized
 
     def connect_ui(self):
-        self.enable_tests_button.clicked.connect(self.test_list.enable_all_tests)
-        self.disable_tests_button.clicked.connect(self.test_list.disable_all_tests)
-
-        self.rig_test_button.clicked.connect(self.rig_build_log_box.clear_log)
-        self.rig_test_button.clicked.connect(self.test_list.run_tests)
-        test_logger = logging.getLogger("pipe.m.rig_builder.test")
-        test_logger.setLevel(logging.DEBUG)
-        self.rig_build_log_box.connect_test_logger(test_logger)
-        self.test_list.connect_progress(self.rig_build_progress_bar.update_progress)
+        builder_log = logging.getLogger("pipe.m.rig_builder")
+        builder_log.setLevel(logging.DEBUG)
+        self.rig_build_log_box.connect_logger(builder_log)
 
         self.build_rig_button.clicked.connect(self.rig_build_log_box.clear_log)
         self.build_rig_button.clicked.connect(self._build_rig)
-        build_logger = logging.getLogger("pipe.m.rig_builder.build")
-        build_logger.setLevel(logging.DEBUG)
-        self.rig_build_log_box.connect_logger(build_logger)
+
+        self.enable_tests_button.clicked.connect(self.test_list.enable_all_tests)
+        self.disable_tests_button.clicked.connect(self.test_list.disable_all_tests)
+        self.rig_test_button.clicked.connect(self.rig_build_log_box.clear_log)
+        self.rig_test_button.clicked.connect(self.test_list.run_tests)
+        self.test_list.connect_progress(self.rig_build_progress_bar.update_progress)
 
         self.rig_publish_button.clicked.connect(self._build_test_publish)
 
@@ -115,6 +115,18 @@ class RigBuilderWindow(RigBuilderWindowUI):
         """Update the UI widgets once the DB query returns."""
         self.character_select.populate_rigs(characters)  # Update your widget method
         self.prop_select.populate_rigs(props)
+        # TODO: Actually handle variants here, when changing the selected rig, and in the build.
+        self.character_select.populate_variants(["default"])
+        self.prop_select.populate_variants(["default"])
+
+    def _get_rig_to_build(self) -> tuple[str, str] | None:
+        current_tab = self.build_tabs.get_current_tab()
+        rig_type = current_tab.get_rig_type()
+        selected_rig = current_tab.get_selected_rig()
+        if selected_rig is not None:
+            return (selected_rig, rig_type)
+        else:
+            return None
 
     def _build_rig(self):
         rig_builder = build.RigBuilder()
@@ -129,5 +141,11 @@ class RigBuilderWindow(RigBuilderWindowUI):
         rig_builder.connect_progress(self.rig_build_progress_bar.update_progress)
         if selected_rig is not None:
             rig_builder.build_rig(selected_rig, rig_type=rig_type, dev_build=dev_build)
+
     def _build_test_publish(self):
-        pass
+        rig_publisher = publish.RigPublisher()
+        rig_to_build = self._get_rig_to_build()
+        if rig_to_build is None:
+            log.error("Failed to build rig: no rig is selected.")
+            return
+        rig_publisher.build_test_and_publish(rig_to_build[0], rig_to_build[1])

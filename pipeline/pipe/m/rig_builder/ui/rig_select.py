@@ -4,8 +4,12 @@ from Qt.QtWidgets import QHBoxLayout, QListView, QWidget
 
 
 class RigItem(QStandardItem):
-    def __init__(self, name: str, display_name: str, use_display_name: bool = False):
-        super().__init__(display_name if use_display_name else name)
+    def __init__(
+        self, name: str, display_name: str | None = None, use_display_name: bool = False
+    ):
+        super().__init__(
+            display_name if use_display_name and display_name is not None else name
+        )
         self.setEditable(False)
         self.setSelectable(True)
         self.setData(name, QtCore.Qt.UserRole)
@@ -21,7 +25,7 @@ class RigSelectList(QListView):
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setSpacing(2)
 
-    def add_item(self, name: str, display_name: str):
+    def add_item(self, name: str, display_name: str | None = None):
         item = RigItem(name, display_name)
         self.item_model.appendRow(item)
 
@@ -51,12 +55,18 @@ class RigSelect(QWidget):
     def populate_rigs(self, rigs: list[tuple[str, str]]):
         for rig_name, rig_display_name in rigs:
             self.rig_panel.add_item(rig_name, rig_display_name)
-        self.select_first_item()
+        self.select_first_item(self.rig_panel)
 
-    def select_first_item(self):
-        if self.rig_panel.item_model.rowCount() > 0:
-            first_index = self.rig_panel.item_model.index(0, 0)
-            self.rig_panel.setCurrentIndex(first_index)
+    def populate_variants(self, variants: list[str]):
+        for variant in variants:
+            self.variant_panel.add_item(variant)
+        self.select_first_item(self.variant_panel)
+
+    def select_first_item(self, panel: RigSelectList):
+        if panel.item_model.rowCount() > 0:
+            first_index = panel.item_model.index(0, 0)
+            panel.setCurrentIndex(first_index)
+            panel.scrollTo(first_index, QListView.PositionAtCenter)
 
     def get_selected_rig(self) -> str | None:
         index = self.rig_panel.currentIndex()
