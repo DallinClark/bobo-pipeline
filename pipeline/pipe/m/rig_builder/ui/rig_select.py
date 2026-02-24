@@ -50,10 +50,8 @@ class RigSelect(QWidget):
 
         pass
 
-    def populate_rigs(self, database: SGaaDB, type: str):
-        rig_names = database.get_asset_name_list_by_type([type])
-        rig_display_names = database.get_asset_display_name_list_by_type([type])
-        for rig_name, rig_display_name in zip(rig_names, rig_display_names):
+    def populate_rigs(self, rigs: list[tuple[str, str]]):
+        for rig_name, rig_display_name in rigs:
             self.rig_panel.add_item(rig_name, rig_display_name)
         self.select_first_item()
 

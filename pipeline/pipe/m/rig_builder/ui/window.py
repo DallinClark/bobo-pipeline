@@ -3,21 +3,17 @@ from __future__ import annotations
 import logging
 
 from Qt import QtCore
-from maya import cmds
 from maya.OpenMayaUI import MQtUtil
 from Qt.QtWidgets import QWidget
 
-from pipe.db import DB
 from ...local import get_main_qt_window
 from .. import build
 from .core import (
-    check_and_restore_workspace_control,
     delete_workspace_control,
     get_maya_main_window,
 )
 from .window_ui import RigBuilderWindowUI
-
-from env_sg import DB_Config
+from ..database import DBWorker
 
 _window_instance: RigBuilderWindow | None = None
 
@@ -72,13 +68,11 @@ class RigBuilderWindow(RigBuilderWindowUI):
         parent: QWidget | None,
     ) -> None:
         super().__init__(parent=parent, window_object_name=WINDOW_OBJECT_NAME)
+        self.threads = []
         self.connect_ui()
+        self.load_data_async()  # Start loading after UI is initialized
 
     def connect_ui(self):
-        self.conn_ = DB.Get(DB_Config)
-        self.character_select.populate_rigs(self.conn_, type="Character")
-        self.prop_select.populate_rigs(self.conn_, type="Rigged Prop")
-
         self.enable_tests_button.clicked.connect(self.test_list.enable_all_tests)
         self.disable_tests_button.clicked.connect(self.test_list.disable_all_tests)
 
@@ -96,6 +90,31 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.rig_build_log_box.connect_logger(build_logger)
 
         self.rig_publish_button.clicked.connect(self._build_test_publish)
+
+    def load_data_async(self):
+        """Spawns a thread to fetch DB data without freezing the UI."""
+
+        self.db_thread = QtCore.QThread()
+        self.db_worker = DBWorker()
+        self.db_worker.moveToThread(self.db_thread)
+        # Connect signals
+        self.db_thread.started.connect(self.db_worker.get_rig_data)
+        self.db_worker.rigs_loaded.connect(self._on_rig_data_received)
+
+        # Cleanup
+        self.db_worker.rigs_loaded.connect(self.db_thread.quit)
+        self.db_worker.rigs_loaded.connect(self.db_worker.deleteLater)
+        self.db_thread.finished.connect(self.db_thread.deleteLater)
+
+        self.threads.append(self.db_thread)
+        self.db_thread.start()
+
+    def _on_rig_data_received(
+        self, characters: list[tuple[str, str]], props: list[tuple[str, str]]
+    ):
+        """Update the UI widgets once the DB query returns."""
+        self.character_select.populate_rigs(characters)  # Update your widget method
+        self.prop_select.populate_rigs(props)
 
     def _build_rig(self):
         rig_builder = build.RigBuilder()
