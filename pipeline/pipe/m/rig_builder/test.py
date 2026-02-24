@@ -3,13 +3,33 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from logging import getLogger
-from time import sleep
-from typing import Counter, DefaultDict, Sequence
+from typing import Callable, Counter, DefaultDict, Iterable
 
 from maya import cmds
 from maya.api.OpenMaya import MFnDagNode, MItDag
 
 log = getLogger(__name__)
+
+
+class TestRunner:
+    def __init__(
+        self,
+        tests: Iterable[RigBuildTest],
+        test_run_callback: Callable[[RigBuildTest, bool], None] | None = None,
+    ) -> None:
+        self.tests = tests
+        self._test_run_callback = test_run_callback
+
+    def run_tests(self) -> bool:
+        """Runs all of the TestRunner's tests and returns True if all tests passed."""
+        passing: bool = True
+        for test in self.tests:
+            test_passed = test.run()
+            if self._test_run_callback is not None:
+                self._test_run_callback(test, test_passed)
+            if not test_passed:
+                passing = False
+        return passing
 
 
 class RigBuildTest(ABC):

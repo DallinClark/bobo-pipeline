@@ -54,7 +54,7 @@ class RigBuilder:
         build_logger = logging.getLogger("yrig")
 
         rig_build_filepath = (
-            get_rig_build_path() / rig_type / rig_name / "data/template.sgt"
+            get_rig_build_path() / rig_type / rig_name / "data/guide.sgt"
         )
 
         if not rig_build_filepath.exists():
@@ -67,7 +67,7 @@ class RigBuilder:
             progress_manager.progress_changed.connect(self._progress_slot)
         with redirect_external_logger(build_logger, log):
             build_from_file(
-                get_rig_build_path() / rig_type / rig_name / "data/guide.sgt",
+                rig_build_filepath,
                 dev_build,
                 progress_manager.update_progress_with_step,
             )

@@ -5,7 +5,7 @@ from Qt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel
 from Qt.QtWidgets import QApplication, QListView
 
 from ..progress import TestProgressManager
-from ..test import RIG_BUILD_TESTS, RigBuildTest
+from ..test import RIG_BUILD_TESTS, RigBuildTest, TestRunner
 
 
 class TestSelectListModel(QStandardItemModel):
@@ -68,6 +68,7 @@ class TestSelectList(QListView):
         self.test_items: list[TestItem] = []
         self.populate_tests(RIG_BUILD_TESTS)
 
+        self._progress_manager: TestProgressManager | None = None
         self._progress_slot = None
 
     def populate_tests(self, tests: Sequence[RigBuildTest]):
@@ -87,16 +88,31 @@ class TestSelectList(QListView):
     def run_tests(self, selected_only: bool = True):
         self.clear_test_status()
         QApplication.processEvents()
-        progress_manager = TestProgressManager(
-            [test_item.test for test_item in self.test_items if test_item.is_enabled()],
+
+        enabled_tests = [
+            test_item.test for test_item in self.test_items if test_item.is_enabled()
+        ]
+        self._progress_manager = TestProgressManager(
+            enabled_tests,
         )
         if self._progress_slot is not None:
-            progress_manager.progress_changed.connect(self._progress_slot)
-        for test_item in self.test_items:
-            if test_item.is_enabled():
-                test_item.run()
-                progress_manager.update_progress()
+            self._progress_manager.progress_changed.connect(self._progress_slot)
+
+        test_runner = TestRunner(
+            (test_item.test for test_item in self.test_items if test_item.is_enabled()),
+            test_run_callback=self._on_test_finished,
+        )
+        test_runner.run_tests()
+        self._progress_manager = None
+
+    def _on_test_finished(self, test: RigBuildTest, passed: bool):
+        for item in self.test_items:
+            if item.test == test:
+                item.update_status(passed)
                 QApplication.processEvents()
+                break
+        if self._progress_manager is not None:
+            self._progress_manager.update_progress_from_test_run(test, passed)
 
     def enable_all_tests(self):
         for test_item in self.test_items:

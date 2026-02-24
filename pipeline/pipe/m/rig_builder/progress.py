@@ -21,7 +21,7 @@ class ProgressManager(QObject):
         return self._progress
 
     def update_progress(self):
-        pass
+        self.progress_changed.emit(self._progress)
 
 
 class RigBuildProgressManager(ProgressManager):
@@ -35,9 +35,6 @@ class RigBuildProgressManager(ProgressManager):
         self._progress = progress
         self.update_progress()
 
-    def update_progress(self):
-        self.progress_changed.emit(self._progress)
-
 
 class TestProgressManager(ProgressManager):
     def __init__(
@@ -48,6 +45,6 @@ class TestProgressManager(ProgressManager):
         self._total_tests: int = len(tests)
         self.reset_progress()
 
-    def update_progress(self):
+    def update_progress_from_test_run(self, test: RigBuildTest, passed: bool):
         self._progress += 1 / self._total_tests
-        self.progress_changed.emit(self._progress)
+        self.update_progress()
