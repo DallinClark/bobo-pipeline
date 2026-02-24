@@ -31,6 +31,10 @@ class RigBuildProgressManager(ProgressManager):
         super().__init__()
         self.reset_progress()
 
+    def update_progress_with_step(self, progress: float, step_name: str | None = None):
+        self._progress = progress
+        self.update_progress()
+
     def update_progress(self):
         self.progress_changed.emit(self._progress)
 

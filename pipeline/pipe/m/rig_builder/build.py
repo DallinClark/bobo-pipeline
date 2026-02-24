@@ -63,9 +63,12 @@ class RigBuilder:
             raise FileNotFoundError(error_message)
 
         progress_manager = RigBuildProgressManager()
-
+        if self._progress_slot is not None:
+            progress_manager.progress_changed.connect(self._progress_slot)
         with redirect_external_logger(build_logger, log):
             build_from_file(
                 get_rig_build_path() / rig_type / rig_name / "data/guide.sgt",
                 dev_build,
+                progress_manager.update_progress_with_step,
             )
+        progress_manager.update_progress_with_step(1)

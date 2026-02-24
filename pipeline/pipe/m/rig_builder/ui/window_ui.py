@@ -7,18 +7,15 @@ from Qt.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
-    QProgressBar,
     QPushButton,
     QSplitter,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from .rig_type_tabs import RigTypeTabWidget
 from .logbox import RigBuildLogBox
 from .progress_bar import RigBuildProgressBar
-from .rig_select import RigSelect
+from .rig_type_tabs import RigTypeTabWidget
 from .test_select import TestSelectList
 
 

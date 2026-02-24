@@ -2,8 +2,6 @@ from Qt import QtCore
 from Qt.QtGui import QStandardItem, QStandardItemModel
 from Qt.QtWidgets import QHBoxLayout, QListView, QWidget
 
-from ....db.sgaadb import SGaaDB
-
 
 class RigItem(QStandardItem):
     def __init__(self, name: str, display_name: str, use_display_name: bool = False):

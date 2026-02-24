@@ -1,4 +1,4 @@
-from typing import Any, Callable, Sequence
+from typing import Callable, Sequence
 
 from Qt import QtCore
 from Qt.QtGui import QBrush, QColor, QStandardItem, QStandardItemModel

@@ -126,9 +126,8 @@ class RigBuilderWindow(RigBuilderWindowUI):
         current_tab = self.build_tabs.get_current_tab()
         rig_type = current_tab.get_rig_type()
         selected_rig = current_tab.get_selected_rig()
+        rig_builder.connect_progress(self.rig_build_progress_bar.update_progress)
         if selected_rig is not None:
             rig_builder.build_rig(selected_rig, rig_type=rig_type, dev_build=dev_build)
-        rig_builder.connect_progress(self.rig_build_progress_bar.update_progress)
-
     def _build_test_publish(self):
         pass
