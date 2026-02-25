@@ -9,11 +9,11 @@ from .node import TestUnknownNodes
 
 RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestHiddenJoints,
-    TestUnknownNodes,
-    TestDuplicateDagNames,
-    TestNgSkinData,
-    TestLargeCyclesEM,
     TestControlsZeroed,
+    TestDuplicateDagNames,
+    TestUnknownNodes,
+    TestLargeCyclesEM,
+    TestNgSkinData,
 ]
 
 __all__ = [

@@ -39,3 +39,8 @@ class RigPublisher:
         tests_passed = self._run_tests(RIG_BUILD_TESTS)
         if tests_passed:
             self._publish_rig(rig_name)
+        else:
+            log.error(
+                f"{rig_name} failed one or more required tests and wasn't published!"
+            )
+            return
