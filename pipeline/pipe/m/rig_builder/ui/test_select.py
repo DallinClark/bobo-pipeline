@@ -110,6 +110,8 @@ class TestSelectList(QListView):
         for item in self.test_items:
             if item.test == test:
                 item.update_status(passed)
+                if not passed:
+                    self.scrollTo(item.index(), QListView.ScrollHint.EnsureVisible)
                 QApplication.processEvents()
                 break
         if self._progress_manager is not None:
