@@ -103,6 +103,7 @@ class TestSelectList(QListView):
             test_run_callback=self._on_test_finished,
         )
         test_runner.run_tests()
+        self._progress_manager.update_progress_finished()
         self._progress_manager = None
 
     def _on_test_finished(self, test: RigBuildTest, passed: bool):

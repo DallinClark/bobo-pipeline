@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Iterator, Literal
 
 from maya import cmds
@@ -30,3 +31,17 @@ def iter_dag_nodes(dag_iterator: MItDag) -> Iterator[MFnDagNode]:
         dag_fn = MFnDagNode(current_node)
         yield dag_fn
         dag_iterator.next()
+
+
+MATCH_CONTROLS_REGEX = re.compile(r"(?i)(?<=_)(?:ctrl|cntrl|ctl|control)(?=_?\d*$)")
+
+
+def get_all_controls_by_name() -> list[str]:
+    """
+    This tries to return as many transforms that could be controls as possible.
+    These should be used later for validating that controls are properly tagged, named, zeroed, etc.
+    """
+    transforms = cmds.ls(type="transform")
+    return [
+        transform for transform in transforms if MATCH_CONTROLS_REGEX.search(transform)
+    ]

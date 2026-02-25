@@ -23,6 +23,10 @@ class ProgressManager(QObject):
     def update_progress(self):
         self.progress_changed.emit(self._progress)
 
+    def update_progress_finished(self):
+        self._progress = 1
+        self.progress_changed.emit(self._progress)
+
 
 class RigBuildProgressManager(ProgressManager):
     def __init__(
