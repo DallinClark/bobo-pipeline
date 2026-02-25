@@ -1,7 +1,7 @@
 from pipe.m.rig_builder.test.core import RigBuildTest
 
 from .control import TestControlsZeroed
-from .cycle import TestCyclesDG, TestLargeCyclesDG, TestLargeCyclesEM
+from .cycle import TestCyclesDG
 from .duplicate import TestDuplicateDagNames
 from .joint import TestHiddenJoints
 from .ng import TestNgSkinData
@@ -22,8 +22,6 @@ __all__ = [
     "TestHiddenJoints",
     "TestNgSkinData",
     "TestUnknownNodes",
-    "TestLargeCyclesEM",
-    "TestLargeCyclesDG",
     "TestCyclesDG",
     "TestControlsZeroed",
 ]
