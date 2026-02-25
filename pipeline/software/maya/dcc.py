@@ -29,7 +29,7 @@ class MayaDCC(DCC):
     ) -> None:
         this_path = Path(__file__).resolve()
         pipe_path = this_path.parents[2]
-        rig_build_path = get_rig_build_path
+        rig_build_path = get_rig_build_path()
         system = platform.system()
 
         self.shelf_path = str(
