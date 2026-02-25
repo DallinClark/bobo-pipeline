@@ -1,3 +1,5 @@
+from typing import FrozenSet
+
 from maya import cmds
 
 from .. import RigBuildTest
@@ -22,6 +24,7 @@ class TestLargeCyclesEM(RigBuildTest):
         # Evaluation Manager Cycles
         processed_nodes: set[str] = set()
         large_cycle_clusters: list[list[str]] = []
+        unique_clusters: set[FrozenSet[str]] = set()
         for node in evaluation_nodes:
             if node in processed_nodes:
                 continue
@@ -29,7 +32,11 @@ class TestLargeCyclesEM(RigBuildTest):
             if cycle_cluster:
                 processed_nodes.update(cycle_cluster)
                 if len(cycle_cluster) > self.CYCLE_THRESHOLD:
+                    cluster_set = frozenset(cycle_cluster)
+                    if cluster_set in unique_clusters:
+                        continue
                     large_cycle_clusters.append(cycle_cluster)
+                    unique_clusters.add(cluster_set)
             else:
                 processed_nodes.add(node)
 
@@ -68,6 +75,7 @@ class TestLargeCyclesDG(RigBuildTest):
 
         processed_nodes: set[str] = set()
         large_cycle_clusters: list[list[str]] = []
+        unique_clusters: set[FrozenSet[str]] = set()
         for node in dg_cycle_nodes:
             if node in processed_nodes:
                 continue
@@ -75,7 +83,11 @@ class TestLargeCyclesDG(RigBuildTest):
             if cycle_cluster:
                 processed_nodes.update(cycle_cluster)
                 if len(cycle_cluster) > self.CYCLE_THRESHOLD:
+                    cluster_set = frozenset(cycle_cluster)
+                    if cluster_set in unique_clusters:
+                        continue
                     large_cycle_clusters.append(cycle_cluster)
+                    unique_clusters.add(cluster_set)
             else:
                 processed_nodes.add(node)
 
