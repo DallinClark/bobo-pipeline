@@ -3,8 +3,6 @@ import logging
 from typing import Callable
 
 from maya import cmds
-
-from yrig.build.mgear_api import build_from_asset_path
 from .progress import RigBuildProgressManager
 from shared.util import get_rig_build_path
 
@@ -52,7 +50,7 @@ class RigBuilder:
         However I hope that it is easy enough to change that if needed the underlying rig build system
         could be replaced without any trouble.
         """
-        from yrig.build.mgear_api import build_from_file
+        from yrig.build.mgear_api import build_from_path
 
         # Grab the external logger
         build_logger = logging.getLogger("yrig")
@@ -71,8 +69,7 @@ class RigBuilder:
             progress_manager.progress_changed.connect(self._progress_slot)
         with redirect_external_logger(build_logger, log):
             cmds.file(newFile=True, force=True)
-            build_from_asset_path(
-                guide_path,
+            build_from_path(
                 rig_build_path,
                 dev_build,
                 progress_manager.update_progress_with_step,
