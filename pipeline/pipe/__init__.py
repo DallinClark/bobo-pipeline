@@ -1,16 +1,13 @@
 import logging as _l
 from os import environ as _e
 
-from . import db
-from . import glui
-from . import struct
-from . import texconverter
-from . import util
+from . import db, glui, struct, telemetry, texconverter, util
 
 __all__ = [
     "db",
     "glui",
     "struct",
+    "telemetry",
     "texconverter",
     "util",
 ]
