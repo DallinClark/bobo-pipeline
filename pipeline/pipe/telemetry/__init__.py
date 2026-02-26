@@ -1,9 +1,11 @@
 """Telemetry package public exports.
 
-Step 2 intentionally exposes only the frozen v1.0 registry contract.
-Runtime emission and storage wiring are added in later steps.
+Step 3 exposes the frozen v1.0 contract, registry-backed event constants,
+and the explicit emit API used for greppable instrumentation.
 """
 
+from . import events
+from .emit import build_event, emit
 from .registry import (
     ERROR_CODES,
     EVENT_DEFINITIONS,
@@ -25,6 +27,9 @@ from .registry import (
 )
 
 __all__ = [
+    "events",
+    "emit",
+    "build_event",
     "SCHEMA_VERSION",
     "STATUS_SUCCESS",
     "STATUS_ERROR",
