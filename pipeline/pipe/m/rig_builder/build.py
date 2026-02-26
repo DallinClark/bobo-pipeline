@@ -3,6 +3,8 @@ import logging
 from typing import Callable
 
 from maya import cmds
+
+from yrig.build.mgear_api import build_from_asset_path
 from .progress import RigBuildProgressManager
 from shared.util import get_rig_build_path
 
@@ -52,15 +54,15 @@ class RigBuilder:
         """
         from yrig.build.mgear_api import build_from_file
 
-        # 1. Grab the external logger
+        # Grab the external logger
         build_logger = logging.getLogger("yrig")
 
-        rig_build_filepath = (
-            get_rig_build_path() / rig_type / rig_name / "data/guide.sgt"
-        )
+        # Get paths.
+        rig_build_path = get_rig_build_path() / rig_type / rig_name
+        guide_path = rig_build_path / "data/guide.sgt"
 
-        if not rig_build_filepath.exists():
-            error_message = f"Couldn't find the build data for {rig_name}. The build file should be located at {rig_build_filepath}"
+        if not guide_path.exists():
+            error_message = f"Couldn't find the build data for {rig_name}. The build file should be located at {guide_path}"
             log.error(error_message)
             raise FileNotFoundError(error_message)
 
@@ -69,9 +71,11 @@ class RigBuilder:
             progress_manager.progress_changed.connect(self._progress_slot)
         with redirect_external_logger(build_logger, log):
             cmds.file(newFile=True, force=True)
-            build_from_file(
-                rig_build_filepath,
+            build_from_asset_path(
+                guide_path,
+                rig_build_path,
                 dev_build,
                 progress_manager.update_progress_with_step,
             )
+
         progress_manager.update_progress_with_step(1)
