@@ -37,6 +37,8 @@ PUBLISH_SOURCE_DIRNAME = "_src"
 PUBLISH_TEXTURES_DIRNAME = "tex"
 PUBLISH_TEXTURES_SOURCE_DIRNAME = "_src"
 PUBLISH_TEXTURES_PREVIEW_DIRNAME = "_preview"
+RIG_DIRNAME = "rig"
+RIG_VERSIONS_DIRNAME = ".versions"
 
 # Publish filenames
 PUBLISH_SOURCE_MODEL_FILENAME = "model.usd"
@@ -146,6 +148,14 @@ class AssetPaths:
         """Return the variant-scoped Substance project path in the asset root."""
         variant_name = variant.strip() or "main"
         return self.root / TEXTURES_VARIANT_TEMPLATE.format(variant=variant_name)
+
+    @property
+    def rig_path(self) -> Path:
+        return self.publish_dir / RIG_DIRNAME
+
+    @property
+    def rig_versions_path(self) -> Path:
+        return self.rig_path / RIG_VERSIONS_DIRNAME
 
     @property
     def asset_builder_path(self) -> Path:
