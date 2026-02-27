@@ -5,7 +5,14 @@ emission, and contract inspection.
 """
 
 from . import events
-from .config import TelemetryConfig, TelemetryLevel, default_spool_dir, load_config
+from .config import (
+    PlatformFlavor,
+    TelemetryConfig,
+    TelemetryLevel,
+    default_spool_dir,
+    detect_platform_flavor,
+    load_config,
+)
 from .context import (
     configure_session_context,
     get_host_context,
@@ -48,6 +55,8 @@ __all__ = [
     "events",
     "TelemetryConfig",
     "TelemetryLevel",
+    "PlatformFlavor",
+    "detect_platform_flavor",
     "default_spool_dir",
     "load_config",
     "new_session_id",
