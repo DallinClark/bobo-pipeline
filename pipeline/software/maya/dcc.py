@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     import typing
 
 from env import Executables
-from shared.util import get_production_path, get_rigging_path
+from shared.util import get_production_path, get_rig_build_path, get_rigging_path
 
 from ..baseclass import DCC
 
@@ -29,7 +29,7 @@ class MayaDCC(DCC):
     ) -> None:
         this_path = Path(__file__).resolve()
         pipe_path = this_path.parents[2]
-
+        rig_build_path = get_rig_build_path()
         system = platform.system()
 
         self.shelf_path = str(
@@ -95,6 +95,11 @@ class MayaDCC(DCC):
                     ]
                 ]
             ),
+            # Y-Rig Custom Components and Root Build Directory
+            "MGEAR_SHIFTER_COMPONENT_PATH": str(
+                pipe_path / "lib/y-rig/shifter/components/"
+            ),
+            "MGEAR_SHIFTER_CUSTOMSTEP_PATH": str(rig_build_path),
         }
 
         launch_command = ""
