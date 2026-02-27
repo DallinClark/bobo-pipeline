@@ -9,7 +9,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -344,6 +346,93 @@ def _finalize(result: HeadlessPublishResult) -> HeadlessPublishResult:
     return result
 
 
+def _component_build_mode(*, ensure_builder: bool, publish_requested: bool) -> str:
+    if ensure_builder and publish_requested:
+        return "ensure_and_publish"
+    if publish_requested:
+        return "publish_only"
+    if ensure_builder:
+        return "ensure_only"
+    return "none"
+
+
+def _result_message_count(result: HeadlessPublishResult, key: str) -> int:
+    entries = result.get(key)
+    if not isinstance(entries, list):
+        return 0
+    return len(entries)
+
+
+def _first_error_message(result: HeadlessPublishResult) -> str | None:
+    entries = result.get("errors")
+    if not isinstance(entries, list):
+        return None
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        message = str(entry.get("message", "")).strip()
+        if message:
+            return message
+    return None
+
+
+def _emit_houdini_component_telemetry(
+    result: HeadlessPublishResult, *, duration_ms: int
+) -> None:
+    try:
+        from pipe.telemetry import STATUS_ERROR, STATUS_SUCCESS, emit, events
+        from pipe.telemetry.registry import ERROR_HOUDINI_BUILD_FAILED
+    except Exception:
+        return
+
+    ensure_builder = bool(result.get("ensure_builder"))
+    publish_requested = bool(result.get("publish_requested"))
+    status_text = str(result.get("status", "failed")).strip().lower()
+    is_success = status_text == "success"
+
+    warnings_count = _result_message_count(result, "warnings")
+    errors_count = _result_message_count(result, "errors")
+    if not is_success and errors_count == 0:
+        errors_count = 1
+
+    payload = {
+        "mode": _component_build_mode(
+            ensure_builder=ensure_builder,
+            publish_requested=publish_requested,
+        ),
+        "variant": str(result.get("variant") or "main"),
+        "warnings_count": warnings_count,
+        "errors_count": errors_count,
+        "ensure_builder": ensure_builder,
+        "publish_requested": publish_requested,
+    }
+
+    scope = None
+    asset_name = str(result.get("asset_name") or "").strip()
+    if asset_name:
+        scope = {"asset": asset_name}
+
+    status = STATUS_SUCCESS if is_success else STATUS_ERROR
+    error = None
+    if not is_success:
+        error = {
+            "code": ERROR_HOUDINI_BUILD_FAILED,
+            "message": _first_error_message(result) or "Houdini component build failed",
+            "exception_type": "RuntimeError",
+        }
+
+    action_id = os.getenv("PIPE_TELEMETRY_ACTION_ID", "").strip() or None
+    emit(
+        events.EVENT_BUILD_HOUDINI_COMPONENT,
+        status=status,
+        action_id=action_id,
+        payload=payload,
+        metrics={"duration_ms": max(0, int(duration_ms))},
+        scope=scope,
+        error=error,
+    )
+
+
 def _configure_logging(level: str) -> None:
     level_name = level.upper().strip()
     numeric_level = getattr(logging, level_name, None)
@@ -431,6 +520,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv or sys.argv[1:])
     _configure_logging(args.log_level)
 
+    started_at = time.perf_counter()
     result = run_headless_publish(
         asset_root=Path(args.asset_root),
         asset_name=args.asset_name,
@@ -446,6 +536,8 @@ def main(argv: list[str] | None = None) -> int:
         fail_on_hook_error=args.fail_on_hook_error,
     )
 
+    duration_ms = int((time.perf_counter() - started_at) * 1000)
+    _emit_houdini_component_telemetry(result, duration_ms=duration_ms)
     _emit_result(result)
     return 1 if result["errors"] else 0
 

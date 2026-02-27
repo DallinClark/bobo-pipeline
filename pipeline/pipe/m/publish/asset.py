@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
+import time
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Sequence, cast
@@ -47,6 +48,7 @@ log = logging.getLogger(__name__)
 ENABLE_HOUDINI_ASSET_BUILD = True
 _HOUDINI_RESULT_START = "--BUILD-RESULT--"
 _HOUDINI_RESULT_END = "--END-BUILD-RESULT--"
+_TELEMETRY_ACTION_ID_ENV = "PIPE_TELEMETRY_ACTION_ID"
 
 
 class HoudiniBuildError(RuntimeError):
@@ -735,6 +737,96 @@ class AssetPublisher(Publisher):
             )
             raise
 
+    @staticmethod
+    def _component_build_mode(*, ensure_builder: bool, publish_requested: bool) -> str:
+        if ensure_builder and publish_requested:
+            return "ensure_and_publish"
+        if publish_requested:
+            return "publish_only"
+        if ensure_builder:
+            return "ensure_only"
+        return "none"
+
+    @staticmethod
+    def _result_message_count(payload: dict[str, Any] | None, key: str) -> int:
+        if not isinstance(payload, dict):
+            return 0
+        entries = payload.get(key)
+        if not isinstance(entries, list):
+            return 0
+        return len(entries)
+
+    @staticmethod
+    def _new_houdini_build_action_id() -> str | None:
+        try:
+            from pipe.telemetry import new_action_id
+        except Exception:
+            return None
+        return new_action_id()
+
+    def _emit_houdini_component_build_event(
+        self,
+        *,
+        status: str,
+        duration_ms: int,
+        variant: str,
+        ensure_builder: bool,
+        publish_requested: bool,
+        warnings_count: int,
+        errors_count: int,
+        action_id: str | None,
+        asset_name: str,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        exception_type: str | None = None,
+    ) -> None:
+        try:
+            from pipe.telemetry import STATUS_ERROR, STATUS_SUCCESS, emit, events
+        except Exception:
+            return
+
+        if status == "success":
+            status_value = STATUS_SUCCESS
+        else:
+            status_value = STATUS_ERROR
+
+        payload = {
+            "mode": self._component_build_mode(
+                ensure_builder=ensure_builder,
+                publish_requested=publish_requested,
+            ),
+            "variant": str(variant or "main"),
+            "warnings_count": max(0, int(warnings_count)),
+            "errors_count": max(0, int(errors_count)),
+            "ensure_builder": bool(ensure_builder),
+            "publish_requested": bool(publish_requested),
+        }
+
+        scope = self._get_publish_scope() or {}
+        if asset_name.strip():
+            scope = dict(scope)
+            scope.setdefault("asset", asset_name.strip())
+
+        error_data = None
+        if status == "error":
+            if not error_code:
+                return
+            error_data = {
+                "code": error_code,
+                "message": error_message or "Houdini component build failed",
+                "exception_type": exception_type or "RuntimeError",
+            }
+
+        emit(
+            events.EVENT_BUILD_HOUDINI_COMPONENT,
+            status=status_value,
+            action_id=action_id,
+            payload=payload,
+            metrics={"duration_ms": max(0, int(duration_ms))},
+            scope=scope or None,
+            error=error_data,
+        )
+
     def _presave(self) -> bool:
         return True
 
@@ -767,25 +859,94 @@ class AssetPublisher(Publisher):
             ).exec_()
 
     def _run_houdini_asset_builder(self, asset: Asset) -> None:
-        if getattr(self, "_publish_path", None) is None:
-            raise HoudiniBuildError(
-                "Publish path is undefined; cannot run Houdini publish."
+        ensure_builder_requested = True
+        publish_requested = True
+        variant = str(self._geo_variant or "main")
+        build_action_id = self._new_houdini_build_action_id()
+        build_started_at = time.perf_counter()
+        build_event_emitted = False
+
+        build_failed_code = "HOUDINI_BUILD_FAILED"
+        parse_failed_code = "HOUDINI_BUILD_RESULT_PARSE_FAILED"
+        try:
+            from pipe.telemetry.registry import (
+                ERROR_HOUDINI_BUILD_FAILED,
+                ERROR_HOUDINI_BUILD_RESULT_PARSE_FAILED,
             )
 
-        if not Executables.hython.exists():
-            raise HoudiniBuildError(
-                f"Houdini executable not found at {Executables.hython}"
+            build_failed_code = ERROR_HOUDINI_BUILD_FAILED
+            parse_failed_code = ERROR_HOUDINI_BUILD_RESULT_PARSE_FAILED
+        except Exception:
+            pass
+
+        asset_name = self._asset_name or (asset.name or "").strip()
+        if not asset_name and asset.asset_path:
+            asset_name = Path(asset.asset_path).name
+        if not asset_name:
+            asset_name = "asset"
+
+        def _duration_ms() -> int:
+            return max(0, int((time.perf_counter() - build_started_at) * 1000))
+
+        def _emit_terminal(
+            *,
+            status: str,
+            payload: dict[str, Any] | None = None,
+            error_code: str | None = None,
+            error_message: str | None = None,
+            exception_type: str | None = None,
+        ) -> None:
+            nonlocal build_event_emitted
+            if build_event_emitted:
+                return
+            build_event_emitted = True
+
+            warnings_count = self._result_message_count(payload, "warnings")
+            errors_count = self._result_message_count(payload, "errors")
+            if status == "error" and errors_count == 0:
+                errors_count = 1
+
+            self._emit_houdini_component_build_event(
+                status=status,
+                duration_ms=_duration_ms(),
+                variant=variant,
+                ensure_builder=ensure_builder_requested,
+                publish_requested=publish_requested,
+                warnings_count=warnings_count,
+                errors_count=errors_count,
+                action_id=build_action_id,
+                asset_name=asset_name,
+                error_code=error_code,
+                error_message=error_message,
+                exception_type=exception_type,
             )
+
+        if getattr(self, "_publish_path", None) is None:
+            message = "Publish path is undefined; cannot run Houdini publish."
+            _emit_terminal(
+                status="error",
+                error_code=build_failed_code,
+                error_message=message,
+                exception_type=HoudiniBuildError.__name__,
+            )
+            raise HoudiniBuildError(message)
+
+        if not Executables.hython.exists():
+            message = f"Houdini executable not found at {Executables.hython}"
+            _emit_terminal(
+                status="error",
+                error_code=build_failed_code,
+                error_message=message,
+                exception_type=HoudiniBuildError.__name__,
+            )
+            raise HoudiniBuildError(message)
 
         asset_paths = paths_for_asset(asset)
         hip_path = asset_paths.asset_builder_path
         self._component_hip_path = hip_path
         self._component_export_dir = asset_paths.publish_dir
 
-        asset_name = self._asset_name or (asset.name or "").strip()
-        if not asset_name and asset.asset_path:
-            asset_name = Path(asset.asset_path).name
-        if not asset_name:
+        if asset_name == "asset":
             asset_name = asset_paths.root.name
 
         command = [
@@ -797,7 +958,7 @@ class AssetPublisher(Publisher):
             "--asset-name",
             asset_name,
             "--variant",
-            self._geo_variant,
+            variant,
             "--ensure-builder",
             "--publish",
             "--respect-existing",
@@ -811,6 +972,8 @@ class AssetPublisher(Publisher):
         dcc = HoudiniDCC(is_python_shell=True)
         env = dcc._get_env_vars()
         env["PIPE_LOG_LEVEL"] = str(log.getEffectiveLevel())
+        if build_action_id:
+            env[_TELEMETRY_ACTION_ID_ENV] = build_action_id
 
         log.info(
             "Running Houdini headless publish for %s (variant=%s)",
@@ -826,25 +989,43 @@ class AssetPublisher(Publisher):
                 env=env,
             )
         except FileNotFoundError as exc:
-            raise HoudiniBuildError(
-                "Failed to execute hython; verify Houdini is installed."
-            ) from exc
+            message = "Failed to execute hython; verify Houdini is installed."
+            _emit_terminal(
+                status="error",
+                error_code=build_failed_code,
+                error_message=message,
+                exception_type=type(exc).__name__,
+            )
+            raise HoudiniBuildError(message) from exc
         except subprocess.CalledProcessError as exc:
             stdout = exc.stdout or ""
             stderr = exc.stderr or ""
             payload = self._parse_houdini_result_payload(stdout)
             if payload is not None:
                 self._houdini_result = payload
-                raise HoudiniBuildError(
-                    f"Build failed: {self._summarize_houdini_errors(payload)}"
-                ) from exc
+                message = f"Build failed: {self._summarize_houdini_errors(payload)}"
+                _emit_terminal(
+                    status="error",
+                    payload=payload,
+                    error_code=build_failed_code,
+                    error_message=message,
+                    exception_type=type(exc).__name__,
+                )
+                raise HoudiniBuildError(message) from exc
             if stdout:
                 log.error("Houdini asset builder stdout:\n%s", stdout)
             if stderr:
                 log.error("Houdini asset builder stderr:\n%s", stderr)
-            raise HoudiniBuildError(
+            message = (
                 f"Houdini component publish failed with exit code {exc.returncode}"
-            ) from exc
+            )
+            _emit_terminal(
+                status="error",
+                error_code=build_failed_code,
+                error_message=message,
+                exception_type=type(exc).__name__,
+            )
+            raise HoudiniBuildError(message) from exc
 
         # Parse the structured JSON output from the builder script
         stdout = result.stdout or ""
@@ -852,15 +1033,30 @@ class AssetPublisher(Publisher):
         if payload is None:
             log.error("Houdini asset builder stdout:\n%s", stdout)
             log.error("Houdini asset builder stderr:\n%s", result.stderr or "")
-            raise HoudiniBuildError(
-                "Failed to parse structured output from Houdini build."
+            message = "Failed to parse structured output from Houdini build."
+            _emit_terminal(
+                status="error",
+                error_code=parse_failed_code,
+                error_message=message,
+                exception_type="ResultParseError",
             )
+            raise HoudiniBuildError(message)
         self._houdini_result = payload
 
         if self._houdini_result.get("status") != "success":  # type: ignore[union-attr]
-            raise HoudiniBuildError(
+            message = (
                 f"Build failed: {self._summarize_houdini_errors(self._houdini_result)}"
             )
+            _emit_terminal(
+                status="error",
+                payload=self._houdini_result,
+                error_code=build_failed_code,
+                error_message=message,
+                exception_type=HoudiniBuildError.__name__,
+            )
+            raise HoudiniBuildError(message)
+
+        _emit_terminal(status="success", payload=self._houdini_result)
 
     @staticmethod
     def _parse_houdini_result_payload(stdout: str) -> dict[str, Any] | None:
