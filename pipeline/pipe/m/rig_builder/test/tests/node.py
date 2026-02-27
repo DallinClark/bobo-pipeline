@@ -11,7 +11,7 @@ class TestUnknownNodes(RigBuildTest):
     def __init__(self):
         super().__init__("No unknown nodes")
 
-    def run(self):
+    def run(self) -> bool:
         unknown_nodes = cmds.ls(type="unknown")
         if unknown_nodes:
             self.log_warn(f"Scene has unknown nodes: {unknown_nodes}")

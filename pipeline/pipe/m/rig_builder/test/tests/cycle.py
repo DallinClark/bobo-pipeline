@@ -32,7 +32,7 @@ class TestLargeCyclesEM(RigBuildTest):
     def __init__(self):
         super().__init__("No large cycles (EM)")
 
-    def run(self):
+    def run(self) -> bool:
         # invalidate the graph so we can query it after a build.
         cmds.evaluationManager(invalidate=True)
         evaluation_nodes: list[str] = get_evaluation_manager_nodes()

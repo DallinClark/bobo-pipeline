@@ -13,7 +13,7 @@ class TestControlsZeroed(RigBuildTest):
     def __init__(self):
         super().__init__("All controls zeroed")
 
-    def run(self):
+    def run(self) -> bool:
         controls = get_all_controls_by_name()
 
         EPSILON = 0.0001

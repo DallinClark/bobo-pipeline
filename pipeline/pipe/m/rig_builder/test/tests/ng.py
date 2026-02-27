@@ -13,7 +13,7 @@ class TestNgSkinData(RigBuildTest):
     def __init__(self):
         super().__init__("No NgSkinTools data nodes")
 
-    def run(self):
+    def run(self) -> bool:
         ng_data_nodes = cmds.ls(type="ngst2SkinLayerData")
         if ng_data_nodes:
             self.log_warn(f"Scene has ngst2SkinLayerData nodes: {ng_data_nodes}")

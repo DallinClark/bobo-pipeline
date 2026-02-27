@@ -13,7 +13,7 @@ class TestHiddenJoints(RigBuildTest):
     def __init__(self):
         super().__init__("No visible joints without shapes")
 
-    def run(self):
+    def run(self) -> bool:
         visiblity_on_joints = cmds.ls(type="joint", visible=True)
 
         visible_joints: list[str] = []

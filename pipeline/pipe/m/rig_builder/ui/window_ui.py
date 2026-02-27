@@ -25,7 +25,7 @@ class RigBuilderWindowUI(MayaQWidgetDockableMixin, QWidget):
         self.window_object_name = window_object_name
         self.setup_ui()
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         self.setObjectName(self.window_object_name)
         self.setWindowTitle("The Rig-Build-inator")
 

@@ -71,7 +71,7 @@ class RigBuilderWindow(RigBuilderWindowUI):
         parent: QWidget | None,
     ) -> None:
         super().__init__(parent=parent, window_object_name=WINDOW_OBJECT_NAME)
-        self.threads = []
+        self.threads: list[QtCore.QThread] = []
         self.connect_ui()
         self.load_data_async()  # Start loading after UI is initialized
 

@@ -78,11 +78,11 @@ class ProgressStep:
 class ProgressManager(QObject):
     progress_changed: Signal = Signal(float)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._progress: float = 0
 
-    def reset_progress(self):
+    def reset_progress(self) -> None:
         self._progress = 0
         self.progress_changed.emit(self._progress)
 
@@ -90,10 +90,10 @@ class ProgressManager(QObject):
         """Gives a progress between 0 and 1"""
         return self._progress
 
-    def update_progress(self):
+    def update_progress(self) -> None:
         self.progress_changed.emit(self._progress)
 
-    def update_progress_finished(self):
+    def update_progress_finished(self) -> None:
         self._progress = 1
         self.progress_changed.emit(self._progress)
 

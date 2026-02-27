@@ -55,7 +55,7 @@ class TestItem(QStandardItem):
 
 
 class TestSelectList(QListView):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setResizeMode(QListView.Adjust)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -71,21 +71,21 @@ class TestSelectList(QListView):
         self._progress_manager: TestProgressManager | None = None
         self._progress_slot = None
 
-    def populate_tests(self, tests: Sequence[RigBuildTest]):
+    def populate_tests(self, tests: Sequence[RigBuildTest]) -> None:
         for test in tests:
             self.add_item(test)
 
-    def add_item(self, test: RigBuildTest):
+    def add_item(self, test: RigBuildTest) -> None:
         item = TestItem(test)
         item.setCheckState(QtCore.Qt.CheckState.Checked)
         self.item_model.appendRow(item)
         self.test_items.append(item)
 
-    def clear_test_status(self):
+    def clear_test_status(self) -> None:
         for test_item in self.test_items:
             test_item.clear_status()
 
-    def run_tests(self, selected_only: bool = True):
+    def run_tests(self, selected_only: bool = True) -> None:
         self.clear_test_status()
         QApplication.processEvents()
 
@@ -106,7 +106,7 @@ class TestSelectList(QListView):
         self._progress_manager.update_progress_finished()
         self._progress_manager = None
 
-    def on_test_finished(self, test: RigBuildTest, passed: bool):
+    def on_test_finished(self, test: RigBuildTest, passed: bool) -> None:
         print(test, passed)
         for item in self.test_items:
             if type(item.test) is type(test):
@@ -116,19 +116,19 @@ class TestSelectList(QListView):
                 QApplication.processEvents()
                 break
 
-    def _on_test_finished_local(self, test: RigBuildTest, passed: bool):
+    def _on_test_finished_local(self, test: RigBuildTest, passed: bool) -> None:
         self.on_test_finished(test, passed)
         if self._progress_manager is not None:
             self._progress_manager.update_progress_from_test_run(test, passed)
 
-    def enable_all_tests(self):
+    def enable_all_tests(self) -> None:
         for test_item in self.test_items:
             test_item.setCheckState(QtCore.Qt.CheckState.Checked)
 
-    def disable_all_tests(self):
+    def disable_all_tests(self) -> None:
         for test_item in self.test_items:
             test_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
 
-    def connect_progress(self, progress_slot: Callable[[float], None]):
+    def connect_progress(self, progress_slot: Callable[[float], None]) -> None:
         """Stores the slot (e.g., progress_bar.update_progress) to connect later."""
-        self._progress_slot = progress_slot
+        self._progress_slot = progress_slot  # type: ignore
