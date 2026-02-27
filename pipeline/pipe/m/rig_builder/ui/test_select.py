@@ -100,20 +100,24 @@ class TestSelectList(QListView):
 
         test_runner = TestRunner(
             (test_item.test for test_item in self.test_items if test_item.is_enabled()),
-            test_run_callback=self._on_test_finished,
+            test_run_callback=self._on_test_finished_local,
         )
         test_runner.run_tests()
         self._progress_manager.update_progress_finished()
         self._progress_manager = None
 
-    def _on_test_finished(self, test: RigBuildTest, passed: bool):
+    def on_test_finished(self, test: RigBuildTest, passed: bool):
+        print(test, passed)
         for item in self.test_items:
-            if item.test == test:
+            if type(item.test) is type(test):
                 item.update_status(passed)
                 if not passed:
                     self.scrollTo(item.index(), QListView.ScrollHint.EnsureVisible)
                 QApplication.processEvents()
                 break
+
+    def _on_test_finished_local(self, test: RigBuildTest, passed: bool):
+        self.on_test_finished(test, passed)
         if self._progress_manager is not None:
             self._progress_manager.update_progress_from_test_run(test, passed)
 

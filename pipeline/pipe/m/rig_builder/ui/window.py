@@ -144,6 +144,8 @@ class RigBuilderWindow(RigBuilderWindowUI):
 
     def _build_test_publish(self):
         rig_publisher = publish.RigPublisher()
+        rig_publisher.connect_progress(self.rig_build_progress_bar.update_progress)
+        rig_publisher.connect_test_view(self.test_list.on_test_finished)
         rig_to_build = self._get_rig_to_build()
         if rig_to_build is None:
             log.error("Failed to build rig: no rig is selected.")
