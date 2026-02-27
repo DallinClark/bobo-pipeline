@@ -103,6 +103,22 @@ def classify_path(*args: Any, **kwargs: Any) -> Any:
     return _classify_path(*args, **kwargs)
 
 
+def poll_tractor_farm_snapshot(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.tractor_poll.poll_tractor_farm_snapshot``."""
+
+    from .tractor_poll import poll_tractor_farm_snapshot as _poll_tractor_farm_snapshot
+
+    return _poll_tractor_farm_snapshot(*args, **kwargs)
+
+
+def run_tractor_poll_loop(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.tractor_poll.run_tractor_poll_loop``."""
+
+    from .tractor_poll import run_tractor_poll_loop as _run_tractor_poll_loop
+
+    return _run_tractor_poll_loop(*args, **kwargs)
+
+
 __all__ = [
     "events",
     "TelemetryConfig",
@@ -144,6 +160,8 @@ __all__ = [
     "scan_storage",
     "build_storage_events",
     "classify_path",
+    "poll_tractor_farm_snapshot",
+    "run_tractor_poll_loop",
     "SCHEMA_VERSION",
     "STATUS_SUCCESS",
     "STATUS_ERROR",
