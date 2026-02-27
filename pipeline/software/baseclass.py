@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import subprocess
-
+import uuid
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -82,6 +82,71 @@ class DCC(DCCInterface):
         print(venv[PYTHONPATH])
         return venv
 
+    @staticmethod
+    def _command_basename(command: str) -> str:
+        normalized = str(command).strip().replace("\\", "/").rstrip("/")
+        if not normalized:
+            return "<empty>"
+        return normalized.split("/")[-1] or "<empty>"
+
+    def _launch_payload(
+        self, command: str, args: typing.Sequence[str] | None
+    ) -> dict[str, object]:
+        return {
+            "command_basename": self._command_basename(command),
+            "arg_count": len(list(args or [])),
+            "env_keys_set": sorted({str(key) for key in self.env_vars.keys()}),
+        }
+
+    def _emit_launch_event(
+        self,
+        *,
+        status: str,
+        action_id: str,
+        payload: dict[str, object],
+        error_message: str | None = None,
+        exception_type: str | None = None,
+    ) -> None:
+        # Keep launch behavior independent from telemetry import/runtime issues.
+        try:
+            from pipe.telemetry import (
+                STATUS_ERROR,
+                STATUS_SUCCESS,
+                emit,
+                events,
+                get_event_definition,
+            )
+        except Exception:
+            log.debug("Telemetry import unavailable for dcc.launch", exc_info=True)
+            return
+
+        if status == "success":
+            status_value = STATUS_SUCCESS
+        else:
+            status_value = STATUS_ERROR
+
+        error_data = None
+        if status == "error":
+            event_definition = get_event_definition(events.EVENT_DCC_LAUNCH)
+            error_code = (
+                event_definition.error_codes[0]
+                if event_definition.error_codes
+                else "UNKNOWN_DCC_LAUNCH_ERROR"
+            )
+            error_data = {
+                "code": error_code,
+                "message": error_message or "Unknown DCC launch failure",
+                "exception_type": exception_type,
+            }
+
+        emit(
+            events.EVENT_DCC_LAUNCH,
+            status=status_value,
+            action_id=action_id,
+            payload=payload,
+            error=error_data,
+        )
+
     def launch(
         self,
         command: str | None = None,
@@ -101,13 +166,42 @@ class DCC(DCCInterface):
         if pre_launch_tasks is None:
             pre_launch_tasks = self.pre_launch_tasks
 
-        fix_launcher_metadata()
-        pre_launch_tasks()
-        venv = self._get_env_vars()
+        launch_action_id = str(uuid.uuid4())
+        payload = self._launch_payload(command, args)
 
-        log.info("Launching the software")
-        log.debug(f"Command: {command}, Args: {args}")
-        subprocess.call([command] + list(args or []), env=venv)
+        try:
+            fix_launcher_metadata()
+            pre_launch_tasks()
+            venv = self._get_env_vars()
+
+            log.info("Launching the software")
+            log.debug(f"Command: {command}, Args: {args}")
+            return_code = subprocess.call([command] + list(args or []), env=venv)
+        except Exception as exc:
+            self._emit_launch_event(
+                status="error",
+                action_id=launch_action_id,
+                payload=payload,
+                error_message=str(exc),
+                exception_type=type(exc).__name__,
+            )
+            raise
+
+        if return_code == 0:
+            self._emit_launch_event(
+                status="success",
+                action_id=launch_action_id,
+                payload=payload,
+            )
+            return
+
+        self._emit_launch_event(
+            status="error",
+            action_id=launch_action_id,
+            payload=payload,
+            error_message=f"DCC exited with return code {return_code}",
+        )
+        log.warning("DCC launch returned non-zero exit code: %s", return_code)
 
 
 class DCCLocalizer(DCCLocalizerInterface):
