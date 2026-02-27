@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 from . import events
+from .context import extract_scope, new_action_id
 from .contract import serialize_event
 from .emit import emit
 from .registry import STATUS_INFO, STATUS_SUCCESS
@@ -196,6 +197,7 @@ def build_storage_events(
     """Build `storage.scan.summary` and `storage.scan.bucket` events."""
 
     scope_data = scope or {}
+    resolved_action_id = action_id or new_action_id()
     events_out: list[dict[str, object]] = []
 
     for key in sorted(
@@ -224,9 +226,10 @@ def build_storage_events(
                 "dir_count": metric.dir_count,
             },
             scope=scope_data,
-            action_id=action_id,
+            action_id=resolved_action_id,
         )
-        events_out.append(bucket_event)
+        if bucket_event is not None:
+            events_out.append(bucket_event)
 
     summary_event = emit(
         events.EVENT_STORAGE_SCAN_SUMMARY,
@@ -245,19 +248,15 @@ def build_storage_events(
             "dir_count_total": result.dir_count_total,
         },
         scope=scope_data,
-        action_id=action_id,
+        action_id=resolved_action_id,
     )
-    events_out.insert(0, summary_event)
+    if summary_event is not None:
+        events_out.insert(0, summary_event)
     return events_out
 
 
 def _scope_from_args(args: argparse.Namespace) -> dict[str, str]:
-    scope: dict[str, str] = {}
-    for field_name in ("show", "sequence", "shot", "asset", "department"):
-        value = getattr(args, field_name)
-        if value:
-            scope[field_name] = value
-    return scope
+    return extract_scope(vars(args))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -281,6 +280,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--shot")
     parser.add_argument("--asset")
     parser.add_argument("--department")
+    parser.add_argument("--task")
     parser.add_argument(
         "--print-events",
         action="store_true",

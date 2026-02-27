@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-import datetime
 import logging
 import re
 import threading
-import uuid
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
 from .config import load_config
-from .context import get_host_context, get_pipeline_context, get_session_context
+from .context import (
+    get_host_context,
+    get_pipeline_context,
+    get_scope_context,
+    get_session_context,
+    new_event_id,
+    utc_now_iso,
+)
 from .contract import (
     EventTooLargeError,
     sanitize_event,
@@ -83,14 +88,6 @@ def reset_emit_counters() -> None:
             _COUNTERS[key] = 0
 
 
-def _utc_now_iso() -> str:
-    return (
-        datetime.datetime.now(datetime.timezone.utc)
-        .isoformat(timespec="seconds")
-        .replace("+00:00", "Z")
-    )
-
-
 def _coerce_mapping(name: str, value: Optional[Mapping[str, Any]]) -> dict[str, Any]:
     if value is None:
         return {}
@@ -148,7 +145,7 @@ def build_event(
 
     payload_data = _coerce_mapping("payload", payload)
     metrics_data = _coerce_mapping("metrics", metrics)
-    scope_data = _coerce_mapping("scope", scope)
+    scope_data = get_scope_context(scope)
     error_data = _coerce_mapping("error", error)
 
     _validate_snake_case_payload_keys(payload_data)
@@ -179,21 +176,26 @@ def build_event(
     pipeline_data = _coerce_mapping("pipeline", pipeline)
     host_data = _coerce_mapping("host", host)
     session_data = _coerce_mapping("session", session)
+    default_session_data = get_session_context(action_id=action_id)
 
     if not pipeline_data:
         pipeline_data = get_pipeline_context()
     if not host_data:
         host_data = get_host_context()
     if not session_data:
-        session_data = get_session_context(action_id=action_id)
-    elif action_id and "action_id" not in session_data:
+        session_data = default_session_data
+    else:
+        session_data.setdefault("session_id", default_session_data["session_id"])
+        if "action_id" not in session_data and "action_id" in default_session_data:
+            session_data["action_id"] = default_session_data["action_id"]
+    if action_id is not None:
         session_data["action_id"] = action_id
 
     event: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
-        "event_id": str(uuid.uuid4()),
+        "event_id": new_event_id(),
         "event_type": event_type,
-        "occurred_at_utc": _utc_now_iso(),
+        "occurred_at_utc": utc_now_iso(),
         "status": status,
         "pipeline": pipeline_data,
         "host": host_data,

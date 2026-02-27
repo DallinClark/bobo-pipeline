@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any, Final, Mapping
 
+from .context import SCOPE_FIELDS
 from .registry import SCHEMA_VERSION, STATUS_ERROR, get_event_definition
 
 REQUIRED_ENVELOPE_KEYS: Final[tuple[str, ...]] = (
@@ -238,9 +239,41 @@ def validate_envelope(event: Mapping[str, Any]) -> None:
                 f"Event '{event_type}' field '{mapping_key}' must be a mapping"
             )
 
+    session = event["session"]
+    session_id = session.get("session_id")
+    if not isinstance(session_id, str) or not session_id.strip():
+        raise EventValidationError(
+            f"Event '{event_type}' session.session_id must be a non-empty string"
+        )
+    action_id = session.get("action_id")
+    if not isinstance(action_id, str) or not action_id.strip():
+        raise EventValidationError(
+            f"Event '{event_type}' session.action_id must be a non-empty string"
+        )
+
     scope = event.get("scope")
     if scope is not None and not isinstance(scope, Mapping):
         raise EventValidationError(f"Event '{event_type}' scope must be a mapping")
+    if isinstance(scope, Mapping):
+        unknown_scope_fields = [
+            str(key) for key in scope.keys() if str(key) not in SCOPE_FIELDS
+        ]
+        if unknown_scope_fields:
+            raise EventValidationError(
+                f"Event '{event_type}' scope has unsupported fields: {unknown_scope_fields}. "
+                f"Allowed: {SCOPE_FIELDS}"
+            )
+        for scope_key in SCOPE_FIELDS:
+            if scope_key not in scope:
+                continue
+            scope_value = scope.get(scope_key)
+            if scope_value is None:
+                continue
+            if not isinstance(scope_value, str) or not scope_value.strip():
+                raise EventValidationError(
+                    f"Event '{event_type}' scope.{scope_key} must be a non-empty string "
+                    "when provided"
+                )
 
     payload = event.get("payload")
     if not isinstance(payload, Mapping):
