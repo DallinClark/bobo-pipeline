@@ -119,6 +119,24 @@ def run_tractor_poll_loop(*args: Any, **kwargs: Any) -> Any:
     return _run_tractor_poll_loop(*args, **kwargs)
 
 
+def harvest_render_diagnostics(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.render_harvest.harvest_render_diagnostics``."""
+
+    from .render_harvest import (
+        harvest_render_diagnostics as _harvest_render_diagnostics,
+    )
+
+    return _harvest_render_diagnostics(*args, **kwargs)
+
+
+def run_render_harvest_loop(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.render_harvest.run_render_harvest_loop``."""
+
+    from .render_harvest import run_render_harvest_loop as _run_render_harvest_loop
+
+    return _run_render_harvest_loop(*args, **kwargs)
+
+
 __all__ = [
     "events",
     "TelemetryConfig",
@@ -162,6 +180,8 @@ __all__ = [
     "classify_path",
     "poll_tractor_farm_snapshot",
     "run_tractor_poll_loop",
+    "harvest_render_diagnostics",
+    "run_render_harvest_loop",
     "SCHEMA_VERSION",
     "STATUS_SUCCESS",
     "STATUS_ERROR",
