@@ -28,17 +28,132 @@ class TexConversionError(ChildProcessError):
 class TexConverter:
     tex_path: Path
     preview_path: Path
-    imgs_by_tex_set: typing.Iterable[list[str]]
+    imgs_by_tex_set: list[list[str]]
+    action_id: str | None
+    asset_name: str | None
+    geo_variant: str | None
+    material_variant: str | None
+    renderman_variant: str | None
+    batch_size: int
 
     def __init__(
         self,
         tex_path: Path,
         preview_path: Path,
         imgs_by_tex_set: typing.Iterable[list[str]],
+        *,
+        action_id: str | None = None,
+        asset_name: str | None = None,
+        geo_variant: str | None = None,
+        material_variant: str | None = None,
+        renderman_variant: str | None = None,
+        batch_size: int = 18,
     ) -> None:
         self.tex_path = tex_path
         self.preview_path = preview_path
-        self.imgs_by_tex_set = imgs_by_tex_set
+        self.imgs_by_tex_set = [list(imgs) for imgs in imgs_by_tex_set]
+        self.action_id = action_id
+        self.asset_name = asset_name
+        self.geo_variant = geo_variant
+        self.material_variant = material_variant
+        self.renderman_variant = renderman_variant
+        self.batch_size = max(1, int(batch_size))
+        self._last_converted_tex_count = 0
+        self._last_converted_preview_count = 0
+
+    def _source_count(self) -> int:
+        return sum(len(imgs) for imgs in self.imgs_by_tex_set)
+
+    def _telemetry_payload(
+        self,
+        *,
+        converted_tex_count: int,
+        converted_preview_count: int,
+    ) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "source_count": max(0, int(self._source_count())),
+            "converted_tex_count": max(0, int(converted_tex_count)),
+            "converted_preview_count": max(0, int(converted_preview_count)),
+            "batch_size": self.batch_size,
+        }
+        if self.asset_name:
+            payload["asset"] = str(self.asset_name)
+        if self.geo_variant:
+            payload["geo_variant"] = str(self.geo_variant)
+        if self.material_variant:
+            payload["material_variant"] = str(self.material_variant)
+        if self.renderman_variant:
+            payload["renderman_variant"] = str(self.renderman_variant)
+        return payload
+
+    def _telemetry_scope(self) -> dict[str, str] | None:
+        if not self.asset_name:
+            return None
+        return {"asset": str(self.asset_name)}
+
+    def _emit_conversion_event(
+        self,
+        *,
+        status: str,
+        converted_tex_count: int,
+        converted_preview_count: int,
+        duration_ms: int,
+        error_message: str | None = None,
+        exception_type: str | None = None,
+    ) -> None:
+        try:
+            from pipe.telemetry import STATUS_ERROR, STATUS_SUCCESS, emit, events
+            from pipe.telemetry.registry import ERROR_TEXTURE_CONVERSION_FAILED
+        except Exception:
+            return
+
+        status_value = STATUS_SUCCESS if status == "success" else STATUS_ERROR
+        error_data = None
+        if status == "error":
+            error_data = {
+                "code": ERROR_TEXTURE_CONVERSION_FAILED,
+                "message": error_message or "Texture conversion failed",
+                "exception_type": exception_type or "RuntimeError",
+            }
+
+        emit(
+            events.EVENT_TEXTURE_CONVERT_TEX,
+            status=status_value,
+            action_id=self.action_id,
+            payload=self._telemetry_payload(
+                converted_tex_count=converted_tex_count,
+                converted_preview_count=converted_preview_count,
+            ),
+            metrics={"duration_ms": max(0, int(duration_ms))},
+            scope=self._telemetry_scope(),
+            error=error_data,
+        )
+
+    def convert_all(self) -> tuple[list[Path], list[Path]]:
+        started_at = time.perf_counter()
+        converted_tex: list[Path] = []
+        converted_preview: list[Path] = []
+        try:
+            converted_tex = self.convert_tex()
+            converted_preview = self.convert_previewsurface()
+        except Exception as exc:
+            self._emit_conversion_event(
+                status="error",
+                converted_tex_count=self._last_converted_tex_count,
+                converted_preview_count=self._last_converted_preview_count,
+                duration_ms=int((time.perf_counter() - started_at) * 1000),
+                error_message=str(exc),
+                exception_type=type(exc).__name__,
+            )
+            raise
+
+        self._emit_conversion_event(
+            status="success",
+            converted_tex_count=len(converted_tex),
+            converted_preview_count=len(converted_preview),
+            duration_ms=int((time.perf_counter() - started_at) * 1000),
+        )
+        return converted_tex, converted_preview
 
     def convert_tex(self) -> list[Path]:
         """Convert all .png textures in the most recent export to .tex"""
@@ -127,8 +242,11 @@ class TexConverter:
                 else:
                     cmdlines.append(tex_cmd(img, ("Color" in img or "Emissive" in img)))
 
-        self._wait_and_check_cmds(pre_cmdlines, skip_check=True)
-        finished_imgs = self._wait_and_check_cmds(cmdlines)
+        self._wait_and_check_cmds(
+            pre_cmdlines, batch_size=self.batch_size, skip_check=True
+        )
+        finished_imgs = self._wait_and_check_cmds(cmdlines, batch_size=self.batch_size)
+        self._last_converted_tex_count = len(finished_imgs)
 
         if len(finished_imgs) != len(cmdlines):
             raise TexConversionError("Not all png textures were converted")
@@ -181,7 +299,8 @@ class TexConverter:
             jpeg_cmd(Path(root), sorted(imgs)) for root, imgs in img_list.items()
         ]
 
-        finished_imgs = self._wait_and_check_cmds(cmdlines)
+        finished_imgs = self._wait_and_check_cmds(cmdlines, batch_size=self.batch_size)
+        self._last_converted_preview_count = len(finished_imgs)
 
         if len(finished_imgs) != len(cmdlines):
             raise TexConversionError("Not all jpeg textures were converted")

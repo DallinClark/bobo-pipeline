@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -137,6 +138,98 @@ class Exporter:
             )
         return targets
 
+    @staticmethod
+    def _count_udim_sets(
+        export_settings_arr: typing.Iterable[TexSetExportSettings],
+    ) -> int:
+        count = 0
+        for export_settings in export_settings_arr:
+            try:
+                if export_settings.tex_set.has_uv_tiles():
+                    count += 1
+            except Exception:
+                continue
+        return count
+
+    def _texture_export_asset_name(self) -> str:
+        asset_name = str(getattr(self._asset, "name", "") or "").strip()
+        if asset_name:
+            return asset_name
+        asset_path = getattr(self._asset, "asset_path", None)
+        if asset_path:
+            return Path(str(asset_path)).name
+        return "unknown_asset"
+
+    def _texture_export_scope(self) -> dict[str, str] | None:
+        try:
+            from pipe.telemetry import extract_scope
+        except Exception:
+            return None
+        scope = extract_scope(self._asset)
+        return scope or None
+
+    @staticmethod
+    def _new_texture_action_id() -> str | None:
+        try:
+            from pipe.telemetry import new_action_id
+        except Exception:
+            return None
+        return new_action_id()
+
+    def _texture_export_payload(
+        self,
+        *,
+        geo_variant: str,
+        material_variant: str,
+        renderman_variant: str,
+        texture_set_count: int,
+        udim_set_count: int,
+    ) -> dict[str, object]:
+        return {
+            "asset": self._texture_export_asset_name(),
+            "geo_variant": str(geo_variant or "main"),
+            "material_variant": str(material_variant or "main"),
+            "renderman_variant": str(renderman_variant or "main"),
+            "texture_set_count": max(0, int(texture_set_count)),
+            "udim_set_count": max(0, int(udim_set_count)),
+        }
+
+    def _emit_texture_export_event(
+        self,
+        *,
+        status: str,
+        action_id: str | None,
+        payload: dict[str, object],
+        duration_ms: int,
+        error_message: str | None = None,
+        exception_type: str | None = None,
+    ) -> None:
+        try:
+            from pipe.telemetry import STATUS_ERROR, STATUS_SUCCESS, emit, events
+            from pipe.telemetry.registry import ERROR_TEXTURE_EXPORT_FAILED
+        except Exception:
+            return
+
+        status_value = STATUS_SUCCESS if status == "success" else STATUS_ERROR
+
+        error_data = None
+        if status == "error":
+            error_data = {
+                "code": ERROR_TEXTURE_EXPORT_FAILED,
+                "message": error_message or "Texture export failed",
+                "exception_type": exception_type or "RuntimeError",
+            }
+
+        emit(
+            events.EVENT_TEXTURE_EXPORT_SUBSTANCE,
+            status=status_value,
+            action_id=action_id,
+            payload=payload,
+            metrics={"duration_ms": max(0, int(duration_ms))},
+            scope=self._texture_export_scope(),
+            error=error_data,
+        )
+
     def export(
         self,
         exp_setting_arr: typing.Sequence[TexSetExportSettings],
@@ -145,19 +238,50 @@ class Exporter:
         material_layer: str,
     ) -> bool:
         """Export all the textures of the given Texture Sets"""
+        export_action_id = self._new_texture_action_id()
+        export_started_at = time.perf_counter()
+        export_payload = self._texture_export_payload(
+            geo_variant=geo_var,
+            material_variant=mat_var,
+            renderman_variant=material_layer,
+            texture_set_count=len(exp_setting_arr),
+            udim_set_count=self._count_udim_sets(exp_setting_arr),
+        )
+
+        def _duration_ms() -> int:
+            return max(0, int((time.perf_counter() - export_started_at) * 1000))
+
         self._init_paths(mat_var, geo_var, material_layer)
         log.info("Exporting textures to %s", self._out_path)
 
         resolved_targets = self._resolve_export_targets(exp_setting_arr)
         if not resolved_targets:
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message="No valid texture export targets resolved",
+                exception_type="ExportTargetResolutionError",
+            )
             return False
+
+        export_payload = self._texture_export_payload(
+            geo_variant=geo_var,
+            material_variant=mat_var,
+            renderman_variant=material_layer,
+            texture_set_count=len(resolved_targets),
+            udim_set_count=self._count_udim_sets(
+                [target.settings for target in resolved_targets]
+            ),
+        )
 
         config = Exporter._generate_config(self._src_path, resolved_targets)
         log.debug(config)
 
         try:
             planned_exports = sp.export.list_project_textures(config)
-        except Exception:
+        except Exception as exc:
             log.exception("Export configuration is invalid for this project.")
             MessageDialog(
                 get_main_qt_window(),
@@ -165,6 +289,14 @@ class Exporter:
                 "Check enabled texture sets and channel settings, then try again.",
                 "Invalid Export Configuration",
             ).exec_()
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message=str(exc),
+                exception_type=type(exc).__name__,
+            )
             return False
 
         if not any(planned_exports.values()):
@@ -174,13 +306,29 @@ class Exporter:
                 "Nothing To Export",
             ).exec_()
             log.warning("Export aborted: no matching textures in export configuration.")
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message="No textures match current export configuration",
+                exception_type="NoExportsPlanned",
+            )
             return False
 
         export_result: sp.export.TextureExportResult
         try:
             export_result = sp.export.export_project_textures(config)
-        except Exception:
+        except Exception as exc:
             log.exception("Texture export failed in Substance Painter.")
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message=str(exc),
+                exception_type=type(exc).__name__,
+            )
             return False
 
         if export_result.status == sp.export.ExportStatus.Cancelled:
@@ -190,6 +338,14 @@ class Exporter:
                 "Texture export was cancelled.",
                 "Export Cancelled",
             ).exec_()
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message="Texture export was cancelled",
+                exception_type="ExportCancelled",
+            )
             return False
 
         if export_result.status == sp.export.ExportStatus.Warning:
@@ -198,23 +354,62 @@ class Exporter:
             )
         elif export_result.status != sp.export.ExportStatus.Success:
             log.error("Texture export failed with status %s", export_result.status)
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message=f"Texture export failed with status {export_result.status}",
+                exception_type="ExportStatusError",
+            )
             return False
 
         if not export_result.textures:
             log.error("Texture export produced no files.")
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message="Texture export produced no files",
+                exception_type="EmptyExportResult",
+            )
             return False
 
-        self.write_mat_info([target.settings for target in resolved_targets])
+        try:
+            self.write_mat_info([target.settings for target in resolved_targets])
+        except Exception as exc:
+            log.exception("Failed to write material info metadata.")
+            self._emit_texture_export_event(
+                status="error",
+                action_id=export_action_id,
+                payload=export_payload,
+                duration_ms=_duration_ms(),
+                error_message=str(exc),
+                exception_type=type(exc).__name__,
+            )
+            return False
+
+        self._emit_texture_export_event(
+            status="success",
+            action_id=export_action_id,
+            payload=export_payload,
+            duration_ms=_duration_ms(),
+        )
 
         tex_converter = TexConverter(
             self._tex_path,
             self._preview_path,
             list(export_result.textures.values()),
+            action_id=export_action_id,
+            asset_name=self._texture_export_asset_name(),
+            geo_variant=geo_var,
+            material_variant=mat_var,
+            renderman_variant=material_layer,
         )
 
         try:
-            tex_converter.convert_tex()
-            tex_converter.convert_previewsurface()
+            tex_converter.convert_all()
         except TexConversionError:
             log.exception("Texture conversion failed.")
             MessageDialog(
