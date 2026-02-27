@@ -4,6 +4,8 @@ Step 4 exposes a thin public API for telemetry configuration, context,
 emission, and contract inspection.
 """
 
+from typing import Any
+
 from . import events
 from .config import (
     PlatformFlavor,
@@ -67,7 +69,6 @@ from .spool import (
     configure_spool_writer,
     get_spool_writer,
 )
-from .storage_scan import build_storage_events, classify_path, scan_storage
 
 
 def render_contract_markdown() -> str:
@@ -76,6 +77,30 @@ def render_contract_markdown() -> str:
     from .docs import render_contract_markdown as _render_contract_markdown
 
     return _render_contract_markdown()
+
+
+def scan_storage(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.storage_scan.scan_storage``."""
+
+    from .storage_scan import scan_storage as _scan_storage
+
+    return _scan_storage(*args, **kwargs)
+
+
+def build_storage_events(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.storage_scan.build_storage_events``."""
+
+    from .storage_scan import build_storage_events as _build_storage_events
+
+    return _build_storage_events(*args, **kwargs)
+
+
+def classify_path(*args: Any, **kwargs: Any) -> Any:
+    """Proxy to ``pipe.telemetry.storage_scan.classify_path``."""
+
+    from .storage_scan import classify_path as _classify_path
+
+    return _classify_path(*args, **kwargs)
 
 
 __all__ = [
