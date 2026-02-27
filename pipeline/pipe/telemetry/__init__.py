@@ -1,10 +1,20 @@
 """Telemetry package public exports.
 
-Step 3 exposes the frozen v1.0 contract, registry-backed event constants,
-and the explicit emit API used for greppable instrumentation.
+Step 4 exposes a thin public API for telemetry configuration, context,
+emission, and contract inspection.
 """
 
 from . import events
+from .config import TelemetryConfig, TelemetryLevel, default_spool_dir, load_config
+from .context import (
+    configure_session_context,
+    get_host_context,
+    get_pipeline_context,
+    get_session_context,
+    new_action_id,
+    new_session_id,
+)
+from .docs import render_contract_markdown
 from .emit import build_event, emit
 from .registry import (
     ERROR_CODES,
@@ -25,11 +35,38 @@ from .registry import (
     list_event_definitions,
     list_event_types,
 )
+from .spool import (
+    JsonlSpoolWriter,
+    MemorySpoolWriter,
+    NullSpoolWriter,
+    configure_spool_writer,
+    get_spool_writer,
+)
+from .storage_scan import build_storage_events, classify_path, scan_storage
 
 __all__ = [
     "events",
+    "TelemetryConfig",
+    "TelemetryLevel",
+    "default_spool_dir",
+    "load_config",
+    "new_session_id",
+    "new_action_id",
+    "configure_session_context",
+    "get_session_context",
+    "get_host_context",
+    "get_pipeline_context",
     "emit",
     "build_event",
+    "NullSpoolWriter",
+    "MemorySpoolWriter",
+    "JsonlSpoolWriter",
+    "configure_spool_writer",
+    "get_spool_writer",
+    "render_contract_markdown",
+    "scan_storage",
+    "build_storage_events",
+    "classify_path",
     "SCHEMA_VERSION",
     "STATUS_SUCCESS",
     "STATUS_ERROR",

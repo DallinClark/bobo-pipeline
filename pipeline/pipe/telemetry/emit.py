@@ -11,6 +11,13 @@ import re
 import uuid
 from typing import Any, Mapping, Optional
 
+from .config import load_config
+from .context import get_host_context, get_pipeline_context, get_session_context
+from .contract import (
+    enforce_max_event_size,
+    normalize_error,
+    validate_envelope,
+)
 from .registry import (
     SCHEMA_VERSION,
     STATUS_ERROR,
@@ -18,6 +25,7 @@ from .registry import (
     StatusValue,
     get_event_definition,
 )
+from .spool import get_spool_writer
 
 _SNAKE_CASE_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
@@ -63,10 +71,14 @@ def build_event(
     scope: Optional[Mapping[str, Any]] = None,
     error: Optional[Mapping[str, Any]] = None,
     action_id: Optional[str] = None,
+    pipeline: Optional[Mapping[str, Any]] = None,
+    host: Optional[Mapping[str, Any]] = None,
+    session: Optional[Mapping[str, Any]] = None,
+    include_stacktrace: bool = False,
 ) -> dict[str, Any]:
     """Build and validate a telemetry event envelope.
 
-    This function validates the greppability conventions:
+    This function confirms the following:
     - event type exists in the registry
     - status is allowed for the event type
     - required payload and metrics keys are present
@@ -121,9 +133,21 @@ def build_event(
             f"Event '{event_type}' with status='error' must include error data"
         )
 
-    session_data: dict[str, Any] = {}
-    if action_id:
+    pipeline_data = _coerce_mapping("pipeline", pipeline)
+    host_data = _coerce_mapping("host", host)
+    session_data = _coerce_mapping("session", session)
+
+    if not pipeline_data:
+        pipeline_data = get_pipeline_context()
+    if not host_data:
+        host_data = get_host_context()
+    if not session_data:
+        session_data = get_session_context(action_id=action_id)
+    elif action_id and "action_id" not in session_data:
         session_data["action_id"] = action_id
+
+    if error_data:
+        error_data = normalize_error(error_data, include_stacktrace=include_stacktrace)
 
     event: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -131,6 +155,9 @@ def build_event(
         "event_type": event_type,
         "occurred_at_utc": _utc_now_iso(),
         "status": status,
+        "pipeline": pipeline_data,
+        "host": host_data,
+        "session": session_data,
         "payload": payload_data,
     }
 
@@ -140,8 +167,8 @@ def build_event(
         event["scope"] = scope_data
     if error_data:
         event["error"] = error_data
-    if session_data:
-        event["session"] = session_data
+
+    validate_envelope(event)
 
     return event
 
@@ -158,11 +185,12 @@ def emit(
 ) -> dict[str, Any]:
     """Validate and build one telemetry event.
 
-    Runtime dispatch/spooling is added in a later step; for now this keeps
-    callsites explicit and testable while locking conventions.
+    Events are validated against the registry and written through the configured
+    spool writer when telemetry is enabled.
     """
 
-    return build_event(
+    config = load_config()
+    event = build_event(
         event_type,
         status=status,
         payload=payload,
@@ -170,7 +198,19 @@ def emit(
         scope=scope,
         error=error,
         action_id=action_id,
+        include_stacktrace=config.include_stacktrace,
     )
+    enforce_max_event_size(event, config.max_event_bytes)
+
+    if config.enabled:
+        writer = get_spool_writer()
+        try:
+            writer.write_event(event)
+        except Exception:
+            # Fail-open behavior: telemetry must not break production workflows.
+            pass
+
+    return event
 
 
 __all__ = ["emit", "build_event", "is_snake_case_key"]
