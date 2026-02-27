@@ -60,6 +60,8 @@ from .registry import (
     list_event_types,
 )
 from .spool import (
+    AsyncJsonlSpoolWriter,
+    AsyncSpoolStats,
     JsonlSpoolWriter,
     MemorySpoolWriter,
     NullSpoolWriter,
@@ -101,6 +103,8 @@ __all__ = [
     "NullSpoolWriter",
     "MemorySpoolWriter",
     "JsonlSpoolWriter",
+    "AsyncSpoolStats",
+    "AsyncJsonlSpoolWriter",
     "configure_spool_writer",
     "get_spool_writer",
     "render_contract_markdown",
