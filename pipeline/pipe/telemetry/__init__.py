@@ -22,7 +22,13 @@ from .context import (
     new_session_id,
 )
 from .docs import render_contract_markdown
-from .emit import build_event, emit
+from .emit import (
+    EmitCounters,
+    build_event,
+    emit,
+    get_emit_counters,
+    reset_emit_counters,
+)
 from .registry import (
     ERROR_CODES,
     EVENT_DEFINITIONS,
@@ -67,6 +73,9 @@ __all__ = [
     "get_pipeline_context",
     "emit",
     "build_event",
+    "EmitCounters",
+    "get_emit_counters",
+    "reset_emit_counters",
     "NullSpoolWriter",
     "MemorySpoolWriter",
     "JsonlSpoolWriter",
