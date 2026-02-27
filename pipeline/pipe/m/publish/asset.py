@@ -531,104 +531,209 @@ class AssetPublisher(Publisher):
         return message
 
     def publish(self):
-        with maintain_selection():
-            self._backup_result = None
-            self._backup_status = None
-            if not self._ensure_scene_saved():
-                return
-
-            if not self._prepublish():
-                return
-
-            if entity_list := self._get_entity_list():
-                if self._dialog_T in (
-                    PublishAssetOptionsDialog,
-                    PublishAssetPickerDialog,
-                ):
-                    self._dialog = self._dialog_T(self._window, entity_list, self._conn)
-                else:
-                    self._dialog = self._dialog_T(self._window, entity_list)
-
-                if not self._dialog.exec_():
+        publish_telemetry = self._new_publish_telemetry_state()
+        publish_path: Path | None = None
+        try:
+            with maintain_selection():
+                self._backup_result = None
+                self._backup_status = None
+                if not self._ensure_scene_saved():
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="precheck",
+                        error_message="Scene must be saved before publishing",
+                        exception_type="PrepublishFailed",
+                        publish_path=publish_path,
+                    )
                     return
 
-                self._selected_item = self._dialog.get_selected_item()
-                if self._selected_item is None:
-                    MessageDialog(
-                        self._window,
-                        "Error: Nothing selected. Nothing exported",
-                        "Error",
-                    ).exec_()
+                if not self._prepublish():
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="precheck",
+                        error_message="Publish precheck failed before export",
+                        exception_type="PrepublishFailed",
+                        publish_path=publish_path,
+                    )
                     return
 
-                if self._use_sg_entity:
-                    try:
-                        self._entity = self._get_entity_from_name(self._selected_item)
-                    except AssertionError:
-                        entity_label = Asset.__name__
-                        MessageDialog(
-                            self._window,
-                            "Error: The selected item did not correspond to a valid "
-                            f"{entity_label} in ShotGrid. Please "
-                            "report this error. Nothing exported",
-                            "Error",
-                        ).exec_()
+                if entity_list := self._get_entity_list():
+                    if self._dialog_T in (
+                        PublishAssetOptionsDialog,
+                        PublishAssetPickerDialog,
+                    ):
+                        self._dialog = self._dialog_T(
+                            self._window, entity_list, self._conn
+                        )
+                    else:
+                        self._dialog = self._dialog_T(self._window, entity_list)
+
+                    if not self._dialog.exec_():
                         return
 
-            self._publish_path = self._get_save_path()
-            if not self._publish_path:
-                mc.error("No save path found!")
-                return
+                    self._selected_item = self._dialog.get_selected_item()
+                    if self._selected_item is None:
+                        MessageDialog(
+                            self._window,
+                            "Error: Nothing selected. Nothing exported",
+                            "Error",
+                        ).exec_()
+                        self._emit_publish_error(
+                            publish_telemetry,
+                            error_code_name="precheck",
+                            error_message="No publish target selected",
+                            exception_type="SelectionError",
+                            publish_path=publish_path,
+                        )
+                        return
 
-            if not self._presave():
-                return
+                    if self._use_sg_entity:
+                        try:
+                            self._entity = self._get_entity_from_name(
+                                self._selected_item
+                            )
+                        except AssertionError as exc:
+                            entity_label = Asset.__name__
+                            MessageDialog(
+                                self._window,
+                                "Error: The selected item did not correspond to a valid "
+                                f"{entity_label} in ShotGrid. Please "
+                                "report this error. Nothing exported",
+                                "Error",
+                            ).exec_()
+                            self._emit_publish_error(
+                                publish_telemetry,
+                                error_code_name="precheck",
+                                error_message=str(exc)
+                                or "Selected item is not a valid SG entity",
+                                exception_type=type(exc).__name__,
+                                publish_path=publish_path,
+                            )
+                            return
 
-            self._publish_path.parent.mkdir(parents=True, exist_ok=True)
-            temp_publish_path = (
-                os.getenv("TEMP", "") + os.pathsep + self._publish_path.name
-            )
+                self._restart_publish_telemetry_timer(publish_telemetry)
+                self._publish_path = self._get_save_path()
+                publish_path = self._publish_path
+                if not self._publish_path:
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="precheck",
+                        error_message="No publish path resolved",
+                        exception_type="PathResolutionError",
+                        publish_path=publish_path,
+                    )
+                    mc.error("No save path found!")
+                    return
 
-            kwargs = {
-                "file": str(
-                    temp_publish_path if self._IS_WINDOWS else self._publish_path
-                ),
-                "selection": True,
-                "stripNamespaces": True,
-                **self._get_mayausd_kwargs(),
-            }
+                if not self._presave():
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="precheck",
+                        error_message="Publish presave checks failed",
+                        exception_type="PresaveFailed",
+                        publish_path=publish_path,
+                    )
+                    return
 
-            try:
-                mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
-            except Exception:
-                print(traceback.format_exc())
+                self._publish_path.parent.mkdir(parents=True, exist_ok=True)
+                temp_publish_path = (
+                    os.getenv("TEMP", "") + os.pathsep + self._publish_path.name
+                )
+
+                kwargs = {
+                    "file": str(
+                        temp_publish_path if self._IS_WINDOWS else self._publish_path
+                    ),
+                    "selection": True,
+                    "stripNamespaces": True,
+                    **self._get_mayausd_kwargs(),
+                }
+
+                try:
+                    mc.mayaUSDExport(**kwargs)  # type: ignore[attr-defined]
+                except Exception as exc:
+                    print(traceback.format_exc())
+                    MessageDialog(
+                        self._window,
+                        "WARNING: Publish failed! Please check the console for more information",
+                        "Export Failed",
+                    ).exec_()
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="export",
+                        error_message=str(exc),
+                        exception_type=type(exc).__name__,
+                        publish_path=publish_path,
+                    )
+                    return
+
+                if self._IS_WINDOWS:
+                    try:
+                        shutil.move(temp_publish_path, self._publish_path)
+                    except Exception as exc:
+                        self._emit_publish_error(
+                            publish_telemetry,
+                            error_code_name="windows_move",
+                            error_message=str(exc),
+                            exception_type=type(exc).__name__,
+                            publish_path=publish_path,
+                        )
+                        raise
+
+                try:
+                    self._postpublish()
+                except Exception as exc:
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="copy",
+                        error_message=str(exc),
+                        exception_type=type(exc).__name__,
+                        publish_path=publish_path,
+                    )
+                    raise
+
+                asset = None
+                if getattr(self, "_entity", None):
+                    asset = cast(Asset, self._entity)
+                if asset is None:
+                    asset = self._scene_asset or self._resolve_scene_asset()
+                try:
+                    if asset:
+                        self._run_backup(asset)
+                    else:
+                        self._backup_status = (
+                            "Backup skipped: asset could not be resolved."
+                        )
+                        log.warning("Backup skipped: asset could not be resolved.")
+                except Exception as exc:
+                    self._emit_publish_error(
+                        publish_telemetry,
+                        error_code_name="copy",
+                        error_message=str(exc),
+                        exception_type=type(exc).__name__,
+                        publish_path=publish_path,
+                    )
+                    raise
+
+                self._emit_publish_success(
+                    publish_telemetry,
+                    publish_path=publish_path,
+                )
+
                 MessageDialog(
                     self._window,
-                    "WARNING: Publish failed! Please check the console for more information",
-                    "Export Failed",
+                    self._get_confirm_message(),
+                    "Export Complete",
                 ).exec_()
-                return
-
-            if self._IS_WINDOWS:
-                shutil.move(temp_publish_path, self._publish_path)
-
-            self._postpublish()
-
-            asset = None
-            if getattr(self, "_entity", None):
-                asset = cast(Asset, self._entity)
-            if asset is None:
-                asset = self._scene_asset or self._resolve_scene_asset()
-            if asset:
-                self._run_backup(asset)
-            else:
-                self._backup_status = "Backup skipped: asset could not be resolved."
-                log.warning("Backup skipped: asset could not be resolved.")
-
-            MessageDialog(
-                self._window,
-                self._get_confirm_message(),
-                "Export Complete",
-            ).exec_()
+        except Exception as exc:
+            self._emit_publish_error(
+                publish_telemetry,
+                error_code_name="precheck",
+                error_message=str(exc),
+                exception_type=type(exc).__name__,
+                publish_path=publish_path,
+            )
+            raise
 
     def _presave(self) -> bool:
         return True
