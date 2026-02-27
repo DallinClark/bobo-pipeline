@@ -9,7 +9,9 @@ from typing import Optional, Sequence
 
 from .registry import ERROR_CODES, EVENT_DEFINITIONS, SCHEMA_VERSION
 
-DEFAULT_OUTPUT_PATH = Path("docs/telemetry/EVENT_CONTRACT.md")
+DEFAULT_OUTPUT_PATH = Path(
+    "pipeline/pipe/telemetry/generated/EVENT_CONTRACT.generated.md"
+)
 
 
 def render_contract_markdown() -> str:
@@ -108,7 +110,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 0
         sys.stderr.write(
             "Telemetry event contract is stale. Regenerate with:\n"
-            "  python -m pipe.telemetry.docs > docs/telemetry/EVENT_CONTRACT.md\n"
+            "  python -m pipe.telemetry.docs --output "
+            f"{output_path}\n"
         )
         return 1
 

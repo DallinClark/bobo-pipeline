@@ -30,7 +30,9 @@ ScopeType = str
 Category = str
 
 STORAGE_RULES_ENVVAR = "PIPE_TELEMETRY_STORAGE_RULES_FILE"
-BUILTIN_STORAGE_RULES_FILE = Path(__file__).with_name("storage_category_rules.json")
+BUILTIN_STORAGE_RULES_FILE = (
+    Path(__file__).resolve().parent / "rules" / "storage_categories.v1.json"
+)
 DEFAULT_CATEGORY = "other"
 
 
