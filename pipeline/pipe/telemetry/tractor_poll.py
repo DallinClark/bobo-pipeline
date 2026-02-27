@@ -7,10 +7,14 @@ time-series event for queue pressure and farm utilization.
 from __future__ import annotations
 
 import argparse
+import json
+import ssl
 import sys
 import time
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional, Sequence
+from urllib import request as urllib_request
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
 from . import events
@@ -22,6 +26,7 @@ from .registry import ERROR_TRACTOR_SNAPSHOT_FAILED, STATUS_ERROR, STATUS_INFO
 DEFAULT_POLL_INTERVAL_SECONDS = 300
 DEFAULT_ENGINE_PORT = 80
 DEFAULT_MIN_MATCHED_FIELDS = 4
+DEFAULT_HTTP_TIMEOUT_SECONDS = 10
 
 _WAITING_PATH_CANDIDATES: tuple[tuple[str, ...], ...] = (
     ("jobs", "waiting"),
@@ -115,8 +120,13 @@ class TractorEndpoint:
     """Resolved Tractor endpoint for polling."""
 
     engine_url: str
+    scheme: str
     hostname: str
     port: int
+
+    @property
+    def base_url(self) -> str:
+        return f"{self.scheme}://{self.hostname}:{self.port}"
 
 
 def _normalize_key(value: str) -> str:
@@ -248,23 +258,34 @@ def resolve_tractor_endpoint(
     parsed = (
         urlparse(cleaned)
         if "://" in cleaned
-        else urlparse(f"//{cleaned}", scheme="tractor")
+        else urlparse(f"//{cleaned}", scheme="http")
     )
     hostname = parsed.hostname or cleaned
     if not hostname:
         raise ValueError(f"unable to resolve hostname from engine_url={engine_url!r}")
 
+    scheme = parsed.scheme.strip().lower() if parsed.scheme else "http"
+    if scheme not in ("http", "https"):
+        # Tractor EngineClient can still connect over TCP with non-http schemes.
+        # HTTP fallback requires http/https, so normalize unknown scheme to http.
+        scheme = "http"
+
     port = engine_port if engine_port is not None else parsed.port
     if port is None:
-        port = DEFAULT_ENGINE_PORT
+        port = 443 if scheme == "https" else DEFAULT_ENGINE_PORT
     if port < 1:
         raise ValueError(f"engine_port must be >= 1, got {port}")
 
-    return TractorEndpoint(engine_url=cleaned, hostname=hostname, port=port)
+    return TractorEndpoint(
+        engine_url=cleaned,
+        scheme=scheme,
+        hostname=hostname,
+        port=port,
+    )
 
 
-def fetch_tractor_queue_stats(endpoint: TractorEndpoint) -> Any:
-    """Fetch queue stats payload from Tractor Engine API."""
+def _fetch_queue_stats_via_python_api(endpoint: TractorEndpoint) -> Any:
+    """Fetch queue stats via Tractor Python API."""
 
     try:
         import tractor.api.author as tractor_author
@@ -286,10 +307,231 @@ def fetch_tractor_queue_stats(endpoint: TractorEndpoint) -> Any:
     return queue_stats
 
 
+def _http_json_get(url: str, *, timeout_seconds: int) -> Any:
+    request = urllib_request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "sandwich-pipeline-telemetry/1.0",
+        },
+    )
+    try:
+        with urllib_request.urlopen(
+            request,
+            timeout=timeout_seconds,
+            context=ssl.create_default_context(),
+        ) as response:
+            payload_bytes = response.read()
+    except HTTPError as exc:
+        body = exc.read(256).decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"HTTP {exc.code} for {url}: {body.strip() or exc.reason}"
+        ) from exc
+    except URLError as exc:
+        raise RuntimeError(f"URL error for {url}: {exc.reason}") from exc
+
+    try:
+        return json.loads(payload_bytes.decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"Invalid JSON from {url}") from exc
+
+
+def _fetch_queue_stats_via_http(
+    endpoint: TractorEndpoint, *, timeout_seconds: int
+) -> dict[str, Any]:
+    """Fetch farm stats using Tractor HTTP monitor endpoints."""
+
+    status = _http_json_get(
+        f"{endpoint.base_url}/Tractor/ctrl?q=status",
+        timeout_seconds=timeout_seconds,
+    )
+    blades = _http_json_get(
+        f"{endpoint.base_url}/Tractor/monitor?q=blades",
+        timeout_seconds=timeout_seconds,
+    )
+    jobs = _http_json_get(
+        f"{endpoint.base_url}/Tractor/monitor?q=jobs",
+        timeout_seconds=timeout_seconds,
+    )
+    return {
+        "_source": "tractor_http",
+        "status": status,
+        "blades": blades,
+        "jobs": jobs,
+    }
+
+
+def fetch_tractor_queue_stats(
+    endpoint: TractorEndpoint,
+    *,
+    prefer_python_api: bool = True,
+    timeout_seconds: int = DEFAULT_HTTP_TIMEOUT_SECONDS,
+) -> Any:
+    """Fetch queue stats payload from Tractor APIs.
+
+    Order:
+    1) Tractor Python API (when available in DCC environments)
+    2) Tractor HTTP monitor endpoints (shell/daemon environments)
+    """
+
+    errors: list[str] = []
+
+    if prefer_python_api:
+        try:
+            return _fetch_queue_stats_via_python_api(endpoint)
+        except Exception as exc:
+            errors.append(f"python_api: {exc}")
+
+    try:
+        return _fetch_queue_stats_via_http(endpoint, timeout_seconds=timeout_seconds)
+    except Exception as exc:
+        errors.append(f"http_api: {exc}")
+
+    raise RuntimeError("Failed to fetch Tractor queue stats: " + "; ".join(errors))
+
+
+def _parse_jobs_summary_from_http_payload(
+    jobs_payload: Mapping[str, Any],
+    *,
+    running_slots_hint: int,
+) -> tuple[int, int, bool, bool]:
+    users = jobs_payload.get("users")
+    if not isinstance(users, Mapping):
+        return 0, 0, False, False
+
+    total_jobs = 0
+    running_jobs_from_tasks = 0
+    waiting_jobs_from_tasks = 0
+    have_ntasks = False
+
+    for jobs_by_id in users.values():
+        if not isinstance(jobs_by_id, Mapping):
+            continue
+        for record in jobs_by_id.values():
+            total_jobs += 1
+            if not isinstance(record, Mapping):
+                continue
+            data = record.get("data")
+            if not isinstance(data, Mapping):
+                continue
+
+            n_tasks = data.get("nTasks")
+            if not isinstance(n_tasks, (list, tuple)) or len(n_tasks) < 3:
+                continue
+
+            total_tasks = _parse_non_negative_int(n_tasks[0])
+            active_tasks = _parse_non_negative_int(n_tasks[1])
+            done_tasks = _parse_non_negative_int(n_tasks[2])
+            if total_tasks is None or active_tasks is None or done_tasks is None:
+                continue
+
+            have_ntasks = True
+            if active_tasks > 0:
+                running_jobs_from_tasks += 1
+                continue
+
+            remaining_tasks = max(0, total_tasks - done_tasks)
+            if remaining_tasks > 0:
+                waiting_jobs_from_tasks += 1
+
+    if have_ntasks and (running_jobs_from_tasks > 0 or waiting_jobs_from_tasks > 0):
+        return (
+            waiting_jobs_from_tasks,
+            running_jobs_from_tasks,
+            True,
+            True,
+        )
+
+    running_jobs = min(total_jobs, running_slots_hint) if running_slots_hint > 0 else 0
+    waiting_jobs = max(total_jobs - running_jobs, 0)
+    return waiting_jobs, running_jobs, total_jobs > 0, total_jobs > 0
+
+
+def _build_http_snapshot_payload(
+    queue_stats: Mapping[str, Any], *, engine_url: str
+) -> Optional[tuple[dict[str, Any], int, str]]:
+    status_payload = queue_stats.get("status")
+    blades_payload = queue_stats.get("blades")
+    jobs_payload = queue_stats.get("jobs")
+    if not isinstance(status_payload, Mapping):
+        return None
+    if not isinstance(blades_payload, Mapping):
+        return None
+    if not isinstance(jobs_payload, Mapping):
+        return None
+
+    busy_slots_raw = _parse_non_negative_int(status_payload.get("ncmdactive"))
+    busy_slots = busy_slots_raw or 0
+    busy_slots_matched = busy_slots_raw is not None
+
+    total_slots_raw = _parse_non_negative_int(status_payload.get("nlic"))
+    total_slots = total_slots_raw or 0
+    total_slots_matched = total_slots_raw is not None
+
+    active_blades = 0
+    active_blades_matched = False
+    blades_list = blades_payload.get("blades")
+    if isinstance(blades_list, list):
+        active_blades = len(blades_list)
+        active_blades_matched = True
+
+    total_blades = 0
+    total_blades_matched = False
+    record_limit = blades_payload.get("recordlimit")
+    if isinstance(record_limit, Mapping):
+        visible = _parse_non_negative_int(record_limit.get("visible"))
+        if visible is not None:
+            total_blades = visible
+            total_blades_matched = True
+
+    if total_blades < active_blades:
+        total_blades = active_blades
+        total_blades_matched = active_blades_matched
+
+    waiting_jobs, running_jobs, waiting_matched, running_matched = (
+        _parse_jobs_summary_from_http_payload(
+            jobs_payload,
+            running_slots_hint=busy_slots,
+        )
+    )
+
+    matched_fields = sum(
+        (
+            waiting_matched,
+            running_matched,
+            busy_slots_matched,
+            total_slots_matched,
+            active_blades_matched,
+            total_blades_matched,
+        )
+    )
+
+    payload = {
+        "engine_url": engine_url,
+        "waiting_jobs": waiting_jobs,
+        "running_jobs": running_jobs,
+        "busy_slots": busy_slots,
+        "total_slots": total_slots,
+        "active_blades": active_blades,
+        "total_blades": total_blades,
+        "snapshot_source": "http_api",
+    }
+    return payload, matched_fields, "http_api"
+
+
 def build_snapshot_payload(
     queue_stats: Any, *, engine_url: str
-) -> tuple[dict[str, Any], int]:
+) -> tuple[dict[str, Any], int, str]:
     """Build contract-compliant snapshot payload and count matched fields."""
+
+    if isinstance(queue_stats, Mapping):
+        source = str(queue_stats.get("_source", "")).strip().lower()
+        if source == "tractor_http":
+            http_payload = _build_http_snapshot_payload(
+                queue_stats, engine_url=engine_url
+            )
+            if http_payload is not None:
+                return http_payload
 
     waiting_jobs, waiting_matched = _extract_count(
         queue_stats,
@@ -341,8 +583,9 @@ def build_snapshot_payload(
         "total_slots": total_slots,
         "active_blades": active_blades,
         "total_blades": total_blades,
+        "snapshot_source": "python_api",
     }
-    return payload, matched_fields
+    return payload, matched_fields, "python_api"
 
 
 def poll_tractor_farm_snapshot(
@@ -360,7 +603,7 @@ def poll_tractor_farm_snapshot(
         endpoint = resolve_tractor_endpoint(engine_url, engine_port)
         payload["engine_url"] = endpoint.engine_url
         queue_stats = fetch_tractor_queue_stats(endpoint)
-        payload, matched_fields = build_snapshot_payload(
+        payload, matched_fields, _ = build_snapshot_payload(
             queue_stats, engine_url=endpoint.engine_url
         )
         if matched_fields < min_matched_fields:
