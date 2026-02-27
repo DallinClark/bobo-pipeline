@@ -748,15 +748,6 @@ class AssetPublisher(Publisher):
         return "none"
 
     @staticmethod
-    def _result_message_count(payload: dict[str, Any] | None, key: str) -> int:
-        if not isinstance(payload, dict):
-            return 0
-        entries = payload.get(key)
-        if not isinstance(entries, list):
-            return 0
-        return len(entries)
-
-    @staticmethod
     def _new_houdini_build_action_id() -> str | None:
         try:
             from pipe.telemetry import new_action_id
@@ -864,18 +855,12 @@ class AssetPublisher(Publisher):
         variant = str(self._geo_variant or "main")
         build_action_id = self._new_houdini_build_action_id()
         build_started_at = time.perf_counter()
-        build_event_emitted = False
 
         build_failed_code = "HOUDINI_BUILD_FAILED"
-        parse_failed_code = "HOUDINI_BUILD_RESULT_PARSE_FAILED"
         try:
-            from pipe.telemetry.registry import (
-                ERROR_HOUDINI_BUILD_FAILED,
-                ERROR_HOUDINI_BUILD_RESULT_PARSE_FAILED,
-            )
+            from pipe.telemetry.registry import ERROR_HOUDINI_BUILD_FAILED
 
             build_failed_code = ERROR_HOUDINI_BUILD_FAILED
-            parse_failed_code = ERROR_HOUDINI_BUILD_RESULT_PARSE_FAILED
         except Exception:
             pass
 
@@ -888,55 +873,38 @@ class AssetPublisher(Publisher):
         def _duration_ms() -> int:
             return max(0, int((time.perf_counter() - build_started_at) * 1000))
 
-        def _emit_terminal(
+        def _emit_prelaunch_error(
+            message: str,
             *,
-            status: str,
-            payload: dict[str, Any] | None = None,
-            error_code: str | None = None,
-            error_message: str | None = None,
-            exception_type: str | None = None,
+            exception_type: str,
         ) -> None:
-            nonlocal build_event_emitted
-            if build_event_emitted:
-                return
-            build_event_emitted = True
-
-            warnings_count = self._result_message_count(payload, "warnings")
-            errors_count = self._result_message_count(payload, "errors")
-            if status == "error" and errors_count == 0:
-                errors_count = 1
-
             self._emit_houdini_component_build_event(
-                status=status,
+                status="error",
                 duration_ms=_duration_ms(),
                 variant=variant,
                 ensure_builder=ensure_builder_requested,
                 publish_requested=publish_requested,
-                warnings_count=warnings_count,
-                errors_count=errors_count,
+                warnings_count=0,
+                errors_count=1,
                 action_id=build_action_id,
                 asset_name=asset_name,
-                error_code=error_code,
-                error_message=error_message,
+                error_code=build_failed_code,
+                error_message=message,
                 exception_type=exception_type,
             )
 
         if getattr(self, "_publish_path", None) is None:
             message = "Publish path is undefined; cannot run Houdini publish."
-            _emit_terminal(
-                status="error",
-                error_code=build_failed_code,
-                error_message=message,
+            _emit_prelaunch_error(
+                message,
                 exception_type=HoudiniBuildError.__name__,
             )
             raise HoudiniBuildError(message)
 
         if not Executables.hython.exists():
             message = f"Houdini executable not found at {Executables.hython}"
-            _emit_terminal(
-                status="error",
-                error_code=build_failed_code,
-                error_message=message,
+            _emit_prelaunch_error(
+                message,
                 exception_type=HoudiniBuildError.__name__,
             )
             raise HoudiniBuildError(message)
@@ -990,10 +958,15 @@ class AssetPublisher(Publisher):
             )
         except FileNotFoundError as exc:
             message = "Failed to execute hython; verify Houdini is installed."
-            _emit_terminal(
-                status="error",
-                error_code=build_failed_code,
-                error_message=message,
+            _emit_prelaunch_error(
+                message,
+                exception_type=type(exc).__name__,
+            )
+            raise HoudiniBuildError(message) from exc
+        except OSError as exc:
+            message = f"Failed to launch hython: {exc}"
+            _emit_prelaunch_error(
+                message,
                 exception_type=type(exc).__name__,
             )
             raise HoudiniBuildError(message) from exc
@@ -1004,13 +977,6 @@ class AssetPublisher(Publisher):
             if payload is not None:
                 self._houdini_result = payload
                 message = f"Build failed: {self._summarize_houdini_errors(payload)}"
-                _emit_terminal(
-                    status="error",
-                    payload=payload,
-                    error_code=build_failed_code,
-                    error_message=message,
-                    exception_type=type(exc).__name__,
-                )
                 raise HoudiniBuildError(message) from exc
             if stdout:
                 log.error("Houdini asset builder stdout:\n%s", stdout)
@@ -1018,12 +984,6 @@ class AssetPublisher(Publisher):
                 log.error("Houdini asset builder stderr:\n%s", stderr)
             message = (
                 f"Houdini component publish failed with exit code {exc.returncode}"
-            )
-            _emit_terminal(
-                status="error",
-                error_code=build_failed_code,
-                error_message=message,
-                exception_type=type(exc).__name__,
             )
             raise HoudiniBuildError(message) from exc
 
@@ -1034,12 +994,6 @@ class AssetPublisher(Publisher):
             log.error("Houdini asset builder stdout:\n%s", stdout)
             log.error("Houdini asset builder stderr:\n%s", result.stderr or "")
             message = "Failed to parse structured output from Houdini build."
-            _emit_terminal(
-                status="error",
-                error_code=parse_failed_code,
-                error_message=message,
-                exception_type="ResultParseError",
-            )
             raise HoudiniBuildError(message)
         self._houdini_result = payload
 
@@ -1047,16 +1001,7 @@ class AssetPublisher(Publisher):
             message = (
                 f"Build failed: {self._summarize_houdini_errors(self._houdini_result)}"
             )
-            _emit_terminal(
-                status="error",
-                payload=self._houdini_result,
-                error_code=build_failed_code,
-                error_message=message,
-                exception_type=HoudiniBuildError.__name__,
-            )
             raise HoudiniBuildError(message)
-
-        _emit_terminal(status="success", payload=self._houdini_result)
 
     @staticmethod
     def _parse_houdini_result_payload(stdout: str) -> dict[str, Any] | None:

@@ -10,6 +10,7 @@ import argparse
 import datetime as _dt
 import hashlib
 import json
+import logging
 import math
 import os
 import re
@@ -25,6 +26,8 @@ from .context import extract_scope, new_action_id
 from .contract import serialize_event
 from .emit import emit
 from .registry import ERROR_RENDER_STATS_HARVEST_FAILED, STATUS_ERROR, STATUS_SUCCESS
+
+_LOG = logging.getLogger(__name__)
 
 DEFAULT_POLL_INTERVAL_SECONDS = 900
 DEFAULT_LOOKBACK_HOURS = 72
@@ -949,13 +952,17 @@ def _load_state(path: Optional[Path]) -> dict[str, str]:
 def _save_state(path: Optional[Path], state: Mapping[str, str]) -> None:
     if path is None:
         return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"version": 1, "entries": dict(sorted(state.items()))}
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    tmp.replace(path)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"version": 1, "entries": dict(sorted(state.items()))}
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        tmp.replace(path)
+    except Exception as exc:
+        _LOG.warning("Failed to persist render_harvest state file '%s': %s", path, exc)
+        _LOG.debug("render_harvest state persistence failure details", exc_info=True)
 
 
 def _candidate_key(candidate: RenderJobCandidate) -> str:
