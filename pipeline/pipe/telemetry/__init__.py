@@ -32,7 +32,6 @@ from .context import (
     new_session_id,
     utc_now_iso,
 )
-from .docs import render_contract_markdown
 from .emit import (
     EmitCounters,
     build_event,
@@ -69,6 +68,15 @@ from .spool import (
     get_spool_writer,
 )
 from .storage_scan import build_storage_events, classify_path, scan_storage
+
+
+def render_contract_markdown() -> str:
+    """Return telemetry contract markdown generated from the registry."""
+
+    from .docs import render_contract_markdown as _render_contract_markdown
+
+    return _render_contract_markdown()
+
 
 __all__ = [
     "events",

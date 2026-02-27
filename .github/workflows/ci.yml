@@ -40,6 +40,10 @@ jobs:
       - name: Lint (Ruff)
         run: uv run ruff check
 
+      - name: Telemetry Contract Check
+        run: |
+          PYTHONPATH=pipeline uv run python -m pipe.telemetry.docs --check --output docs/telemetry/EVENT_CONTRACT.md
+
       # Run ruff format check
       - name: Format Check (Ruff)
         run: uv run ruff format --check

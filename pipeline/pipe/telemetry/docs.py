@@ -9,6 +9,8 @@ from typing import Optional, Sequence
 
 from .registry import ERROR_CODES, EVENT_DEFINITIONS, SCHEMA_VERSION
 
+DEFAULT_OUTPUT_PATH = Path("docs/telemetry/EVENT_CONTRACT.md")
+
 
 def render_contract_markdown() -> str:
     """Return a markdown document generated from the telemetry registry."""
@@ -65,6 +67,25 @@ def render_contract_markdown() -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def write_contract_markdown(path: Path) -> None:
+    """Write generated contract markdown to ``path``."""
+
+    content = render_contract_markdown()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def is_contract_markdown_current(path: Path) -> bool:
+    """Return ``True`` when ``path`` exactly matches generated contract content."""
+
+    expected = render_contract_markdown()
+    try:
+        current = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return False
+    return current == expected
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate telemetry event contract markdown from the registry."
@@ -74,15 +95,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=Path,
         help="Optional output path. If omitted, writes to stdout.",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit non-zero when output file does not match generated content.",
+    )
     args = parser.parse_args(argv)
 
-    content = render_contract_markdown()
+    if args.check:
+        output_path = args.output or DEFAULT_OUTPUT_PATH
+        if is_contract_markdown_current(output_path):
+            return 0
+        sys.stderr.write(
+            "Telemetry event contract is stale. Regenerate with:\n"
+            "  python -m pipe.telemetry.docs > docs/telemetry/EVENT_CONTRACT.md\n"
+        )
+        return 1
+
     if args.output is None:
-        sys.stdout.write(content)
+        sys.stdout.write(render_contract_markdown())
         return 0
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(content, encoding="utf-8")
+    write_contract_markdown(args.output)
     return 0
 
 
