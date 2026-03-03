@@ -42,17 +42,14 @@ from pipe.playblast_shotgrid import (
 from pipe.util import Playblaster
 
 from .playblaster import MPlayblaster
-from .struct import HudDefinition, SaveLocation, dummy_shot
+from .struct import HudDefinition, MShotPlayblastConfig, SaveLocation, dummy_shot
 
 if TYPE_CHECKING:
     from typing import Callable, Iterable
 
     from pipe.struct.db import Shot
 
-    from .struct import (
-        MPlayblastConfig,
-        MShotPlayblastConfig,
-    )
+    from .struct import MPlayblastConfig
 
 log = logging.getLogger(__name__)
 
