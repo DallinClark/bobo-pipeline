@@ -383,6 +383,53 @@ def split_preroll(
     return stiched_layer
 
 
+def resolve_clip_prim_path(layer: Sdf.Layer, *, fallback_name: str = "") -> Sdf.Path:
+    """Pick a valid prim path for clip stitching in the given layer."""
+
+    prim_paths: list[Sdf.Path] = []
+
+    def collect_paths(path: Sdf.Path | str) -> None:
+        if isinstance(path, str):
+            path = Sdf.Path(path)
+        if path.IsPrimPath():
+            if path == Sdf.Path.absoluteRootPath:
+                return
+            prim_paths.append(path)
+
+    layer.Traverse(layer.pseudoRoot.path, collect_paths)
+    prim_path_set = {str(path) for path in prim_paths}
+
+    # Most common character and prop roots in this pipeline.
+    candidates = (
+        Sdf.Path("/ROOT/MODEL"),
+        Sdf.Path("/PROXY_ROOT/PROXY_MODEL"),
+        Sdf.Path("/ROOT"),
+        Sdf.Path("/PROXY_ROOT"),
+    )
+    for candidate in candidates:
+        if str(candidate) in prim_path_set:
+            return candidate
+
+    # Prefer model-like leaf prims if present.
+    model_like_paths = [
+        path for path in prim_paths if path.name in {"MODEL", "PROXY_MODEL"}
+    ]
+    if model_like_paths:
+        return min(model_like_paths, key=lambda p: len(str(p)))
+
+    root_like_paths = [path for path in prim_paths if path.name.endswith("ROOT")]
+    if root_like_paths:
+        return min(root_like_paths, key=lambda p: len(str(p)))
+
+    if prim_paths:
+        return min(prim_paths, key=lambda p: len(str(p)))
+
+    layer_name = fallback_name or Path(layer.identifier).stem
+    raise RuntimeError(
+        f"Could not resolve clip prim path for layer `{layer_name}` ({layer.identifier})"
+    )
+
+
 def bind_materials_new_variant(
     stage: Usd.Stage, mat_path: Sdf.Path, new_path: Sdf.Path
 ) -> None:
@@ -500,7 +547,8 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     base_name = name
                 print(base_name)
 
-                character_root_path = Sdf.Path("/ROOT/MODEL")
+                character_root_path = resolve_clip_prim_path(layer, fallback_name=name)
+                print(f"[chaser] resolved clip path for {name}: {character_root_path}")
 
                 stitched_layer = split_preroll(
                     layer, name, character_root_path, self._chaser_args.timeline
