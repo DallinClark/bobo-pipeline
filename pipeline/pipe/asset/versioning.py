@@ -11,15 +11,24 @@ import os
 import platform
 import re
 import shutil
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from types import ModuleType
+from typing import Any, Iterator, Optional
 
 from .paths import MANIFEST_FILENAME
+
+_fcntl: ModuleType | None
+try:
+    import fcntl as _fcntl
+except Exception:  # pragma: no cover - platform dependent
+    _fcntl = None
 
 log = logging.getLogger(__name__)
 
 _VERSION_RE_TEMPLATE = r"^{stem}\.v(?P<ver>\d+)\.{ext}$"
+_VERSIONED_STEM_RE = re.compile(r"^(?P<base>.+)\.v(?P<ver>\d+)$")
 _SIGNATURE_KEY = "signature"
 _SIGNATURE_HASH_KEY = "hash"
 _SIGNATURE_HASH_ALGO_KEY = "hash_algo"
@@ -39,6 +48,18 @@ class BackupResult:
     manifest: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class VersionRecord:
+    version: Optional[int]
+    title: Optional[str]
+    note: Optional[str]
+    context: Optional[str]
+    user: Optional[str]
+    timestamp: Optional[str]
+    backup_path: Optional[Path]
+    source_file: Optional[str]
+
+
 def _utc_now_iso() -> str:
     return (
         datetime.datetime.now(datetime.timezone.utc)
@@ -49,6 +70,22 @@ def _utc_now_iso() -> str:
 
 def _compact_dict(data: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in data.items() if v is not None}
+
+
+def _compact_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _compact_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
 
 
 def _safe_user() -> Optional[str]:
@@ -111,11 +148,28 @@ def load_manifest(manifest_path: Path) -> dict[str, Any]:
 
 def save_manifest(manifest_path: Path, manifest: dict[str, Any]) -> None:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
-    with temp_path.open("w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, indent=2, sort_keys=True)
-        handle.write("\n")
-    os.replace(temp_path, manifest_path)
+    with _manifest_write_lock(manifest_path):
+        temp_path = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+        with temp_path.open("w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        os.replace(temp_path, manifest_path)
+
+
+@contextmanager
+def _manifest_write_lock(manifest_path: Path) -> Iterator[None]:
+    if _fcntl is None:
+        yield
+        return
+
+    lock_path = manifest_path.with_suffix(manifest_path.suffix + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+", encoding="utf-8") as lock_handle:
+        _fcntl.flock(lock_handle.fileno(), _fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            _fcntl.flock(lock_handle.fileno(), _fcntl.LOCK_UN)
 
 
 def _parse_version_from_name(stem: str, ext: str, name: str) -> Optional[int]:
@@ -127,6 +181,24 @@ def _parse_version_from_name(stem: str, ext: str, name: str) -> Optional[int]:
         return int(match.group("ver"))
     except Exception:
         return None
+
+
+def _normalize_backup_stem(stem: str, source_path: Path) -> str:
+    versioned_match = _VERSIONED_STEM_RE.match(stem)
+    if not versioned_match:
+        return stem
+
+    base_stem = versioned_match.group("base")
+    version_token = versioned_match.group("ver")
+    log.warning(
+        "Detected versioned source stem '%s' from %s; normalizing stem to '%s' "
+        "to avoid nested backup names (source version token: v%s).",
+        stem,
+        source_path,
+        base_stem,
+        version_token,
+    )
+    return base_stem
 
 
 def list_versions(backup_dir: Path, stem: str, ext: str) -> list[int]:
@@ -215,6 +287,7 @@ def backup_file(
 
     resolved_stem = stem or source_path.stem
     resolved_ext = (ext or source_path.suffix.lstrip(".")) or "dat"
+    resolved_stem = _normalize_backup_stem(resolved_stem, source_path)
 
     next_ver = version or next_version(backup_dir, resolved_stem, resolved_ext)
     target_name = versioned_filename(resolved_stem, resolved_ext, next_ver, padding)
@@ -238,6 +311,7 @@ def backup_if_changed(
     padding: int = 3,
     ensure_exists: bool = True,
     use_hash: bool = False,
+    context: Optional[str] = None,
     note: Optional[str] = None,
     tool_version: Optional[str] = None,
     asset_name: Optional[str] = None,
@@ -268,6 +342,7 @@ def backup_if_changed(
 
     resolved_stem = stem or source_path.stem
     resolved_ext = (ext or source_path.suffix.lstrip(".")) or "dat"
+    resolved_stem = _normalize_backup_stem(resolved_stem, source_path)
 
     if changed:
         resolved_version = version or next_version(
@@ -301,6 +376,7 @@ def backup_if_changed(
         source_path=source_path,
         backup_path=backup_path,
         version=resolved_version,
+        context=context,
         note=note,
         tool_version=tool_version,
         extra=extra_payload,
@@ -327,6 +403,8 @@ def record_publish(
     version: Optional[int] = None,
     user: Optional[str] = None,
     host: Optional[str] = None,
+    title: Optional[str] = None,
+    context: Optional[str] = None,
     note: Optional[str] = None,
     tool_version: Optional[str] = None,
     extra: Optional[dict[str, Any]] = None,
@@ -350,6 +428,8 @@ def record_publish(
             "source_file": str(source_path) if source_path else None,
             "backup_file": str(backup_path) if backup_path else None,
             "version": version,
+            "title": title,
+            "context": context,
             "note": note,
             "tool_version": tool_version,
             "extra": extra,
@@ -364,13 +444,48 @@ def record_publish(
     return manifest
 
 
+def history_as_records(manifest: dict[str, Any], dcc: str) -> list[VersionRecord]:
+    dcc_payload = manifest.get("dcc")
+    if not isinstance(dcc_payload, dict):
+        return []
+
+    dcc_block = dcc_payload.get(dcc)
+    if not isinstance(dcc_block, dict):
+        return []
+
+    history_payload = dcc_block.get("history")
+    if not isinstance(history_payload, list):
+        return []
+
+    records: list[VersionRecord] = []
+    for entry in reversed(history_payload):
+        if not isinstance(entry, dict):
+            continue
+        backup_value = _compact_text(entry.get("backup_file"))
+        records.append(
+            VersionRecord(
+                version=_compact_int(entry.get("version")),
+                title=_compact_text(entry.get("title")),
+                note=_compact_text(entry.get("note")),
+                context=_compact_text(entry.get("context")),
+                user=_compact_text(entry.get("user")),
+                timestamp=_compact_text(entry.get("timestamp")),
+                backup_path=Path(backup_value) if backup_value else None,
+                source_file=_compact_text(entry.get("source_file")),
+            )
+        )
+    return records
+
+
 __all__ = [
     "backup_file",
     "backup_if_changed",
     "compute_signature",
     "BackupResult",
+    "VersionRecord",
     "build_manifest",
     "get_manifest_path",
+    "history_as_records",
     "list_versions",
     "load_manifest",
     "next_version",
