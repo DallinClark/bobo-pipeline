@@ -6,7 +6,7 @@ from Qt import QtCore
 from maya.OpenMayaUI import MQtUtil
 from Qt.QtWidgets import QWidget
 
-from ...local import get_main_qt_window
+from pipe.m.local import get_main_qt_window
 from .. import build
 from .. import publish
 from .core import (
@@ -27,7 +27,7 @@ WORKSPACE_CONTROL_NAME = WINDOW_OBJECT_NAME + "WorkspaceControl"
 # It must be a string that Maya can evaluate via Python.
 UI_SCRIPT = """
 import pipe.m.rig_builder.ui
-pipe.m.rig_builder.ui.window._restore()
+pipe.m.rig.builder.ui.window._restore()
 """
 
 

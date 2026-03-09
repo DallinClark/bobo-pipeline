@@ -1,5 +1,4 @@
-from pipe.m.rig_builder.test.core import RigBuildTest
-
+from ...test.core import RigBuildTest
 from .control import TestControlsZeroed
 from .cycle import TestCyclesDG
 from .duplicate import TestDuplicateDagNames
