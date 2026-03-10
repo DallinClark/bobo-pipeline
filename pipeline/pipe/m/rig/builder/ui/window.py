@@ -77,7 +77,7 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.load_data_async()  # Start loading after UI is initialized
 
     def connect_ui(self):
-        builder_log = logging.getLogger("pipe.m.rig_builder")
+        builder_log = logging.getLogger("pipe.m.rig.builder")
         builder_log.setLevel(logging.DEBUG)
         self.rig_build_log_box.connect_logger(builder_log)
 
