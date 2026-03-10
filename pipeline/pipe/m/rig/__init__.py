@@ -1,3 +1,3 @@
-from . import builder
+from . import builder, model
 
-__all__ = ["builder"]
+__all__ = ["builder", "model"]
