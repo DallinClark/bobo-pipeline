@@ -14,9 +14,7 @@ from typing import TYPE_CHECKING
 import ffmpeg  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
-    from typing import Any
-
-    from typing_extensions import Self
+    from typing import Any, Self
 
     from pipe.struct.db import Shot
 

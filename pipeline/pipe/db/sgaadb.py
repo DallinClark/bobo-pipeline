@@ -8,10 +8,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import partialmethod as pm
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional, Unpack
 from typing import Sequence as SequenceT
-
-from typing_extensions import Unpack
 
 from pipe.struct.db import (
     Asset,

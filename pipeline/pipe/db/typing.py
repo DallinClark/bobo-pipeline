@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Literal, Optional, Protocol, TypedDict, Union
-
-from typing_extensions import NotRequired, Unpack
+from typing import (
+    Any,
+    Iterable,
+    Literal,
+    NotRequired,
+    Optional,
+    Protocol,
+    TypedDict,
+    Union,
+    Unpack,
+)
 
 from pipe.struct.db import (
     Asset,
