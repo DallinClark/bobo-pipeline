@@ -1,24 +1,52 @@
 from __future__ import annotations
 
+import inspect
 import logging
+from pathlib import Path
+
 from typing import TYPE_CHECKING, Any
 
 from maya import cmds
 from maya.api.OpenMaya import MObject
 from pipe.m.command import get_registered_commands
+from shared.util import get_repo_root
 
 if TYPE_CHECKING:
     from pipe.m.command import CommandDescription
+    from types import FunctionType
 
 log = logging.getLogger("pipe.m.plugin")
 
 PLUGIN_DISPLAY_NAME = "Sandwich Pipeline"
 PLUGIN_NAME = "pipeline.py"
 COMMAND_PREFIX = "SKD"
+GITHUB_REPO_URL = (
+    "https://github.com/joseph-wardle/sandwich-pipeline/tree/prod"  # base URL to repo
+)
+
 
 maya_useNewAPI = True  # Tell Maya to use the Python API 2.0
 
 REGISTERED_COMMANDS: list[str] = []
+
+
+def make_github_url(func: FunctionType) -> str | None:
+    """
+    Returns a GitHub URL pointing to the source file and line of the given function.
+    """
+    try:
+        filepath_string = inspect.getsourcefile(func)
+        if not filepath_string:
+            return None
+        filepath = Path(filepath_string)
+        relative_path = filepath.relative_to(get_repo_root())
+        source_lines, start_line_no = inspect.getsourcelines(func)
+        start_line_no = inspect.getsourcelines(func)[1]
+        end_line_no = start_line_no + len(source_lines) - 1
+        url = f"{GITHUB_REPO_URL}/{relative_path}#L{start_line_no}-L{end_line_no}"
+        return url
+    except Exception:
+        return None
 
 
 def is_shortcut_assigned(key: str, ctrl=False, alt=False, shift=False) -> bool:
@@ -116,11 +144,18 @@ def register_command_from_description(command: CommandDescription):
     func_name = command.function.__name__
 
     runtime_command_optional_args: dict[str, Any] = {}
-    if command.description is not None:
+    if command.description:
         runtime_command_optional_args["annotation"] = command.description
 
     if command.icon:
         runtime_command_optional_args["image"] = command.icon
+
+    if command.help_url:
+        runtime_command_optional_args["helpUrl"] = command.help_url
+    else:
+        github_url = make_github_url(command.function)  # type: ignore
+        if github_url is not None:
+            runtime_command_optional_args["helpUrl"] = github_url
 
     command_string = f"import {module}; {module}.{func_name}()"
 

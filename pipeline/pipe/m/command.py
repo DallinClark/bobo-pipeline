@@ -9,13 +9,14 @@ REGISTERED_COMMANDS: list[CommandDescription] = []
 
 @dataclass
 class CommandDescription:
+    function: FunctionType
     name: str
     label: str
-    description: str | None
-    category: str | None
-    hotkey: str | None
-    icon: str | None
-    function: FunctionType
+    description: str | None = None
+    category: str | None = None
+    hotkey: str | None = None
+    icon: str | None = None
+    help_url: str | None = None
 
 
 def register_maya_command(
@@ -25,6 +26,7 @@ def register_maya_command(
     category: str | None = None,
     hotkey: str | None = None,
     icon: str | None = None,
+    help_url: str | None = None,
 ):
     """
     Decorator that registers a python function as a Maya Command with optional keyboard shortcut and icon.
@@ -49,7 +51,7 @@ def register_maya_command(
             description if description is not None else inspect.getdoc(func)
         )
         command_description = CommandDescription(
-            name, label, resolved_description, category, hotkey, icon, func
+            func, name, label, resolved_description, category, hotkey, icon, help_url
         )
         global REGISTERED_COMMANDS
         REGISTERED_COMMANDS.append(command_description)

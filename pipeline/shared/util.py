@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import getpass
 import importlib
 import importlib.util
-import getpass
 import os
 import platform
 import re
@@ -95,6 +95,10 @@ def get_edit_path() -> Path:
 
 def get_pipe_path() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def get_repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
 
 
 def get_documentation_path(page: str | None = None) -> str:
