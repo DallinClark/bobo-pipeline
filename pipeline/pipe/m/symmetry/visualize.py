@@ -147,6 +147,7 @@ def color_from_symmetry_error(
     name="visualize_symmetry_of_selected",
     label="Visualize Symmetry Of Selected",
     icon="symmetry.svg",
+    category="asset",
 )
 def visualize_symmetry_of_selected():
     """
