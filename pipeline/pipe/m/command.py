@@ -51,7 +51,14 @@ def register_maya_command(
             description if description is not None else inspect.getdoc(func)
         )
         command_description = CommandDescription(
-            func, name, label, resolved_description, category, hotkey, icon, help_url
+            function=func,
+            name=name,
+            label=label,
+            description=resolved_description,
+            category=category,
+            hotkey=hotkey,
+            icon=icon,
+            help_url=help_url,
         )
         global REGISTERED_COMMANDS
         REGISTERED_COMMANDS.append(command_description)

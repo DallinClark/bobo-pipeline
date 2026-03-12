@@ -80,7 +80,6 @@ def assign_hotkey(
     - key: key character (e.g., "d")
     - name_command: nameCommand to assign
     """
-
     # Assign press name only if empty
     if not is_shortcut_assigned(key, ctrl, alt, shift):
         cmds.hotkey(
@@ -137,8 +136,12 @@ def assign_hotkey_from_string(
 
 def register_command_from_description(command: CommandDescription):
     command_name = f"{COMMAND_PREFIX}_{command.name}"
-
-    command_category = f"pipeline{f'.{command.category.lower()}' if command.category is not None else ''}"
+    command_sub_category = (
+        command.category.title().replace(" ", "")
+        if command.category is not None
+        else None
+    )
+    command_category = f"Pipeline{f'.{command_sub_category}' if command_sub_category is not None else ''}"
 
     module = command.function.__module__
     func_name = command.function.__name__
@@ -175,20 +178,18 @@ def register_command_from_description(command: CommandDescription):
 
     # Named Command (hotkeys)
     if command.hotkey is not None:
-        named_commmand = f"{command_name}NamedCommand"
+        named_command = f"{command_name}NamedCommand"
         name_command_optional_args: dict[str, Any] = {}
         if command.description is not None:
             name_command_optional_args["annotation"] = command.description
         cmds.nameCommand(
-            named_commmand,
+            named_command,
             command=command_name,  # type: ignore
             sourceType="mel",  # runtime commands are always invoked via MEL
-            annotation=command.description
-            if command.description is not None
-            else command.label,
+            annotation=command.label,
         )
         if command.hotkey is not None:
-            assign_hotkey_from_string(command.hotkey, named_commmand, command.label)
+            assign_hotkey_from_string(command.hotkey, named_command, command.label)
 
 
 # --- Standard Maya plug-in entry points ---
