@@ -6,7 +6,9 @@ from maya import cmds
 
 
 def import_model_usd(filepath: Path) -> list[str]:
-    imported_top_level_prims = cmds.mayaUSDImport(file=str(filepath), primPath="/")  # type: ignore
+    imported_top_level_prims = cmds.mayaUSDImport(  # type: ignore
+        file=str(filepath), primPath="/", preferredMaterial="openPBRSurface"
+    )
     return imported_top_level_prims
 
 
