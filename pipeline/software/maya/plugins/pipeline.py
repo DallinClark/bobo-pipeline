@@ -110,9 +110,7 @@ def assign_hotkey_from_string(
 def register_command_from_description(command: CommandDescription):
     command_name = f"{COMMAND_PREFIX}_{command.name}"
 
-    command_category = (
-        f"pipeline{f'.{command.category}' if command.category is not None else ''}"
-    )
+    command_category = f"pipeline{f'.{command.category.lower()}' if command.category is not None else ''}"
 
     module = command.function.__module__
     func_name = command.function.__name__

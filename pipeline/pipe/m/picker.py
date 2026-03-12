@@ -26,7 +26,11 @@ def custom_picker_title(custom_title: str):
 
 
 @register_maya_command(
-    name="picker", label="Picker", icon="picker.svg", hotkey="ctrl+alt+p"
+    name="picker",
+    label="Picker",
+    icon="picker.svg",
+    hotkey="ctrl+alt+p",
+    category="animation",
 )
 def run():
     """

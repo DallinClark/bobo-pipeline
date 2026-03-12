@@ -1,3 +1,13 @@
+from pipe.m.command import register_maya_command
+
+
+@register_maya_command(
+    name="reload_pipe",
+    label="Reload Pipe",
+    hotkey="ctrl+alt+r",
+    icon="cycle.png",
+    category="development",
+)
 def reload_pipe() -> None:
     from pipe.util import reload_pipe as _reload_pipe
 
@@ -6,6 +16,7 @@ def reload_pipe() -> None:
     # wrap this in a try block because it will fail in headless mode
     try:
         import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
+
         from pipe.m.publish import ExportChaser
 
         mayaUsdLib.ExportChaser.Unregister(ExportChaser, ExportChaser.ID)

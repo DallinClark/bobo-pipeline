@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import maya.cmds as mc
 
+from pipe.m.command import register_maya_command
+
 
 def createSpaceSwitch():
     sel = mc.ls(sl=True)
@@ -73,5 +75,6 @@ def createSpaceSwitch():
     mc.select(target)
 
 
+@register_maya_command(name="space_switch", label="Space Switch", category="animation")
 def run():
     createSpaceSwitch()
