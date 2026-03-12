@@ -4,7 +4,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, cast
 
-from Qt import QtCore, QtWidgets
+from Qt import QtCore, QtGui, QtWidgets
 
 if TYPE_CHECKING:
     import typing
@@ -53,7 +53,41 @@ class DialogButtons(ButtonPair):
             self.buttons.rejected.connect(self.reject)
 
 
+class _FilterFieldEventFilter(QtCore.QObject):
+    """Handles navigation key events on the filter field for DialogFilteredList."""
+
+    def __init__(
+        self,
+        parent: QtCore.QObject,
+        list_widget: QtWidgets.QListWidget,
+        accept: typing.Callable[..., None],
+        get_selected_item: typing.Callable[[], str | None],
+    ) -> None:
+        super().__init__(parent)
+        self._list_widget = list_widget
+        self._accept = accept
+        self._get_selected_item = get_selected_item
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if event.type() == QtCore.QEvent.KeyPress:
+            key_event = cast(QtGui.QKeyEvent, event)
+
+            if key_event.key() == QtCore.Qt.Key_Down:
+                self._list_widget.setFocus()
+                QtWidgets.QApplication.sendEvent(self._list_widget, event)
+                return True
+
+            if key_event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
+                if self._get_selected_item() is not None:
+                    self._accept()
+                    return True
+
+        return super().eventFilter(watched, event)
+
+
 class DialogFilteredList:
+    accept: typing.Callable[..., None]
+
     filtered_list: QtWidgets.QVBoxLayout
     _filter_field: QtWidgets.QLineEdit
     _list_label: QtWidgets.QLabel
@@ -72,26 +106,44 @@ class DialogFilteredList:
             self._list_label = QtWidgets.QLabel(list_label)
             self.filtered_list.addWidget(self._list_label)
 
+        self._list_widget = QtWidgets.QListWidget()
+        self._list_widget.addItems(items)
+        self._list_widget.itemDoubleClicked.connect(self.accept)
+
         if include_filter_field:
             self._filter_field = QtWidgets.QLineEdit()
             self._filter_field.setPlaceholderText("Type here to filter...")
             self._filter_field.textChanged.connect(self._filter_items)
+            self._filter_event_filter = _FilterFieldEventFilter(
+                self._filter_field,
+                self._list_widget,
+                self.accept,
+                self.get_selected_item,
+            )
+            self._filter_field.installEventFilter(self._filter_event_filter)
             self.filtered_list.addWidget(self._filter_field)
 
-        self._list_widget = QtWidgets.QListWidget()
-        self._list_widget.addItems(items)
         self.filtered_list.addWidget(self._list_widget)
 
     def _filter_items(self) -> None:
         filter_text = self._filter_field.text().lower()
         reg = re.compile(".*".join(["", *filter_text.split(), ""]))
+
+        first_visible_row: int | None = None
+
         for row in range(self._list_widget.count()):
             item = self._list_widget.item(row)
             item_text = item.text().lower()
             if reg.match(item_text):
                 item.setHidden(False)
+                if first_visible_row is None:
+                    first_visible_row = row
             else:
                 item.setHidden(True)
+
+        # select the first visible item
+        if first_visible_row is not None:
+            self._list_widget.setCurrentRow(first_visible_row)
 
     def get_selected_item(self) -> str | None:
         selected_items = self._list_widget.selectedItems()
