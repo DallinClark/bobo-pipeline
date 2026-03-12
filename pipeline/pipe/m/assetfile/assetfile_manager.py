@@ -11,6 +11,7 @@ import maya.cmds as mc
 import maya.mel as mel
 from env_sg import DB_Config
 from Qt import QtCore, QtWidgets
+from pipe.m.command import register_maya_command
 from shared.util import get_production_path
 
 from pipe.asset.paths import BACKUP_DIRNAME, paths_for_asset
@@ -710,3 +711,13 @@ __all__ = [
     "MAssetFileManager",
     "install_asset_menu",
 ]
+
+
+@register_maya_command(
+    name="open_asset", label="Open Asset", icon="fileOpen.png", hotkey="ctrl+w"
+)
+def open_asset():
+    """
+    Open the canonical model file for an asset.
+    """
+    MAssetFileManager().open_file()
