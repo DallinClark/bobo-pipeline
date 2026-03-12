@@ -17,6 +17,8 @@ from maya.api.OpenMaya import (
 )
 import maya.cmds as cmds
 
+from pipe.m.command import register_maya_command
+
 from .color import lch_to_lab, oklab_to_linear_srgb
 
 from .math import remap
@@ -141,7 +143,16 @@ def color_from_symmetry_error(
     return
 
 
+@register_maya_command(
+    name="visualize_symmetry_of_selected",
+    label="Visualize Symmetry Of Selected",
+    icon="symmetry",
+)
 def visualize_symmetry_of_selected():
+    """
+    Creates a temporary heat-map visualization of how close each point on the mesh is to being perfectly symmetrical.
+    If the mesh is all black, it is perfectly symmetrical!
+    """
     selection = cmds.ls(selection=True)
     for object in selection:
         if cmds.nodeType(object) == "transform":

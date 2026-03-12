@@ -78,7 +78,7 @@ def assign_hotkey(
         )
         final_hotkey_string = "+".join(mods)
 
-        log.info(
+        log.debug(
             f' The pipeline command "{command_name_string}" has a default hotkey {final_hotkey_string},'
             "which was not applied as it is already assigned."
         )
@@ -148,7 +148,9 @@ def register_command_from_description(command: CommandDescription):
             named_commmand,
             command=command_name,  # type: ignore
             sourceType="mel",  # runtime commands are always invoked via MEL
-            **name_command_optional_args,
+            annotation=command.description
+            if command.description is not None
+            else command.label,
         )
         if command.hotkey is not None:
             assign_hotkey_from_string(command.hotkey, named_commmand, command.label)
