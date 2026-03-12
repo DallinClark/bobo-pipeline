@@ -54,7 +54,7 @@ class DialogButtons(ButtonPair):
 
 
 class _FilterFieldEventFilter(QtCore.QObject):
-    """Handles key events on the filter field for DialogFilteredList."""
+    """Handles navigation key events on the filter field for DialogFilteredList."""
 
     def __init__(
         self,
@@ -73,12 +73,9 @@ class _FilterFieldEventFilter(QtCore.QObject):
             key_event = cast(QtGui.QKeyEvent, event)
 
             if key_event.key() == QtCore.Qt.Key_Down:
-                for row in range(self._list_widget.count()):
-                    item = self._list_widget.item(row)
-                    if not item.isHidden():
-                        self._list_widget.setCurrentRow(row)
-                        self._list_widget.setFocus()
-                        return True
+                self._list_widget.setFocus()
+                QtWidgets.QApplication.sendEvent(self._list_widget, event)
+                return True
 
             if key_event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
                 if self._get_selected_item() is not None:
