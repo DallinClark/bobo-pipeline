@@ -21,10 +21,10 @@ log = logging.getLogger("pipe.m.plugin")
 PLUGIN_DISPLAY_NAME = "Sandwich Pipeline"
 PLUGIN_NAME = "pipeline.py"
 COMMAND_PREFIX = "SKD"
+HOTKEY_SET_NAME = "Sandwich_Pipeline"
 GITHUB_REPO_URL = (
     "https://github.com/joseph-wardle/sandwich-pipeline/tree/prod"  # base URL to repo
 )
-HOTKEY_SET_NAME = PLUGIN_DISPLAY_NAME
 
 
 maya_useNewAPI = True  # Tell Maya to use the Python API 2.0
@@ -38,9 +38,9 @@ def hotkey_set(name: str):
     prev_set: str = cmds.hotkeySet(query=True, current=True)  # type: ignore
     try:
         if cmds.hotkeySet(name, query=True, exists=True):
-            cmds.hotkeySet(name, edit=True, current=True)
-        else:
             cmds.hotkeySet(name, current=True)
+        else:
+            cmds.hotkeySet(name, edit=True, current=True)
         yield
     finally:
         cmds.hotkeySet(prev_set, edit=True, current=True)
@@ -222,13 +222,11 @@ def register_command_from_description(command: CommandDescription):
 def initializePlugin(plugin: MObject) -> None:
     if not cmds.hotkeySet(HOTKEY_SET_NAME, query=True, exists=True):
         cmds.hotkeySet(HOTKEY_SET_NAME, current=True)
-        with hotkey_set(HOTKEY_SET_NAME):
-            for command in get_registered_commands():
-                register_command_from_description(command)
     else:
         cmds.hotkeySet(HOTKEY_SET_NAME, edit=True, current=True)
-        for command in get_registered_commands():
-            register_command_from_description(command)
+
+    for command in get_registered_commands():
+        register_command_from_description(command)
 
     log.info(f"{PLUGIN_DISPLAY_NAME} initialized")
 

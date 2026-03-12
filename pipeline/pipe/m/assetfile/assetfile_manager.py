@@ -714,10 +714,11 @@ __all__ = [
 
 
 @register_maya_command(
-    name="open_asset", label="Open Asset", icon="fileOpen.png", hotkey="ctrl+w"
+    name="open_asset", label="Open Asset", icon="fileOpen.png", hotkey="ctrl+alt+a"
 )
 def open_asset():
     """
     Open the canonical model file for an asset.
     """
+    log.info("Open Asset Window")
     MAssetFileManager().open_file()
