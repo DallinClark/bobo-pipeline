@@ -46,10 +46,11 @@ class RigPublisher:
         if self._test_view_update_callback is not None:
             self._test_view_update_callback(test, passed)
 
-    def _build_rig(self, rig_name: str, rig_type: str):
+    def _build_rig(self, rig_name: str, rig_type: str) -> bool:
         rig_builder = RigBuilder()
         rig_builder.connect_progress(self.build_progress.update_progress)
-        rig_builder.build_rig(rig_name, rig_type)
+        rig_build_result = rig_builder.build_rig(rig_name, rig_type)
+        return rig_build_result
 
     def _run_tests(self, tests: Iterable[type[RigBuildTest]]) -> bool:
         self.build_progress.finish_step()
@@ -63,7 +64,7 @@ class RigPublisher:
         test_runner = TestRunner(test_objects, self._on_test_run)
         return test_runner.run_tests()
 
-    def _publish_rig(self, rig_name: str):
+    def _publish_rig(self, rig_name: str) -> bool:
         publish_asset = self._conn.get_asset_by_name(rig_name)
         publish_asset_paths = paths_for_asset(publish_asset)
         rig_publish_path = publish_asset_paths.rig_path
@@ -82,20 +83,23 @@ class RigPublisher:
             f"PUBLISH: {rig_name} was successfully built and published to {rig_version_filepath}"
         )
         rig_publish_filepath = (rig_publish_path / rig_name).with_suffix(".mb")
-        if rig_publish_filepath.exists():
-            if rig_publish_filepath.is_symlink():
-                rig_publish_filepath.unlink()
-            else:
-                log.error(
-                    f"PUBLISH: The file at {rig_publish_filepath} already exists and is not a symlink! To avoid data loss symlink creation/updating was cancelled."
-                )
-                return
+        if rig_publish_filepath.is_symlink():
+            rig_publish_filepath.unlink()
+        elif rig_publish_filepath.exists():
+            log.error(
+                f"PUBLISH: The file at {rig_publish_filepath} already exists and is not a symlink! To avoid data loss symlink creation/updating was cancelled."
+            )
+            return False
         rig_publish_filepath.symlink_to(rig_version_filepath)
         log.info(f"PUBLISH: {rig_name} rig symlink updated to {rig_version_filepath}")
         self.publish_progress.finish_step()
+        return True
 
     def build_test_and_publish(self, rig_name: str, rig_type: str):
-        self._build_rig(rig_name, rig_type)
+        build_complete = self._build_rig(rig_name, rig_type)
+        if not build_complete:
+            log.error(f"{rig_name} failed to build properly and wasn't published!")
+            return
         tests_passed = self._run_tests(RIG_BUILD_TESTS)
         if not tests_passed:
             log.error(
