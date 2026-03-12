@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from typing import TYPE_CHECKING, Any
+from contextlib import contextmanager
 
 from maya import cmds
 from maya.api.OpenMaya import MObject
@@ -23,11 +24,26 @@ COMMAND_PREFIX = "SKD"
 GITHUB_REPO_URL = (
     "https://github.com/joseph-wardle/sandwich-pipeline/tree/prod"  # base URL to repo
 )
+HOTKEY_SET_NAME = PLUGIN_DISPLAY_NAME
 
 
 maya_useNewAPI = True  # Tell Maya to use the Python API 2.0
 
 REGISTERED_COMMANDS: list[str] = []
+
+
+@contextmanager
+def hotkey_set(name: str):
+    """Context manager that creates a hotkeySet if it doesn't exist, sets it as current, and restores the previous set on exit."""
+    prev_set: str = cmds.hotkeySet(query=True, current=True)  # type: ignore
+    try:
+        if cmds.hotkeySet(name, query=True, exists=True):
+            cmds.hotkeySet(name, edit=True, current=True)
+        else:
+            cmds.hotkeySet(name, current=True)
+        yield
+    finally:
+        cmds.hotkeySet(prev_set, edit=True, current=True)
 
 
 def make_github_url(func: FunctionType) -> str | None:
@@ -49,20 +65,26 @@ def make_github_url(func: FunctionType) -> str | None:
         return None
 
 
-def is_shortcut_assigned(key: str, ctrl=False, alt=False, shift=False) -> bool:
+def name_command_has_hotkey(name_command: str) -> bool:
+    """Returns True if the given nameCommand has any hotkey bound to it."""
+    try:
+        key = cmds.hotkey(query=True, name=name_command)
+        return bool(key)
+    except RuntimeError:
+        return False
+
+
+def is_hotkey_assigned(key: str, ctrl=False, alt=False, shift=False) -> bool:
     """
     Returns True if the exact key combination (including modifiers) has a command assigned.
     """
     try:
-        assigned = cmds.hotkey(
-            key,
-            query=True,
-            name=True,
+        annotation = cmds.hotkeyCheck(
+            keyString=key.upper() if shift else key,
             ctrlModifier=ctrl,
             altModifier=alt,
-            shiftModifier=shift,
         )
-        return bool(assigned)  # empty string means unassigned
+        return bool(annotation)
     except RuntimeError:
         return False
 
@@ -74,41 +96,45 @@ def assign_hotkey(
     alt: bool = False,
     shift: bool = False,
     command_display_name: str | None = None,
+    force=False,
 ):
     """
     Assigns a hotkey only if the key is not already bound.
     - key: key character (e.g., "d")
     - name_command: nameCommand to assign
     """
-    # Assign press name only if empty
-    if not is_shortcut_assigned(key, ctrl, alt, shift):
-        cmds.hotkey(
-            keyShortcut=key,
-            name=name_command,
-            ctrlModifier=ctrl,
-            altModifier=alt,
-            shiftModifier=shift,
-        )
-    else:
-        # 1. Generate the hotkey string if it wasn't provided
+    if not force:
+        if name_command_has_hotkey(name_command):
+            return  # user has already customized this, don't touch it
+        if is_hotkey_assigned(key, ctrl, alt, shift):
+            mods = []
+            if ctrl:
+                mods.append("Ctrl")
+            if alt:
+                mods.append("Alt")
+            if shift:
+                mods.append("Shift")
+            mods.append(key.upper())
+            command_name_string = (
+                command_display_name
+                if command_display_name is not None
+                else name_command
+            )
+            final_hotkey_string = "+".join(mods)
 
-        mods = []
-        if ctrl:
-            mods.append("Ctrl")
-        if alt:
-            mods.append("Alt")
-        if shift:
-            mods.append("Shift")
-        mods.append(key.upper())
-        command_name_string = (
-            command_display_name if command_display_name is not None else name_command
-        )
-        final_hotkey_string = "+".join(mods)
+            log.debug(
+                f' The pipeline command "{command_name_string}" has a default hotkey {final_hotkey_string},'
+                "which was not applied as it is already assigned."
+            )
+            return  # the hotkey is assigned to something else
 
-        log.debug(
-            f' The pipeline command "{command_name_string}" has a default hotkey {final_hotkey_string},'
-            "which was not applied as it is already assigned."
-        )
+    cmds.hotkey(
+        keyShortcut=key.upper() if shift else key,
+        name=name_command,
+        ctrlModifier=ctrl,
+        altModifier=alt,
+        shiftModifier=shift,
+    )
 
 
 def assign_hotkey_from_string(
@@ -194,8 +220,16 @@ def register_command_from_description(command: CommandDescription):
 
 # --- Standard Maya plug-in entry points ---
 def initializePlugin(plugin: MObject) -> None:
-    for command in get_registered_commands():
-        register_command_from_description(command)
+    if not cmds.hotkeySet(HOTKEY_SET_NAME, query=True, exists=True):
+        cmds.hotkeySet(HOTKEY_SET_NAME, current=True)
+        with hotkey_set(HOTKEY_SET_NAME):
+            for command in get_registered_commands():
+                register_command_from_description(command)
+    else:
+        cmds.hotkeySet(HOTKEY_SET_NAME, edit=True, current=True)
+        for command in get_registered_commands():
+            register_command_from_description(command)
+
     log.info(f"{PLUGIN_DISPLAY_NAME} initialized")
 
 
