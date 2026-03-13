@@ -25,7 +25,7 @@ HOTKEY_SET_NAME = "Sandwich_Pipeline"
 GITHUB_REPO_URL = (
     "https://github.com/joseph-wardle/sandwich-pipeline/tree/prod"  # base URL to repo
 )
-
+CUSTOM_HOTKEYS_TO_ADD: dict[str, str] = {"CreateMotionTrail": "ctrl+alt+m"}
 
 maya_useNewAPI = True  # Tell Maya to use the Python API 2.0
 
@@ -160,6 +160,20 @@ def assign_hotkey_from_string(
     )
 
 
+def add_named_command(command: str, label: str, hotkey: str | None = None):
+    # Named Command (hotkeys)
+    if hotkey is not None:
+        named_command = f"{command}NamedCommand"
+        cmds.nameCommand(
+            named_command,
+            command=command,  # type: ignore
+            sourceType="mel",  # runtime commands are always invoked via MEL
+            annotation=label,
+        )
+        if hotkey is not None:
+            assign_hotkey_from_string(hotkey, named_command, label)
+
+
 def register_command_from_description(command: CommandDescription):
     command_name = f"{COMMAND_PREFIX}_{command.name}"
     command_sub_category = (
@@ -201,21 +215,7 @@ def register_command_from_description(command: CommandDescription):
         **runtime_command_optional_args,  # type: ignore
     )
     REGISTERED_COMMANDS.append(command_name)
-
-    # Named Command (hotkeys)
-    if command.hotkey is not None:
-        named_command = f"{command_name}NamedCommand"
-        name_command_optional_args: dict[str, Any] = {}
-        if command.description is not None:
-            name_command_optional_args["annotation"] = command.description
-        cmds.nameCommand(
-            named_command,
-            command=command_name,  # type: ignore
-            sourceType="mel",  # runtime commands are always invoked via MEL
-            annotation=command.label,
-        )
-        if command.hotkey is not None:
-            assign_hotkey_from_string(command.hotkey, named_command, command.label)
+    add_named_command(command_name, command.label, command.hotkey)
 
 
 # --- Standard Maya plug-in entry points ---
@@ -227,6 +227,9 @@ def initializePlugin(plugin: MObject) -> None:
 
     for command in get_registered_commands():
         register_command_from_description(command)
+
+    for command, hotkey in CUSTOM_HOTKEYS_TO_ADD.items():
+        add_named_command(command, command, hotkey)
 
     log.info(f"{PLUGIN_DISPLAY_NAME} initialized")
 

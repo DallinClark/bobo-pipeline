@@ -36,7 +36,7 @@ def register_maya_command(
         description: Optional description of the command. Defaults to the
             decorated function's docstring.
         category: Optional UI grouping or menu category.
-        hotkey: Optional hotkey string for runtime command binding.
+        hotkey: Optional hotkey string for runtime command binding. (eg. ctrl+alt+b)
         icon: Optional icon name or file path for UI display.
 
     Returns:
