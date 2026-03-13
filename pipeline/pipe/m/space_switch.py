@@ -77,7 +77,9 @@ def createSpaceSwitch():
     mc.select(target)
 
 
-@maya_command(name="space_switch", label="Space Switch", category="animation")
+@maya_command(
+    name="space_switch", label="Space Switch", category="animation", icon="parent.png"
+)
 def run():
     """
     Creates a animation space switch setup. All the selected objects become switchable spaces for the final object in the selection.

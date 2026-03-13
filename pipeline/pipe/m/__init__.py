@@ -7,6 +7,7 @@ from . import (
     reload,
     rig_builder,
     rig_publish,
+    space_switch,
     symmetry,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "reload",
     "rig_builder",
     "rig_publish",
+    "space_switch",
     "symmetry",
 ]

@@ -38,7 +38,8 @@ def maya_command(
     help_url: str | None = None,
 ):
     """
-    Decorator that registers a python function as a Maya Command with optional keyboard shortcut and icon.
+    Decorator that tags a python function as a Maya Command with optional keyboard shortcut and icon.
+
     Args:
         name: Unique internal command identifier.
         label: Human-readable command name for UI display.
@@ -50,9 +51,8 @@ def maya_command(
         help_url: Optional link to documentation of the command. If None it this will default to a link to the function source code.
     Returns:
         Callable: The original function, unchanged.
-    """
-    """
 
+    NOTE: The command will only be automatically registered if your function has already been imported when the Maya pipeline plugin is initialized.
     """
 
     def decorator(func: FunctionType):
