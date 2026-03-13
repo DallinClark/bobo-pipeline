@@ -1,7 +1,7 @@
-from pipe.m.command import register_maya_command
+from pipe.m.command import maya_command
 
 
-@register_maya_command(
+@maya_command(
     name="reload_pipe",
     label="Reload Pipe",
     hotkey="ctrl+alt+r",

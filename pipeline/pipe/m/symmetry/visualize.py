@@ -17,7 +17,7 @@ from maya.api.OpenMaya import (
 )
 import maya.cmds as cmds
 
-from pipe.m.command import register_maya_command
+from pipe.m.command import maya_command
 
 from .color import lch_to_lab, oklab_to_linear_srgb
 
@@ -143,7 +143,7 @@ def color_from_symmetry_error(
     return
 
 
-@register_maya_command(
+@maya_command(
     name="visualize_symmetry_of_selected",
     label="Visualize Symmetry Of Selected",
     icon="symmetry.svg",

@@ -5,7 +5,7 @@ from typing import Any, cast
 
 from shared.util import get_production_path
 
-from pipe.m.command import register_maya_command
+from pipe.m.command import maya_command
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def custom_picker_title(custom_title: str):
         main_module.WINDOW_TITLE = original_title
 
 
-@register_maya_command(
+@maya_command(
     name="picker",
     label="Picker",
     icon="picker.svg",
