@@ -9,6 +9,9 @@ from pipe.m.command import maya_command
     category="development",
 )
 def reload_pipe() -> None:
+    """
+    Unloads the pipeline python modules for testing modifications during development.
+    """
     from pipe.util import reload_pipe as _reload_pipe
 
     _reload_pipe()
