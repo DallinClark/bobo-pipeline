@@ -5,7 +5,7 @@ import traceback
 from enum import IntEnum
 from math import isclose
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import attrs
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
@@ -14,7 +14,7 @@ from maya.api.OpenMaya import MDagPath, MFnDependencyNode
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Iterable, Mapping, Optional, Protocol, cast
+    from typing import Any, Callable, Iterable, Mapping, Optional, Protocol
 
     class TimeSampleble(Protocol):
         def GetTimeSamples(self) -> list[float]: ...
