@@ -5,15 +5,16 @@ import traceback
 from enum import IntEnum
 from math import isclose
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import attrs
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 import numpy as np
+from maya.api.OpenMaya import MDagPath, MFnDependencyNode
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Iterable, Protocol
+    from typing import Any, Callable, Iterable, Mapping, Optional, Protocol
 
     class TimeSampleble(Protocol):
         def GetTimeSamples(self) -> list[float]: ...
@@ -215,53 +216,86 @@ def find_and_move_prim(
     move_prim(layer, prim_to_move, new_prim_parent)
 
 
-def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> bool:
+def path_to_maya_dag_map(
+    dag_to_usd: mayaUsdLib.DagToUsdMap,
+) -> dict[Sdf.Path, MDagPath]:
+    """Build a mapping from USD prim -> original Maya MDagPath"""
+    prim_namespace_map: dict[Sdf.Path, MDagPath] = {}
+    for mapping in dag_to_usd:
+        dag_path: MDagPath = mapping.key()
+        prim: Sdf.Path = mapping.data()
+
+        prim_namespace_map[prim] = dag_path
+    return prim_namespace_map
+
+
+def remove_namespace(
+    layer: Sdf.Layer,
+    path_dag_map: Mapping[Sdf.Path, MDagPath],
+    root: Sdf.Path = Sdf.Path("/"),
+) -> bool:
     edit = Sdf.BatchNamespaceEdit()
 
     def traverse_kernel(path: Sdf.Path | str):
         if isinstance(path, str):
             path = Sdf.Path(path)
-        if path.IsPrimPath():
-            try:
-                edit.Add(Sdf.NamespaceEdit.Rename(path, path.name.split("_", 1)[1]))
-            except IndexError:
-                print(f"Namespace not changed for {str(path)}")
+
+        if not path.IsPrimPath():  # We only need to modify prims (not properties)
+            return
+        dag_path = path_dag_map.get(path)
+        if dag_path:
+            node = MFnDependencyNode(dag_path.node())
+            # Still have to manually strip the namespace, but at least it's with a colon which maya ONLY allows for use as a namespace delimiter.
+            name = node.name().rsplit(":", 1)[-1]
+            edit.Add(Sdf.NamespaceEdit.Rename(path, name))
+        else:
+            print(f"No Maya mapping found for USD path: {path}. Namespace not removed.")
 
     layer.Traverse(root, traverse_kernel)
     return layer.Apply(edit)
 
 
-def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
+def split_by_namespace(
+    stage: Usd.Stage, suffix: str, path_dag_map: Mapping[Sdf.Path, MDagPath]
+) -> dict[str, Sdf.Layer]:
     root_layer = stage.GetRootLayer()
     root_layer_path = Path(root_layer.realPath)
     stage.SetEditTarget(root_layer)
 
-    child_names = stage.GetPseudoRoot().GetChildrenNames()
+    # Get all the root level prims and their corresponding namespace for later.
+    # Also make a mapping of namespace -> their prims for easy layer splitting.
+    root_level_prims = stage.GetPseudoRoot().GetChildren()
     namespaces: set[str] = set()
-    for n in child_names:
-        namespace, item = n.split("_", 1)
-        if item.startswith("S_"):  # static props
-            remove_namespace(root_layer, Sdf.Path("/" + n))
-            remove_namespace(root_layer, Sdf.Path("/" + item))
-            s, namespace, _ = item.split("_", 2)
+    namespace_prims: dict[str, set[Usd.Prim]] = {}
+    prim: Usd.Prim
+    for prim in root_level_prims:
+        dag_path = path_dag_map[prim.GetPath()]
+        node = MFnDependencyNode(dag_path.node())
+        namespace = node.namespace
         namespaces.add(namespace)
+        if namespace not in namespace_prims:
+            namespace_prims[namespace] = {prim}
+        else:
+            namespace_prims[namespace].add(prim)
 
-    child_names = stage.GetPseudoRoot().GetChildrenNames()
     layers: dict[str, Sdf.Layer] = dict()
-    for namespace in namespaces:
+    for namespace in namespaces:  # Create a layer for each rig (namespace)
         layer_name = namespace.lower()
         layer_path = str(root_layer_path.parent / f"{layer_name}.{suffix}.usd")
         layer = create_or_clear_layer(layer_path)
         layer.TransferContent(root_layer)
 
-        children_to_keep = [c for c in child_names if c.startswith(namespace + "_")]
+        # Get the prims belonging to this namespace, discard the rest for this layer.
+        prims_to_keep = [
+            prim for prim in root_level_prims if prim in namespace_prims[namespace]
+        ]
         edit = Sdf.BatchNamespaceEdit()
-        for child in child_names:
-            if child not in children_to_keep:
-                edit.Add(Sdf.NamespaceEdit.Remove("/" + child))
+        for prim in root_level_prims:
+            if prim not in prims_to_keep:
+                edit.Add(Sdf.NamespaceEdit.Remove(prim.GetPath()))
 
         layer.Apply(edit)
-        if not remove_namespace(layer):
+        if not remove_namespace(layer, path_dag_map):
             raise RuntimeError(f"Could not remove namespace on layer `{layer_name}`")
 
         layer.Save()
@@ -269,8 +303,8 @@ def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
 
     # clear out root layer
     edit = Sdf.BatchNamespaceEdit()
-    for child in child_names:
-        edit.Add(Sdf.NamespaceEdit.Remove("/" + child))
+    for prim in root_level_prims:
+        edit.Add(Sdf.NamespaceEdit.Remove(prim.GetPath()))
     root_layer.Apply(edit)
     root_layer.Save()
 
@@ -529,9 +563,10 @@ class ExportChaser(mayaUsdLib.ExportChaser):
             assert self._chaser_args.props is not None
             assert self._chaser_args.timeline is not None
 
+            path_dag_mapping = path_to_maya_dag_map(self._dag_to_usd)
             scale_down_geo(self._stage)
             make_topo_attrs_default(self._stage)
-            layers = split_by_namespace(self._stage, "anim")
+            layers = split_by_namespace(self._stage, "anim", path_dag_mapping)
 
             root_layer = self._stage.GetRootLayer()
             root_layer_path = Path(root_layer.realPath)
