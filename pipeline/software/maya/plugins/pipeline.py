@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from maya import cmds
-from maya.api.OpenMaya import MObject
 import logging
 
+from maya import cmds
+from maya.api.OpenMaya import MObject
 from pipe.m.command import (
     add_named_command,
     get_decorated_commands,

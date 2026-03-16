@@ -10,13 +10,13 @@ from typing import Any
 from maya import cmds
 from shared.util import get_function_source_code_url
 
-decorated_commands: list[CommandDescription] = []
+decorated_commands: set[CommandDescription] = set()
 registered_commands: list[str] = []
 
 log = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommandDescription:
     function: FunctionType
     name: str
@@ -70,13 +70,13 @@ def maya_command(
             help_url=help_url,
         )
         global decorated_commands
-        decorated_commands.append(command_description)
+        decorated_commands.add(command_description)
         return func
 
     return decorator
 
 
-def get_decorated_commands() -> list[CommandDescription]:
+def get_decorated_commands() -> set[CommandDescription]:
     return decorated_commands
 
 
