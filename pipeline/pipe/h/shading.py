@@ -619,9 +619,6 @@ class MatlibNodeBuilder:
             )
         if orm:
             self._connect_named(
-                preview_surface, "opacity", orm, ("r", "outR", "resultR")
-            )
-            self._connect_named(
                 preview_surface, "roughness", orm, ("g", "outG", "resultG")
             )
             self._connect_named(
