@@ -244,7 +244,8 @@ def remove_namespace(
             return
         dag_path = path_dag_map.get(path)
         if dag_path:
-            node = MFnDependencyNode(dag_path.node())
+            # By default the Maya export gives the USD meshes the names of their maya transform counterparts.
+            node = MFnDependencyNode(dag_path.transform())
             # Still have to manually strip the namespace, but at least it's with a colon which maya ONLY allows for use as a namespace delimiter.
             name = node.name().rsplit(":", 1)[-1]
             edit.Add(Sdf.NamespaceEdit.Rename(path, name))
