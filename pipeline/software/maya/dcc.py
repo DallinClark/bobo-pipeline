@@ -62,6 +62,7 @@ class MayaDCC(DCC):
             "MAYAUSD_EXPORT_MAP1_AS_PRIMARY_UV_SET": 1,
             "MAYAUSD_IMPORT_PRIMARY_UV_SET_AS_MAP1": 1,
             "MAYA_MODULE_PATH": os.pathsep.join(module_paths),
+            "MAYA_PLUG_IN_PATH": str(this_path.parent / "plugins"),
             "PIPE_TELEMETRY_SPOOL_DIR": str(get_shared_telemetry_spool_dir()),
             "PYTHONPATH": os.pathsep.join(
                 [

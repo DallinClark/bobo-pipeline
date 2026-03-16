@@ -5,6 +5,8 @@ from typing import Any, cast
 
 from shared.util import get_production_path
 
+from pipe.m.command import maya_command
+
 log = logging.getLogger(__name__)
 
 CUSTOM_PICKER_TITLE = "SKD Picker"
@@ -23,7 +25,17 @@ def custom_picker_title(custom_title: str):
         main_module.WINDOW_TITLE = original_title
 
 
+@maya_command(
+    name="picker",
+    label="Picker",
+    icon="picker.svg",
+    hotkey="ctrl+alt+p",
+    category="animation",
+)
 def run():
+    """
+    Load the pipeline picker UI.
+    """
     picker_folder_path = get_production_path() / "pickers"
     if not picker_folder_path.exists():
         log.warning(
