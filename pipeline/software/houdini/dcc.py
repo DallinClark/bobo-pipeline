@@ -51,9 +51,12 @@ class HoudiniDCC(DCC):
         env_vars: typing.Mapping[str, int | str | None] | None
         env_vars = {
             "DCC": str(this_path.parent.name),
-            # Asset Gallery sqlite db (set in 456.py)
-            "HOUDINI_ASSETGALLERY_DATA_SOURCE": _PROD_DB,
-            "HOUDINI_ASSETGALLERY_DB_FILE": _PROD_DB,
+            # Asset Gallery: Houdini writes to a per-session temp copy so the
+            # prod DB is never held open by Houdini. Changes are merged back to
+            # prod on clean exit via _merge_asset_gallery_changes(). The internal
+            # ASSETGALLERY_DATA_SOURCE hscript variable is propagated in 456.py.
+            "HOUDINI_ASSETGALLERY_DATA_SOURCE": self._assetdb_path,
+            "HOUDINI_ASSETGALLERY_DB_FILE": self._assetdb_path,
             # Backup directory
             "HOUDINI_BACKUP_DIR": "./.backup",
             # Dump the core on crash to help debugging
@@ -157,12 +160,22 @@ class HoudiniDCC(DCC):
         atexit.register(lambda: self._merge_asset_gallery_changes())
 
     def _merge_asset_gallery_changes(self) -> None:
-        # test if the gallery has changed
+        # Guard against the OS cleaning up $TMPDIR while Houdini was running.
+        if (
+            not Path(self._assetdb_path).exists()
+            or not Path(self._orig_assetdb_path).exists()
+        ):
+            log.warning(
+                "Asset gallery temp files missing; skipping merge into prod DB."
+            )
+            return
+
+        # Skip merge if the session made no gallery changes.
         filecmp.clear_cache()
         if filecmp.cmp(self._orig_assetdb_path, self._assetdb_path, shallow=False):
             return
 
-        print("Merging asset gallery changes")
+        log.info("Merging asset gallery changes into prod DB")
 
         lock_path = _PROD_DB + ".lock"
 
@@ -221,6 +234,11 @@ class HoudiniDCC(DCC):
                                 else ""
                             )
                         )
+
+        # Flush the write-ahead log into the main DB file so no pending
+        # changes are left in a .wal sidecar that could confuse future readers.
+        with closing(sqlite3.connect(_PROD_DB)) as conn:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
         # clean up
         for f in _TMPDIR.glob("assetGallery.*"):
