@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import json
-import traceback
-from enum import IntEnum
 from math import isclose
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-import attrs
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 import numpy as np
+from maya.api.OpenMaya import MDagPath, MFnDependencyNode
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdUtils, Vt
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Iterable, Protocol
+    from typing import Any, Callable, Iterable, Mapping, Protocol
 
     class TimeSampleble(Protocol):
         def GetTimeSamples(self) -> list[float]: ...
@@ -21,19 +18,10 @@ if TYPE_CHECKING:
         def GetNumTimeSamples(self) -> int: ...
 
 
-from env_sg import DB_Config
 from shared.util import get_production_path
 
-from pipe.db import DB
 from pipe.struct.db import Asset
 from pipe.struct.timeline import Timeline
-from pipe.util import log_errors
-
-
-class ChaserMode(IntEnum):
-    ANIM = 1
-    CAM = 2
-    CHAR = 3
 
 
 def get_frames_from_attr(attr: TimeSampleble) -> Iterable[Usd.TimeCode]:
@@ -154,10 +142,7 @@ def update_material_bindings(
     for rel in bindings.GetCollectionBindingRels():
         t1, t2 = rel.GetTargets()
         # strip the namespace because the USD exporter strips the geo namespace but not the material namespace
-        new_name_split = t2.name.split("_", 1)
-        if len(new_name_split) < 2:
-            continue
-        new_name = new_name_split[1]
+        new_name = t2.name
         # Change the material binding to match how it will look in Houdini
         rel.SetTargets(
             (
@@ -215,62 +200,91 @@ def find_and_move_prim(
     move_prim(layer, prim_to_move, new_prim_parent)
 
 
-def remove_namespace(layer: Sdf.Layer, root: Sdf.Path = Sdf.Path("/")) -> bool:
+def path_to_maya_dag_map(
+    dag_to_usd: mayaUsdLib.DagToUsdMap,
+) -> dict[Sdf.Path, MDagPath]:
+    """Build a mapping from USD prim -> original Maya MDagPath"""
+    prim_namespace_map: dict[Sdf.Path, MDagPath] = {}
+    for mapping in dag_to_usd:
+        dag_path: MDagPath = mapping.key()
+        prim: Sdf.Path = mapping.data()
+
+        prim_namespace_map[prim] = dag_path
+    return prim_namespace_map
+
+
+def remove_namespace(
+    layer: Sdf.Layer,
+    path_dag_map: Mapping[Sdf.Path, MDagPath],
+    root: Sdf.Path = Sdf.Path("/"),
+) -> bool:
     edit = Sdf.BatchNamespaceEdit()
 
     def traverse_kernel(path: Sdf.Path | str):
         if isinstance(path, str):
             path = Sdf.Path(path)
-        if path.IsPrimPath():
-            try:
-                edit.Add(Sdf.NamespaceEdit.Rename(path, path.name.split("_", 1)[1]))
-            except IndexError:
-                print(f"Namespace not changed for {str(path)}")
+
+        if not path.IsPrimPath():  # We only need to modify prims (not properties)
+            return
+        dag_path = path_dag_map.get(path)
+        if dag_path:
+            # By default the Maya export gives the USD meshes the names of their maya transform counterparts.
+            node = MFnDependencyNode(dag_path.transform())
+            # Still have to manually strip the namespace, but at least it's with a colon which maya ONLY allows for use as a namespace delimiter.
+            name = node.name().rsplit(":", 1)[-1]
+            edit.Add(Sdf.NamespaceEdit.Rename(path, name))
+        else:
+            print(f"No Maya mapping found for USD path: {path}. Namespace not removed.")
 
     layer.Traverse(root, traverse_kernel)
     return layer.Apply(edit)
 
 
-def split_by_namespace(stage: Usd.Stage, suffix: str) -> dict[str, Sdf.Layer]:
+def split_by_namespace(
+    stage: Usd.Stage, suffix: str, path_dag_map: Mapping[Sdf.Path, MDagPath]
+) -> dict[str, Sdf.Layer]:
     root_layer = stage.GetRootLayer()
     root_layer_path = Path(root_layer.realPath)
     stage.SetEditTarget(root_layer)
 
-    child_names = stage.GetPseudoRoot().GetChildrenNames()
+    root_level_prims = stage.GetPseudoRoot().GetChildren()
     namespaces: set[str] = set()
-    for n in child_names:
-        namespace, item = n.split("_", 1)
-        if item.startswith("S_"):  # static props
-            remove_namespace(root_layer, Sdf.Path("/" + n))
-            remove_namespace(root_layer, Sdf.Path("/" + item))
-            s, namespace, _ = item.split("_", 2)
+    namespace_prims: dict[str, set[Usd.Prim]] = {}
+    prim: Usd.Prim
+    for prim in root_level_prims:
+        dag_path = path_dag_map[prim.GetPath()]
+        node = MFnDependencyNode(dag_path.node())
+        namespace = node.namespace
         namespaces.add(namespace)
+        if namespace not in namespace_prims:
+            namespace_prims[namespace] = {prim}
+        else:
+            namespace_prims[namespace].add(prim)
 
-    child_names = stage.GetPseudoRoot().GetChildrenNames()
     layers: dict[str, Sdf.Layer] = dict()
-    for namespace in namespaces:
+    for namespace in namespaces:  # Create a layer for each rig (namespace)
         layer_name = namespace.lower()
         layer_path = str(root_layer_path.parent / f"{layer_name}.{suffix}.usd")
         layer = create_or_clear_layer(layer_path)
         layer.TransferContent(root_layer)
 
-        children_to_keep = [c for c in child_names if c.startswith(namespace + "_")]
+        # Get the prims belonging to this namespace, discard the rest for this layer.
+        prims_to_keep = [
+            prim for prim in root_level_prims if prim in namespace_prims[namespace]
+        ]
         edit = Sdf.BatchNamespaceEdit()
-        for child in child_names:
-            if child not in children_to_keep:
-                edit.Add(Sdf.NamespaceEdit.Remove("/" + child))
+        for prim in root_level_prims:
+            if prim not in prims_to_keep:
+                edit.Add(Sdf.NamespaceEdit.Remove(prim.GetPath()))
 
         layer.Apply(edit)
-        if not remove_namespace(layer):
-            raise RuntimeError(f"Could not remove namespace on layer `{layer_name}`")
-
         layer.Save()
         layers.update({layer_name: layer})
 
     # clear out root layer
     edit = Sdf.BatchNamespaceEdit()
-    for child in child_names:
-        edit.Add(Sdf.NamespaceEdit.Remove("/" + child))
+    for prim in root_level_prims:
+        edit.Add(Sdf.NamespaceEdit.Remove(prim.GetPath()))
     root_layer.Apply(edit)
     root_layer.Save()
 
@@ -444,152 +458,3 @@ def add_variant_to_model(asset: Asset, variant: str) -> None:
 
     # Save the layer after editing
     layer.Save()
-
-
-@attrs.define
-class ChaserArgs:
-    mode: ChaserMode = attrs.field(converter=int)
-    timeline: Optional[Timeline] = attrs.field(
-        default=None,
-        kw_only=True,
-        converter=lambda t: Timeline.from_json(t) if t else None,
-    )
-    props: Optional[dict[str, list[str]]] = attrs.field(
-        default=None,
-        kw_only=True,
-        converter=lambda p: json.loads(p) if p else None,
-    )
-
-
-class ExportChaser(mayaUsdLib.ExportChaser):
-    ID: str = "lnd"
-
-    _chaser_args: ChaserArgs
-    _dag_to_usd: mayaUsdLib.DagToUsdMap
-    _stage: Usd.Stage
-
-    def __init__(self, factoryContext, *args, **kwargs) -> None:
-        super(ExportChaser, self).__init__(factoryContext, *args, **kwargs)
-
-        self._dag_to_usd = factoryContext.GetDagToUsdMap()
-        self._stage = factoryContext.GetStage()
-        self.job_args = factoryContext.GetJobArgs()
-        self._chaser_args = ChaserArgs(**self.job_args.allChaserArgs[self.ID])
-
-    @log_errors
-    def PostExport(self) -> bool:
-        if self._chaser_args.mode == ChaserMode.ANIM:
-            assert self._chaser_args.props is not None
-            assert self._chaser_args.timeline is not None
-
-            scale_down_geo(self._stage)
-            make_topo_attrs_default(self._stage)
-            layers = split_by_namespace(self._stage, "anim")
-
-            root_layer = self._stage.GetRootLayer()
-            root_layer_path = Path(root_layer.realPath)
-
-            conn = DB.Get(DB_Config)
-
-            for name, layer in layers.items():
-                # takes of the end number if it's a copy in maya
-                base_name = ""
-                if name[-1].isdigit():
-                    base_name = name[:-1]
-                else:
-                    base_name = name
-                print(base_name)
-
-                character_root_path = Sdf.Path("/ROOT/MODEL")
-
-                stitched_layer = split_preroll(
-                    layer, name, character_root_path, self._chaser_args.timeline
-                )
-
-                char_prim_spec: Sdf.PrimSpec
-                char_prim_spec = Sdf.CreatePrimInLayer(
-                    root_layer, Sdf.Path(f"__class__/character/{name}")
-                )
-
-                char_prim_spec.specifier = Sdf.SpecifierOver
-
-                reference = Sdf.Reference(
-                    f"./{Path(stitched_layer.realPath).relative_to(root_layer_path.parent)}",
-                    character_root_path,
-                )
-
-                char_prim_spec.referenceList.appendedItems = [reference]
-
-                asset = None
-                relative_path_str = None
-                try:
-                    asset = conn.get_asset_by_name(base_name)
-
-                    assert asset.asset_path
-                    rig_path = (
-                        str(asset.asset_path).replace("\\", "/") + "/usd/main.usd"
-                    )
-                    walk_up_len = (
-                        len(root_layer_path.relative_to(get_production_path()).parts)
-                        - 1
-                    )
-
-                    relative_path_str = "../" * walk_up_len + rig_path
-                    relative_path = Sdf.Path(relative_path_str)
-                    if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
-                        root_layer.subLayerPaths.append(str(relative_path))
-                    print(
-                        f"[chaser] added rig sublayer for {name}: {relative_path_str}"
-                    )
-                except Exception:
-                    print(f"[chaser] asset link failed for {name} (base={base_name})")
-                    print(
-                        f"    asset={getattr(asset, 'asset_path', None)} rig_path={rig_path if 'rig_path' in locals() else None}"
-                    )
-                    print(
-                        f"    relative_path={relative_path_str} root_layer={root_layer.realPath}"
-                    )
-                    print(traceback.format_exc())
-                if name != base_name and relative_path_str:
-                    # Create a concrete rig instance for this namespace so the
-                    # class-based clips can bind to a real prim.
-                    character_parent = Sdf.CreatePrimInLayer(
-                        root_layer, Sdf.Path("/character")
-                    )
-                    character_parent.specifier = Sdf.SpecifierOver
-
-                    instance_prim_path = Sdf.Path(f"/character/{name}")
-                    instance_prim_spec = Sdf.CreatePrimInLayer(
-                        root_layer, instance_prim_path
-                    )
-                    instance_prim_spec.specifier = Sdf.SpecifierDef
-
-                    rig_prim_path = Sdf.Path(f"/character/{base_name}")
-                    instance_reference = Sdf.Reference(relative_path_str, rig_prim_path)
-                    instance_prim_spec.referenceList.appendedItems = [
-                        instance_reference
-                    ]
-                    instance_prim_spec.inheritPathList.prependedItems = [
-                        Sdf.Path(f"/__class__/character/{name}")
-                    ]
-
-        elif self._chaser_args.mode == ChaserMode.CHAR:
-            scale_down_geo(self._stage)
-            update_material_bindings(self._stage, "/ROOT", "/ROOT/MODEL", "MAT_")
-
-        elif self._chaser_args.mode == ChaserMode.CAM:
-            # We don't scale down the camera here because we need to import it
-            # back into Maya. Instead we'll scale it down when we import it into
-            # Solaris.
-
-            new_shotCam_path = Sdf.Path("/LnD_shotCam")
-            find_and_move_prim(
-                self._stage.GetEditTarget().GetLayer(), "world_CTRL", new_shotCam_path
-            )
-            self._stage.SetDefaultPrim(self._stage.GetPrimAtPath(new_shotCam_path))
-        else:
-            raise ValueError(
-                f"{self._chaser_args.mode} is not a valid LnD chaser mode."
-            )
-
-        return True

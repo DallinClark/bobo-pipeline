@@ -18,7 +18,7 @@ from pipe.glui.dialogs import FilteredListDialog
 from pipe.struct.db import SGEntity, Shot
 
 from .publisher import Publisher
-from .usdchaser import ChaserMode, ExportChaser
+from .usdchaser import ExportChaser, ExportChaserMode
 
 log = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class CameraPublisher(Publisher):
         end = shot.cut_out + 5
         return {
             "chaser": [ExportChaser.ID],
-            "chaserArgs": [(ExportChaser.ID, "mode", ChaserMode.CAM)],
+            "chaserArgs": [(ExportChaser.ID, "mode", ExportChaserMode.CAM)],
             "frameRange": (start, end),
             "frameStride": 1.0,
         }
