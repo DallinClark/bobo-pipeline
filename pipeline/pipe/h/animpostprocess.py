@@ -38,8 +38,8 @@ class AnimPostProcessor:
                 load_layer.parm("shot").set(f"$JOB/{shot_path}")  # type: ignore[union-attr]
                 for dep in ["cfx", "fx", "envfx", "flo", "lighting", "render"]:
                     load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
-                if layout and layout.path:
-                    load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+                if layout and layout.environment_path:
+                    load_layer.parm("layout_path").set(f"$JOB/{layout.environment_path}/main.usd")  # type: ignore[union-attr]
                 load_layers.append(load_layer)
         else:
             # Fallback to single set logic
@@ -55,8 +55,8 @@ class AnimPostProcessor:
             load_layer.parm("shot").set(f"$JOB/{shot_path}")  # type: ignore[union-attr]
             for dep in ["cfx", "fx", "envfx", "flo" "lighting", "render"]:
                 load_layer.parm(f"{dep}_enable").set(0)  # type: ignore[union-attr]
-            if layout and layout.path:
-                load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+            if layout and layout.environment_path:
+                load_layer.parm("layout_path").set(f"$JOB/{layout.environment_path}/main.usd")  # type: ignore[union-attr]
             load_layers.append(load_layer)
 
         # Merge load layers if there are multiple

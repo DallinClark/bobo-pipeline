@@ -553,7 +553,7 @@ class HShotFileManager(HFileManager):
                 environment_stub,
             )
             return None
-        return layout.path if layout and layout.path else None
+        return layout.environment_path if layout else None
 
     def _resolve_sequence_environment_stub(
         self,
@@ -662,8 +662,8 @@ class HShotFileManager(HFileManager):
         layout = (
             self._conn.get_env_by_stub(environment_stub) if environment_stub else None
         )
-        if layout and layout.path:
-            load_layer.parm("layout_path").set(f"$JOB/{layout.path}/main.usd")  # type: ignore[union-attr]
+        if layout:
+            load_layer.parm("layout_path").set(f"$JOB/{layout.environment_path}/main.usd")  # type: ignore[union-attr]
 
         return load_layer
 

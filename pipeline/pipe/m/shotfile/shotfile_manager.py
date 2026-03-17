@@ -499,10 +499,10 @@ class MShotFileManager(FileManager):
         if env_stubs:
             for env_stub in env_stubs:
                 layout = self._conn.get_env_by_stub(env_stub)
-                if layout and layout.path:
-                    env_path = self._resolve_layout_usd_path(layout.path)
+                if layout:
+                    env_path = self._resolve_layout_usd_path(layout.environment_path)
                     if (
-                        self._path_has_layout_name(layout.path, self.FOREST_LAYOUT_NAME)
+                        self._path_has_layout_name(layout.environment_path, self.FOREST_LAYOUT_NAME)
                         and env_override_layer
                     ):
                         if self._ensure_forest_mount(env_override_layer, env_path):
@@ -510,7 +510,7 @@ class MShotFileManager(FileManager):
                     env_file_layer = self._ensure_sublayer(
                         root_layer,
                         env_path,
-                        label=f"environment layout ({layout.path})",
+                        label=f"environment layout ({layout.environment_path})",
                     )
                     if env_file_layer:
                         # locked_layers.append(env_file_layer.identifier)
@@ -523,10 +523,10 @@ class MShotFileManager(FileManager):
                 else:
                     env_stub = self._conn.get_sequence_by_stub(self.shot.sequence).set
 
-            if env_stub and (env := self._conn.get_env_by_stub(env_stub)) and env.path:
-                env_path = self._resolve_layout_usd_path(env.path)
+            if env_stub and (env := self._conn.get_env_by_stub(env_stub)):
+                env_path = self._resolve_layout_usd_path(env.environment_path)
                 if (
-                    self._path_has_layout_name(env.path, self.FOREST_LAYOUT_NAME)
+                    self._path_has_layout_name(env.environment_path, self.FOREST_LAYOUT_NAME)
                     and env_override_layer
                 ):
                     if self._ensure_forest_mount(env_override_layer, env_path):
@@ -534,7 +534,7 @@ class MShotFileManager(FileManager):
                 env_file_layer = self._ensure_sublayer(
                     root_layer,
                     env_path,
-                    label=f"environment layout ({env.path})",
+                    label=f"environment layout ({env.environment_path})",
                 )
                 if env_file_layer:
                     # locked_layers.append(env_file_layer.identifier)

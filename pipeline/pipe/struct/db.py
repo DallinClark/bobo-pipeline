@@ -89,6 +89,23 @@ def build_asset_path(display_name: Optional[str], subdirectory: Optional[str]) -
     return "/".join(path_parts)
 
 
+def build_environment_path(
+    display_name: Optional[str], subdirectory: Optional[str]
+) -> str:
+    """Build the canonical relative environment path.
+
+    Result format:
+      set/<optional-subdirectory>/<normalized-environment-name>
+    """
+    env_name = normalize_display_name(display_name) or "set"
+    path_parts = ["set"]
+    normalized_subdirectory = normalize_subdirectory(subdirectory)
+    if normalized_subdirectory:
+        path_parts.append(normalized_subdirectory)
+    path_parts.append(env_name)
+    return "/".join(path_parts)
+
+
 def validate_shot_code_token(shot_code: Optional[str]) -> str:
     """Validate a shot code for safe use as a single path token.
 
@@ -294,6 +311,16 @@ class Asset(SGEntity):
 
 @attrs.define
 class Environment(SGEntity):
+    subdirectory: Optional[str] = field(
+        default=None,
+        kw_only=True,
+        metadata={
+            _SG_NAME: "sg_subdirectory",
+            _STRUCT_HOOK: lambda subdir, _: normalize_subdirectory(subdir),
+            _UNSTRUCT_HOOK: lambda subdir, _: subdir or "",
+        },
+    )
+
     @property
     def display_name(self) -> str:
         """ShotGrid display name (code)."""
@@ -303,6 +330,28 @@ class Environment(SGEntity):
     def name(self) -> str:
         """Normalized name derived from the ShotGrid display name."""
         return normalize_display_name(self.display_name)
+
+    @property
+    def environment_path(self) -> str:
+        """Canonical relative path for this environment."""
+        return build_environment_path(self.display_name, self.subdirectory)
+
+    def __attrs_post_init__(self) -> None:
+        self.subdirectory = normalize_subdirectory(self.subdirectory)
+        self.path = self.environment_path
+        super().__attrs_post_init__()
+
+    def sg_diff(self) -> dict[str, Any]:
+        """Return only ShotGrid fields that should be updated for Environment.
+
+        Environment path is derived from display_name + subdirectory and should not
+        write back to deprecated sg_path.
+        """
+        self.path = self.environment_path
+        diff = super().sg_diff()
+        diff.pop("path", None)
+        diff.pop("sg_path", None)
+        return diff
 
 
 @attrs.define

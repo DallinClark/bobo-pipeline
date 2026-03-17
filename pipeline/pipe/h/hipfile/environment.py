@@ -16,6 +16,7 @@ from pipe.glui.dialogs import MessageDialog
 from pipe.struct.db import Environment, SGEntity, normalize_display_name
 from pipe.versioning import VersionStreamSpec
 
+from .. import nodelayouts
 from .filemanager import HFileManager
 
 log = logging.getLogger(__name__)
@@ -34,13 +35,12 @@ class HEnvFileManager(HFileManager):
 
     def _post_open_file(self, entity: SGEntity) -> None:
         environment = cast(Environment, entity)
-        context_value = (
-            (environment.path or "").strip()
-            or (environment.code or "").strip()
-            or environment.name
-        )
-        if context_value:
-            hou.setContextOption("ENVIRON", context_value)
+        hou.setContextOption("ENVIRON", environment.name)
+
+        try:
+            nodelayouts.ensure_skd_layout()
+        except Exception:
+            log.exception("Failed to ensure SKD layout for %s", environment.name)
 
     def _setup_file(self, path: Path, entity: SGEntity) -> None:
         super()._setup_file(path, entity)
@@ -52,16 +52,12 @@ class HEnvFileManager(HFileManager):
         if not normalized_context:
             return None
 
-        for resolver in (
-            lambda: self._conn.get_env_by_code(normalized_context),
-            lambda: self._conn.get_env_by_attr("path", normalized_context),
-        ):
-            try:
-                resolved = resolver()
-            except Exception:
-                continue
+        try:
+            resolved = self._conn.get_env_by_code(normalized_context)
             if isinstance(resolved, Environment):
                 return resolved
+        except Exception:
+            pass
 
         normalized_name = normalize_display_name(normalized_context)
         if not normalized_name:
@@ -114,12 +110,21 @@ class HEnvFileManager(HFileManager):
 
         relative_root = self._environment_root_relative_for_hip(hip_path)
         if relative_root:
-            try:
-                from_path = self._conn.get_env_by_attr("path", relative_root)
-            except Exception:
-                from_path = None
-            if isinstance(from_path, Environment):
-                return from_path
+            env_name_from_path = normalize_display_name(Path(relative_root).name)
+            if env_name_from_path:
+                try:
+                    env_codes = self._conn.get_env_code_list(sorted=False)
+                except Exception:
+                    env_codes = []
+                for env_code in env_codes:
+                    if normalize_display_name(env_code) != env_name_from_path:
+                        continue
+                    try:
+                        resolved = self._conn.get_env_by_code(env_code)
+                    except Exception:
+                        continue
+                    if isinstance(resolved, Environment):
+                        return resolved
 
         normalized_stem = normalize_display_name(hip_path.stem.rsplit(".v", 1)[0])
         if not normalized_stem:
@@ -158,7 +163,7 @@ class HEnvFileManager(HFileManager):
             log.warning(
                 "Could not resolve set stream for environment %s with path %s",
                 environment.code,
-                environment.path,
+                environment.environment_path,
             )
             return None
 

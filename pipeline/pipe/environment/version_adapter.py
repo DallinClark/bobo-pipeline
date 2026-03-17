@@ -19,18 +19,13 @@ SET_STREAM_NAME = "set"
 
 
 def environment_root_path(environment: Environment) -> Path:
-    environment_path = _normalize_text(environment.path)
-    if environment_path is None:
-        raise ValueError(
-            f"Environment {environment.code or environment.id} has no path in ShotGrid."
-        )
-    return (get_production_path() / environment_path).resolve()
+    return (get_production_path() / environment.environment_path).resolve()
 
 
 def environment_owner_for(environment: Environment) -> VersionOwner:
     display_name = _normalize_text(environment.display_name)
     normalized_name = _normalize_text(environment.name)
-    environment_path = _normalize_text(environment.path)
+    environment_path = environment.environment_path
     return VersionOwner(
         kind="environment",
         code=display_name or normalized_name or environment_path or "environment",
