@@ -36,7 +36,7 @@ from pipe.struct.timeline import Timeline
 from pipe.util import log_errors
 
 
-class ChaserMode(IntEnum):
+class ExportChaserMode(IntEnum):
     ANIM = 1
     CAM = 2
     CHAR = 3
@@ -44,7 +44,7 @@ class ChaserMode(IntEnum):
 
 @attrs.define
 class ChaserArgs:
-    mode: ChaserMode = attrs.field(converter=int)
+    mode: ExportChaserMode = attrs.field(converter=int)
     timeline: Optional[Timeline] = attrs.field(
         default=None,
         kw_only=True,
@@ -69,13 +69,13 @@ class ExportChaser(mayaUsdLib.ExportChaser):
 
     @log_errors
     def PostExport(self) -> bool:
-        if self._chaser_args.mode == ChaserMode.ANIM:
+        if self._chaser_args.mode == ExportChaserMode.ANIM:
             self._post_export_anim()
 
-        elif self._chaser_args.mode == ChaserMode.CHAR:
+        elif self._chaser_args.mode == ExportChaserMode.CHAR:
             self._post_export_char()
 
-        elif self._chaser_args.mode == ChaserMode.CAM:
+        elif self._chaser_args.mode == ExportChaserMode.CAM:
             self._post_export_cam()
         else:
             raise ValueError(
@@ -98,13 +98,12 @@ class ExportChaser(mayaUsdLib.ExportChaser):
         conn = DB.Get(DB_Config)
 
         for name, layer in layers.items():
-            # takes of the end number if it's a copy in maya
+            # takes off the end number if it's a copy in maya
             base_name = ""
             if name[-1].isdigit():
                 base_name = name[:-1]
             else:
                 base_name = name
-            print(base_name)
 
             rig_geo_path = Sdf.Path("/rig/geo")
 
@@ -112,19 +111,19 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 layer, name, rig_geo_path, self._chaser_args.timeline
             )
 
-            char_prim_spec: Sdf.PrimSpec
-            char_prim_spec = Sdf.CreatePrimInLayer(
-                root_layer, Sdf.Path(f"__class__/character/{name}")
+            anim_prim_spec: Sdf.PrimSpec
+            anim_prim_spec = Sdf.CreatePrimInLayer(
+                root_layer, Sdf.Path(f"__class__/anim/{name}")
             )
 
-            char_prim_spec.specifier = Sdf.SpecifierOver
+            anim_prim_spec.specifier = Sdf.SpecifierOver
 
             reference = Sdf.Reference(
                 f"./{Path(stitched_layer.realPath).relative_to(root_layer_path.parent)}",
                 rig_geo_path,
             )
 
-            char_prim_spec.referenceList.appendedItems = [reference]
+            anim_prim_spec.referenceList.appendedItems = [reference]
 
             asset = None
             relative_path_str = None
@@ -157,22 +156,20 @@ class ExportChaser(mayaUsdLib.ExportChaser):
             if name != base_name and relative_path_str:
                 # Create a concrete rig instance for this namespace so the
                 # class-based clips can bind to a real prim.
-                character_parent = Sdf.CreatePrimInLayer(
-                    root_layer, Sdf.Path("/character")
-                )
+                character_parent = Sdf.CreatePrimInLayer(root_layer, Sdf.Path("/anim"))
                 character_parent.specifier = Sdf.SpecifierOver
 
-                instance_prim_path = Sdf.Path(f"/character/{name}")
+                instance_prim_path = Sdf.Path(f"/anim/{name}")
                 instance_prim_spec = Sdf.CreatePrimInLayer(
                     root_layer, instance_prim_path
                 )
                 instance_prim_spec.specifier = Sdf.SpecifierDef
 
-                rig_prim_path = Sdf.Path(f"/character/{base_name}")
+                rig_prim_path = Sdf.Path(f"/anim/{base_name}")
                 instance_reference = Sdf.Reference(relative_path_str, rig_prim_path)
                 instance_prim_spec.referenceList.appendedItems = [instance_reference]
                 instance_prim_spec.inheritPathList.prependedItems = [
-                    Sdf.Path(f"/__class__/character/{name}")
+                    Sdf.Path(f"/__class__/anim/{name}")
                 ]
 
     def _post_export_char(self):

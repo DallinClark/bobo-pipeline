@@ -20,7 +20,7 @@ from pipe.struct.timeline import Timeline
 
 from .anim_lock import confirm_anim_republish_allowed
 from .publisher import Publisher
-from .usdchaser import ChaserMode, ExportChaser
+from .usdchaser import ExportChaser, ExportChaserMode
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class AnimPublisher(Publisher):
         return {
             "chaser": [ExportChaser.ID],
             "chaserArgs": [
-                (ExportChaser.ID, "mode", ChaserMode.ANIM),
+                (ExportChaser.ID, "mode", ExportChaserMode.ANIM),
                 (ExportChaser.ID, "timeline", timeline.to_json()),
             ],
             "exportColorSets": False,

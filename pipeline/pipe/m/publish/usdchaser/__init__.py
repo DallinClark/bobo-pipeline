@@ -1,4 +1,4 @@
 from . import utils
-from .export import ExportChaser
+from .export import ExportChaser, ExportChaserMode
 
-__all__ = ["ExportChaser", "utils"]
+__all__ = ["ExportChaser", "ExportChaserMode", "utils"]
