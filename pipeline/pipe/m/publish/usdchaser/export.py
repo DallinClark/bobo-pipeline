@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import traceback
+import logging
 from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Optional
 import attrs
 import mayaUsd.lib as mayaUsdLib  # type: ignore[import-not-found]
 from pxr import Sdf, Usd
+
+from pipe.asset import paths_for_asset
 
 from .utils import (
     find_and_move_prim,
@@ -29,11 +31,12 @@ if TYPE_CHECKING:
 
 
 from env_sg import DB_Config
-from shared.util import get_production_path
 
 from pipe.db import DB
 from pipe.struct.timeline import Timeline
 from pipe.util import log_errors
+
+log = logging.getLogger(__name__)
 
 
 class ExportChaserMode(IntEnum):
@@ -91,81 +94,76 @@ class ExportChaser(mayaUsdLib.ExportChaser):
         scale_down_geo(self._stage)
         make_topo_attrs_default(self._stage)
         layers = split_by_namespace(self._stage, "anim", path_dag_mapping)
-
         root_layer = self._stage.GetRootLayer()
-        root_layer_path = Path(root_layer.realPath)
 
         conn = DB.Get(DB_Config)
 
         for name, layer in layers.items():
-            # takes off the end number if it's a copy in maya
+            # Try and get the name of the rig from the namespace (strip trailing digit in case of multiple of the same rig in one scene)
+            # TODO: Make this more robust by querying for asset metadata on the rig instead of guessing from the namespace.
             base_name = ""
             if name[-1].isdigit():
                 base_name = name[:-1]
             else:
                 base_name = name
 
-            rig_geo_path = Sdf.Path("/rig/geo")
-
+            # The path to the root of the animated geometry.
+            rig_geo_prim_path = Sdf.Path("/rig/geo")
             stitched_layer = split_preroll(
-                layer, name, rig_geo_path, self._chaser_args.timeline
+                layer, name, rig_geo_prim_path, self._chaser_args.timeline
             )
 
-            anim_prim_spec: Sdf.PrimSpec
-            anim_prim_spec = Sdf.CreatePrimInLayer(
-                root_layer, Sdf.Path(f"__class__/anim/{name}")
-            )
-
+            # Create prim that will hold the animation and be inherited by the rig in shots.
+            anim_class_path = Sdf.Path(f"__class__/anim/{name}")
+            anim_prim_spec = Sdf.CreatePrimInLayer(root_layer, anim_class_path)
             anim_prim_spec.specifier = Sdf.SpecifierOver
 
-            reference = Sdf.Reference(
-                f"./{Path(stitched_layer.realPath).relative_to(root_layer_path.parent)}",
-                rig_geo_path,
+            anim_reference = Sdf.Reference(
+                Sdf.ComputeAssetPathRelativeToLayer(
+                    root_layer, stitched_layer.realPath
+                ),
+                rig_geo_prim_path,
             )
+            anim_prim_spec.referenceList.appendedItems = [anim_reference]
 
-            anim_prim_spec.referenceList.appendedItems = [reference]
-
-            asset = None
-            relative_path_str = None
+            # Attempt to reference in the published rig as a sublayer
+            relative_rig_path: Path | None = None
+            relative_path_str: str | None
             try:
                 asset = conn.get_asset_by_name(base_name)
-
-                assert asset.asset_path
-                rig_path = (
-                    str(asset.asset_path).replace("\\", "/")
-                    + "/publish/rig/usd/main.usd"
+                asset_paths = paths_for_asset(asset)
+                rig_path = asset_paths.rig_path / "usd/main.usd"
+                relative_path_str = Sdf.ComputeAssetPathRelativeToLayer(
+                    root_layer, rig_path.as_posix()
                 )
-                walk_up_len = (
-                    len(root_layer_path.relative_to(get_production_path()).parts) - 1
-                )
+                if relative_path_str not in root_layer.subLayerPaths:  # type: ignore
+                    root_layer.subLayerPaths.append(relative_path_str)
+                log.info(f"added rig sublayer for {name}: {relative_path_str}")
 
-                relative_path_str = "../" * walk_up_len + rig_path
-                relative_path = Sdf.Path(relative_path_str)
-                if str(relative_path) not in root_layer.subLayerPaths:  # type: ignore
-                    root_layer.subLayerPaths.append(str(relative_path))
-                print(f"[chaser] added rig sublayer for {name}: {relative_path_str}")
             except Exception:
-                print(f"[chaser] asset link failed for {name} (base={base_name})")
-                print(
-                    f"    asset={getattr(asset, 'asset_path', None)} rig_path={rig_path if 'rig_path' in locals() else None}"
+                log.exception(
+                    f"[chaser] asset link failed for {name} (base={base_name})"
+                    f"asset={getattr(asset, 'asset_path', None)} rig_path={rig_path if 'rig_path' in locals() else None}"
+                    f"relative_path={relative_path_str} root_layer={root_layer.realPath}",
+                    Exception,
                 )
-                print(
-                    f"    relative_path={relative_path_str} root_layer={root_layer.realPath}"
-                )
-                print(traceback.format_exc())
+
+            # (Currently) hacky handling for when we have multiple rigs of the same type.
             if name != base_name and relative_path_str:
                 # Create a concrete rig instance for this namespace so the
                 # class-based clips can bind to a real prim.
-                character_parent = Sdf.CreatePrimInLayer(root_layer, Sdf.Path("/anim"))
+                character_parent = Sdf.CreatePrimInLayer(
+                    root_layer, Sdf.Path("/character")
+                )
                 character_parent.specifier = Sdf.SpecifierOver
 
-                instance_prim_path = Sdf.Path(f"/anim/{name}")
+                instance_prim_path = Sdf.Path(f"/character/{name}")
                 instance_prim_spec = Sdf.CreatePrimInLayer(
                     root_layer, instance_prim_path
                 )
                 instance_prim_spec.specifier = Sdf.SpecifierDef
 
-                rig_prim_path = Sdf.Path(f"/anim/{base_name}")
+                rig_prim_path = Sdf.Path(f"/character/{base_name}")
                 instance_reference = Sdf.Reference(relative_path_str, rig_prim_path)
                 instance_prim_spec.referenceList.appendedItems = [instance_reference]
                 instance_prim_spec.inheritPathList.prependedItems = [
