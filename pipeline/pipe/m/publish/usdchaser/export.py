@@ -141,11 +141,11 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                 log.info(f"added rig sublayer for {name}: {relative_path_str}")
 
             except Exception:
-                log.exception(
+                log.error(
                     f"[chaser] asset link failed for {name} (base={base_name})"
                     f"asset={getattr(asset, 'asset_path', None)} rig_path={rig_path if 'rig_path' in locals() else None}"
                     f"relative_path={relative_path_str} root_layer={root_layer.realPath}",
-                    Exception,
+                    exc_info=True,
                 )
 
             # (Currently) hacky handling for when we have multiple rigs of the same type.

@@ -4,8 +4,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pxr import Sdf
-
 if TYPE_CHECKING:
     from typing import Any
 
@@ -13,7 +11,7 @@ if TYPE_CHECKING:
 
 import maya.cmds as mc
 from shared.util import get_production_path
-from software.houdini import HoudiniDCC
+from software.houdini import HoudiniDCC  # noqa
 
 from pipe.glui.dialogs import MessageDialog
 from pipe.struct.timeline import Timeline
@@ -96,16 +94,19 @@ class AnimPublisher(Publisher):
 
     def _postpublish(self) -> None:
         """Launch a Houdini process to compute the anim post-process HDA"""
-        post_script = ";".join(
-            [
-                "from pipe.h.animpostprocess import AnimPostProcessor",
-                f"AnimPostProcessor().run('{self._shot.code}')",
-                "exit()",
-            ]
-        )
 
-        HoudiniDCC(is_python_shell=True, extra_args=["-c", post_script]).launch()
+        # This might be useful later so I'll leave it here. Currently we aren't using it.
 
-        root_layer = Sdf.Layer.FindOrOpen(str(self._publish_path))
-        root_layer.subLayerPaths.append("post-process.usd")
-        root_layer.Save()
+        # post_script = ";".join(
+        #     [
+        #         "from pipe.h.animpostprocess import AnimPostProcessor",
+        #         f"AnimPostProcessor().run('{self._shot.code}')",
+        #         "exit()",
+        #     ]
+        # )
+
+        # HoudiniDCC(is_python_shell=True, extra_args=["-c", post_script]).launch()
+
+        # root_layer = Sdf.Layer.FindOrOpen(str(self._publish_path))
+        # root_layer.subLayerPaths.append("post-process.usd")
+        # root_layer.Save()
