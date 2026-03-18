@@ -44,11 +44,13 @@ class RigBuilder:
         rig_type: str,
         rig_variant: str | None = None,
         dev_build: bool = False,
-    ):
+    ) -> bool:
         """
         This function is meant to call the rig build of an external rigging library (currently y-rig).
         However I hope that it is easy enough to change that if needed the underlying rig build system
         could be replaced without any trouble.
+
+        It should return a bool: True if the rig built successfully and False if it failed or was cancelled.
         """
         from yrig.build.mgear_api import build_from_path
 
@@ -69,10 +71,12 @@ class RigBuilder:
             progress_manager.progress_changed.connect(self._progress_slot)
         with redirect_external_logger(build_logger, log):
             cmds.file(newFile=True, force=True)
-            build_from_path(
+            build_result = build_from_path(
                 rig_build_path,
                 dev_build,
                 progress_manager.update_progress_with_step,
             )
-
+        if build_result is False:
+            return False  # Early return to avoid finishing the progress bar
         progress_manager.update_progress_with_step(1)
+        return build_result

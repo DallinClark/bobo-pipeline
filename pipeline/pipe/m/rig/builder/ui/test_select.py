@@ -143,7 +143,6 @@ class TestSelectList(QListView):
         self._progress_manager = None
 
     def on_test_finished(self, test: RigBuildTest, passed: bool) -> None:
-        print(test, passed)
         for item in self.test_items:
             if type(item.test) is type(test):
                 item.update_status(passed)

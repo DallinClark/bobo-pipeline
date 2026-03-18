@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import logging
 
-from Qt import QtCore
 from maya.OpenMayaUI import MQtUtil
+from Qt import QtCore
 from Qt.QtWidgets import QWidget
 
-from ...local import get_main_qt_window
-from .. import build
-from .. import publish
+from pipe.m.local import get_main_qt_window
+
+from .. import build, publish
+from ..database import DBWorker
 from .core import (
     delete_workspace_control,
     get_maya_main_window,
 )
 from .window_ui import RigBuilderWindowUI
-from ..database import DBWorker
 
 log = logging.getLogger(__name__)
 
@@ -22,13 +22,6 @@ _window_instance: RigBuilderWindow | None = None
 
 WINDOW_OBJECT_NAME = "rigBuilderWindow"
 WORKSPACE_CONTROL_NAME = WINDOW_OBJECT_NAME + "WorkspaceControl"
-
-# This uiScript is called by Maya to recreate the widget when restoring layout.
-# It must be a string that Maya can evaluate via Python.
-UI_SCRIPT = """
-import pipe.m.rig_builder.ui
-pipe.m.rig_builder.ui.window._restore()
-"""
 
 
 def _restore() -> None:
@@ -44,6 +37,14 @@ def _restore() -> None:
     widget_ptr = MQtUtil.findControl(_window_instance.objectName())
     if workspace_ptr and widget_ptr:
         MQtUtil.addWidgetToMayaLayout(int(widget_ptr), int(workspace_ptr))
+
+
+# This uiScript is called by Maya to recreate the widget when restoring layout.
+# Here we generate the import and command run lines to make it easy to rename things with IDE tools without breaking this.
+UI_SCRIPT = f"""
+import {__name__}
+{__name__}.{_restore.__name__}()
+"""
 
 
 def close() -> None:
@@ -76,7 +77,7 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.load_data_async()  # Start loading after UI is initialized
 
     def connect_ui(self):
-        builder_log = logging.getLogger("pipe.m.rig_builder")
+        builder_log = logging.getLogger("pipe.m.rig.builder")
         builder_log.setLevel(logging.DEBUG)
         self.rig_build_log_box.connect_logger(builder_log)
 

@@ -5,8 +5,7 @@ from . import (
     local,
     picker,
     reload,
-    rig_builder,
-    rig_publish,
+    rig,
     space_switch,
     symmetry,
 )
@@ -17,8 +16,7 @@ __all__ = [
     "local",
     "picker",
     "reload",
-    "rig_builder",
-    "rig_publish",
+    "rig",
     "space_switch",
     "symmetry",
 ]
