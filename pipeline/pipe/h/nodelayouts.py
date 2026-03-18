@@ -28,6 +28,8 @@ SKD_COMPONENT_GEOMETRY_NAME = "main"
 SKD_BUILDER_MANAGED_KEY = "pipe_skd_builder_managed"
 SKD_BUILDER_MANAGED_VALUE = "1"
 SKD_BUILDER_NODE_NAME = "skd_component_output"
+SKD_LAYOUT_MANAGED_KEY = "pipe_skd_layout_managed"
+SKD_LAYOUT_MANAGED_VALUE = "1"
 SKD_VARIANT_GRAPH_MANAGED_KEY = "pipe_skd_variant_graph_managed"
 SKD_VARIANT_GRAPH_MANAGED_VALUE = "1"
 SKD_VARIANT_GRAPH_OWNER_KEY = "pipe_skd_variant_graph_owner"
@@ -992,7 +994,7 @@ def _hide_contextoptions_folders(node: hou.Node) -> None:
     node.setParmTemplateGroup(ptg)
 
 
-def bobo_layoutgroup(kwargs: dict) -> hou.Node:
+def skd_layoutgroup(kwargs: dict) -> hou.Node:
     contextoptions: hou.LopNode = loptoolutils.genericTool(kwargs, "editcontextoptions")
 
     pos = contextoptions.position()
@@ -1044,8 +1046,28 @@ def bobo_layoutgroup(kwargs: dict) -> hou.Node:
     return contextoptions
 
 
-def bobo_layout(kwargs: dict) -> hou.Node:
-    contextoptions: hou.Node = loptoolutils.genericTool(kwargs, "editcontextoptions")
+def ensure_skd_layout(parent: hou.Node | None = None) -> hou.Node:
+    """Return the managed SKD layout node, creating one if missing.
+
+    Conservative — never deletes or rewires artist-authored networks.
+    Only creates a new layout when no managed one exists in /stage.
+    """
+    stage = _resolve_stage_context(parent)
+
+    for node in stage.children():
+        if node.userData(SKD_LAYOUT_MANAGED_KEY) == SKD_LAYOUT_MANAGED_VALUE:
+            return node
+
+    layout = skd_layout({}, parent=stage)
+    layout.setUserData(SKD_LAYOUT_MANAGED_KEY, SKD_LAYOUT_MANAGED_VALUE)
+    return layout
+
+
+def skd_layout(kwargs: dict, parent: Optional[hou.Node] = None) -> hou.Node:
+    if parent is not None:
+        contextoptions: hou.Node = parent.createNode("editcontextoptions")
+    else:
+        contextoptions = loptoolutils.genericTool(kwargs, "editcontextoptions")
 
     pos = contextoptions.position()
     p = contextoptions.parent()

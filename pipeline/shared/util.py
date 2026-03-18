@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import getpass
 import importlib
 import importlib.util
-import getpass
+import inspect
 import os
 import platform
 import re
@@ -10,11 +11,16 @@ import socket
 import subprocess
 from inspect import getmembers, isabstract, isclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import FunctionType
 
 from env import production_path as _prp
 
 _DOCUMENTATION_ENV_VAR = "PIPELINE_DOCUMENTATION_URL"
 _DEFAULT_DOCUMENTATION_URL = "https://github.com/joseph-wardle/sandwich-pipeline/wiki/"
+_SOURCE_CODE_ROOT_URL = "https://github.com/joseph-wardle/sandwich-pipeline/tree/prod"
 
 
 def find_implementation(cls: type, module: str, package: str | None = None) -> type:
@@ -95,6 +101,29 @@ def get_edit_path() -> Path:
 
 def get_pipe_path() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def get_repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def get_function_source_code_url(func: FunctionType) -> str | None:
+    """
+    Returns a URL pointing to the source file and lines of the given function.
+    """
+    try:
+        filepath_string = inspect.getsourcefile(func)
+        if not filepath_string:
+            return None
+        filepath = Path(filepath_string)
+        relative_path = filepath.relative_to(get_repo_root())
+        source_lines, start_line_no = inspect.getsourcelines(func)
+        start_line_no = inspect.getsourcelines(func)[1]
+        end_line_no = start_line_no + len(source_lines) - 1
+        url = f"{_SOURCE_CODE_ROOT_URL}/{relative_path}#L{start_line_no}-L{end_line_no}"
+        return url
+    except Exception:
+        return None
 
 
 def get_documentation_path(page: str | None = None) -> str:

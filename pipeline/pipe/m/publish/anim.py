@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from pxr import Sdf
 
 if TYPE_CHECKING:
     from typing import Any
@@ -14,19 +11,18 @@ if TYPE_CHECKING:
 
 import maya.cmds as mc
 from shared.util import get_production_path
-from software.houdini import HoudiniDCC
+from software.houdini import HoudiniDCC  # noqa
 
 from pipe.glui.dialogs import MessageDialog
-from pipe.m.util import maintain_selection
 from pipe.struct.timeline import Timeline
 
 from .anim_lock import confirm_anim_republish_allowed
 from .publisher import Publisher
-from .usdchaser import ChaserMode, ExportChaser
+from .usdchaser import ExportChaser, ExportChaserMode
 
 log = logging.getLogger(__name__)
 
-CACHE_SET = "cache_SET"
+CACHE_SET = "rig_geo_grp"
 PROP_SET = "prop_SET"
 
 
@@ -63,9 +59,7 @@ class AnimPublisher(Publisher):
             return False
 
         cache_sets = mc.ls("::" + CACHE_SET, sets=True)
-        prop_sets = mc.ls("::" + PROP_SET, sets=True)
-
-        mc.select(*cache_sets, *prop_sets, replace=True)
+        mc.select(*cache_sets, replace=True)
 
         return True
 
@@ -77,19 +71,10 @@ class AnimPublisher(Publisher):
 
     def _get_mayausd_kwargs(self) -> dict[str, Any]:
         timeline = Timeline.from_shot(self._shot, preroll_duration=55)
-        prop_sets = mc.ls("::" + PROP_SET, sets=True)
-        props = dict()
-        with maintain_selection():
-            for s in prop_sets:
-                mc.select(s)
-                namespace = s.split(":")[0]
-                props[namespace] = [n.split(":")[1] for n in mc.ls(selection=True)]
-
         return {
             "chaser": [ExportChaser.ID],
             "chaserArgs": [
-                (ExportChaser.ID, "mode", ChaserMode.ANIM),
-                (ExportChaser.ID, "props", json.dumps(props)),
+                (ExportChaser.ID, "mode", ExportChaserMode.ANIM),
                 (ExportChaser.ID, "timeline", timeline.to_json()),
             ],
             "exportColorSets": False,
@@ -101,7 +86,7 @@ class AnimPublisher(Publisher):
             ),
             "frameStride": 1.0,
             "shadingMode": "none",
-            "stripNamespaces": False,
+            "stripNamespaces": True,
         }
 
     def _get_confirm_message(self):
@@ -109,16 +94,19 @@ class AnimPublisher(Publisher):
 
     def _postpublish(self) -> None:
         """Launch a Houdini process to compute the anim post-process HDA"""
-        post_script = ";".join(
-            [
-                "from pipe.h.animpostprocess import AnimPostProcessor",
-                f"AnimPostProcessor().run('{self._shot.code}')",
-                "exit()",
-            ]
-        )
 
-        HoudiniDCC(is_python_shell=True, extra_args=["-c", post_script]).launch()
+        # This might be useful later so I'll leave it here. Currently we aren't using it.
 
-        root_layer = Sdf.Layer.FindOrOpen(str(self._publish_path))
-        root_layer.subLayerPaths.append("post-process.usd")
-        root_layer.Save()
+        # post_script = ";".join(
+        #     [
+        #         "from pipe.h.animpostprocess import AnimPostProcessor",
+        #         f"AnimPostProcessor().run('{self._shot.code}')",
+        #         "exit()",
+        #     ]
+        # )
+
+        # HoudiniDCC(is_python_shell=True, extra_args=["-c", post_script]).launch()
+
+        # root_layer = Sdf.Layer.FindOrOpen(str(self._publish_path))
+        # root_layer.subLayerPaths.append("post-process.usd")
+        # root_layer.Save()

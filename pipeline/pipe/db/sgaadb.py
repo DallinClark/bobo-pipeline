@@ -1113,7 +1113,7 @@ class _EnvironmentListQuery(_Query):
     def _base_fields(self) -> list[str]:
         return [
             "code",  # display name
-            "sg_path",  # environment path
+            "sg_subdirectory",  # optional subdirectory for path derivation
             "id",  # asset id
             "shots",  # shots environment present in
         ]

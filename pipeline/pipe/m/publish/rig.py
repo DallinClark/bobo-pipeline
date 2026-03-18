@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 import maya.cmds as mc
 
 from .publisher import Publisher
-from .usdchaser import ChaserMode, ExportChaser
+from .usdchaser import ExportChaser, ExportChaserMode
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class RigPublisher(Publisher):
     def _get_mayausd_kwargs(self) -> dict[str, Any]:
         kwargs = {
             "chaser": [ExportChaser.ID],
-            "chaserArgs": [(ExportChaser.ID, "mode", ChaserMode.CHAR)],
+            "chaserArgs": [(ExportChaser.ID, "mode", ExportChaserMode.CHAR)],
             "exportCollectionBasedBindings": True,
             "exportMaterialCollections": True,
             "legacyMaterialScope": True,
