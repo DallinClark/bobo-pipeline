@@ -290,6 +290,10 @@ class Asset(SGEntity):
     def tex_path(self) -> str:
         return f"{self.asset_path}/publish/tex/"
 
+    @property
+    def is_rigged(self) -> bool:
+        return "SKD_rigged" in self.tags
+
     def __attrs_post_init__(self) -> None:
         self.subdirectory = normalize_subdirectory(self.subdirectory)
         self.path = self.asset_path

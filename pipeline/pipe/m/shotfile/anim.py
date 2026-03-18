@@ -4,15 +4,14 @@ from typing import Any, Optional, cast
 
 import maya.cmds as mc
 from pxr import Usd, UsdGeom
-from shared.util import get_production_path
 
+from pipe.m.rig.utils import get_rig_filepath_from_asset
 from pipe.shot.version_adapter import (
     maya_anim_stream,
     shot_owner_for,
 )
-from pipe.versioning import path_matches_stream
 from pipe.struct.db import Shot
-from pipe.versioning import VersionStreamSpec
+from pipe.versioning import VersionStreamSpec, path_matches_stream
 
 from .shotfile_manager import MShotFileManager
 
@@ -89,7 +88,7 @@ class MAnimShotFileManager(MShotFileManager):
                     mc.camera(camera_shape, edit=True, lockTransform=True)
                     mc.lookThru(CAM_NAME)
                 except Exception:
-                    mc.warning("Could not locate USD shot camera in Maya scene.")
+                    log.warning("Could not locate USD shot camera in Maya scene.")
 
     def _get_subpath(self) -> str:
         return "anim"
@@ -100,19 +99,16 @@ class MAnimShotFileManager(MShotFileManager):
         # Import Rigs
         for asset_stub in self.shot.assets:
             asset = self._conn.get_asset_by_stub(asset_stub)
-            if not asset.asset_path:
+            if not asset.is_rigged:
                 continue
-            rig_path = "/".join(("anim", "Rigs", asset.name + ".mb"))
-            print(str(get_production_path()) + "/../" + rig_path)
-            if (get_production_path() / ".." / rig_path).exists():
+            rig_path = get_rig_filepath_from_asset(asset)
+
+            if rig_path.exists():
                 mc.file(rig_path, reference=True, namespace=asset.name)
             else:
-                rig_path = "/".join(("anim", "Rigs", asset.name.capitalize() + ".mb"))
-                print(str(get_production_path()) + "/../" + rig_path)
-                if (get_production_path() / ".." / rig_path).exists():
-                    mc.file(rig_path, reference=True, namespace=asset.name)
-                else:
-                    print(f'Unable to find rig for asset "{asset.display_name}"')
+                log.warning(
+                    f"Couldn't find the rig file for {asset.display_name} even though it's tagged as rigged"
+                )
 
         self._import_env()
 
