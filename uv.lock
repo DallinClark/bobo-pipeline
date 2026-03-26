@@ -123,6 +123,12 @@ wheels = [
 ]
 
 [[package]]
+name = "nxt-core"
+version = "0.18.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/b8/d15fda032fbb33e88e0c8cf9e5504540fcad814b3afa034b7912d3e9f3cd/nxt-core-0.18.1.tar.gz", hash = "sha256:210c6f55b6593a91c5412d13196c0e7b5bbcaf6d7e16f42bd8c8766c93908498", size = 129446, upload-time = "2024-11-25T21:59:38.493Z" }
+
+[[package]]
 name = "qt-py"
 version = "1.4.8"
 source = { registry = "https://pypi.org/simple" }
@@ -169,6 +175,7 @@ dependencies = [
     { name = "ffmpeg-python" },
     { name = "filelock" },
     { name = "gitpython" },
+    { name = "nxt-core" },
     { name = "qt-py" },
     { name = "six" },
 ]
@@ -196,6 +203,7 @@ requires-dist = [
     { name = "ffmpeg-python", specifier = ">=0.2.0,<0.3" },
     { name = "filelock", specifier = ">=3.17.0,<4" },
     { name = "gitpython", specifier = ">=3.1.45,<4" },
+    { name = "nxt-core", specifier = ">=0.18.1" },
     { name = "qt-py", specifier = ">=1.4.1,<2" },
     { name = "six", specifier = ">=1.17.0,<2" },
 ]
