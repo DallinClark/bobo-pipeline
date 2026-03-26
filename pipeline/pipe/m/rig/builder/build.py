@@ -1,10 +1,11 @@
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
 from typing import Callable
 
 from maya import cmds
-from .progress import RigBuildProgressManager
 from shared.util import get_rig_build_path
+
+from .progress import RigBuildProgressManager
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class RigBuilder:
 
         It should return a bool: True if the rig built successfully and False if it failed or was cancelled.
         """
-        from yrig.build.mgear_api import build_from_path
+        from yrig.build import build_from_path
 
         # Grab the external logger
         build_logger = logging.getLogger("yrig")
