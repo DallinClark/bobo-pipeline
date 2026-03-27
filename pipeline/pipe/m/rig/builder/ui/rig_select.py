@@ -31,10 +31,14 @@ class RigSelectList(QListView):
 
 
 class RigSelect(QWidget):
+    rig_changed = QtCore.Signal(str)
+    variant_changed = QtCore.Signal(str)
+
     def __init__(self, name: str, parent: QWidget | None = None):
         super().__init__(parent=parent)
         self.name = name
         self.setup_ui()
+        self._supress_signals: bool = False
         pass
 
     def setup_ui(self):
@@ -45,12 +49,41 @@ class RigSelect(QWidget):
         self.setLayout(main_layout)
 
         self.rig_panel = RigSelectList()
+        self.rig_panel.selectionModel().currentChanged.connect(self._on_rig_changed)
         main_layout.addWidget(self.rig_panel)
 
         self.variant_panel = RigSelectList()
         main_layout.addWidget(self.variant_panel)
-
+        self.variant_panel.selectionModel().currentChanged.connect(
+            self._on_variant_changed
+        )
         pass
+
+    def _on_rig_changed(self, current, previous):
+        if self._suppress_signals:
+            return
+        rig = current.data(QtCore.Qt.UserRole)
+        if rig:
+            self.rig_changed.emit(rig)
+
+    def _on_variant_changed(self, current, previous):
+        if self._suppress_signals:
+            return
+        variant = current.data(QtCore.Qt.UserRole)
+        if variant:
+            self.variant_changed.emit(variant)
+
+    def _select_in_panel_by_name(self, panel: RigSelectList, value: str) -> bool:
+        model = panel.item_model
+
+        for row in range(model.rowCount()):
+            index = model.index(row, 0)
+            if index.data(QtCore.Qt.UserRole) == value:
+                panel.setCurrentIndex(index)
+                panel.scrollTo(index, QListView.PositionAtCenter)
+                return True
+
+        return False
 
     def populate_rigs(self, rigs: list[tuple[str, str]]):
         for rig_name, rig_display_name in rigs:
@@ -62,10 +95,24 @@ class RigSelect(QWidget):
             self.variant_panel.add_item(variant)
         self.select_first_item(self.variant_panel)
 
+    def select_rig(self, rig: str) -> bool:
+        self._suppress_signals = True
+        found = self._select_in_panel_by_name(self.rig_panel, rig)
+        self._suppress_signals = False
+        return found
+
+    def select_variant(self, variant: str) -> bool:
+        self._suppress_signals = True
+        found = self._select_in_panel_by_name(self.variant_panel, variant)
+        self._suppress_signals = False
+        return found
+
     def select_first_item(self, panel: RigSelectList):
         if panel.item_model.rowCount() > 0:
             first_index = panel.item_model.index(0, 0)
+            self._suppress_signals = True
             panel.setCurrentIndex(first_index)
+            self._suppress_signals = False
             panel.scrollTo(first_index, QListView.PositionAtCenter)
 
     def get_selected_rig(self) -> str | None:

@@ -102,11 +102,11 @@ def _merge_group(group: str) -> str | None:
 
     merged_and_merge_node: list[str] = cmds.polyUnite(child_transforms)  # type: ignore
     merged: str = merged_and_merge_node[0]
-    cmds.delete(merged, constructionHistory=True)
     if group_parent is not None:
         cmds.parent(merged, group_parent)
     else:
         cmds.parent(merged, world=True)
+    cmds.delete(merged, constructionHistory=True)
     final_name = cmds.rename(merged, group)
     return final_name
 

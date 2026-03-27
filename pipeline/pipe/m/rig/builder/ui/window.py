@@ -14,6 +14,7 @@ from .core import (
     delete_workspace_control,
     get_maya_main_window,
 )
+from .settings import RigBuilderSettings
 from .window_ui import RigBuilderWindowUI
 
 log = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ class RigBuilderWindow(RigBuilderWindowUI):
     ) -> None:
         super().__init__(parent=parent, window_object_name=WINDOW_OBJECT_NAME)
         self.threads: list[QtCore.QThread] = []
+        self._load_settings()
         self.connect_ui()
         self.load_data_async()  # Start loading after UI is initialized
 
@@ -80,6 +82,30 @@ class RigBuilderWindow(RigBuilderWindowUI):
         builder_log = logging.getLogger("pipe.m.rig.builder")
         builder_log.setLevel(logging.DEBUG)
         self.rig_build_log_box.connect_logger(builder_log)
+
+        self.character_select.rig_changed.connect(
+            lambda rig_name: setattr(
+                self.settings.LAST_CHARACTER_RIG, "value", rig_name
+            )
+        )
+        self.character_select.variant_changed.connect(
+            lambda variant_name: setattr(
+                self.settings.LAST_CHARACTER_VARIANT, "value", variant_name
+            )
+        )
+        self.prop_select.rig_changed.connect(
+            lambda rig_name: setattr(self.settings.LAST_PROP_RIG, "value", rig_name)
+        )
+        self.prop_select.variant_changed.connect(
+            lambda variant_name: setattr(
+                self.settings.LAST_PROP_VARIANT, "value", variant_name
+            )
+        )
+
+        self.dev_build_switch.toggled.connect(
+            lambda checked: setattr(self.settings.DEV_BUILD, "value", checked)
+        )
+        self.build_tabs.currentChanged.connect(self._on_tab_changed)
 
         self.build_rig_button.clicked.connect(self.rig_build_log_box.clear_log)
         self.build_rig_button.clicked.connect(self._build_rig)
@@ -108,15 +134,30 @@ class RigBuilderWindow(RigBuilderWindowUI):
         self.threads.append(self.db_thread)
         self.db_thread.start()
 
+    def _load_settings(self):
+        self.settings = RigBuilderSettings
+        self.dev_build_switch.setChecked(self.settings.DEV_BUILD.value)
+        self.build_tabs.set_current_tab(self.settings.LAST_TAB.value)
+
+    def _on_dev_build_changed(self, checked: bool):
+        self.settings.DEV_BUILD.value = checked
+
+    def _on_tab_changed(self, index: int):
+        self.settings.LAST_TAB.value = index
+
     def _on_rig_data_received(
         self, characters: list[tuple[str, str]], props: list[tuple[str, str]]
     ):
         """Update the UI widgets once the DB query returns."""
         self.character_select.populate_rigs(characters)  # Update your widget method
+        self.character_select.select_rig(self.settings.LAST_CHARACTER_RIG.value)
         self.prop_select.populate_rigs(props)
+        self.prop_select.select_rig(self.settings.LAST_PROP_RIG.value)
         # TODO: Actually handle variants here, when changing the selected rig, and in the build.
         self.character_select.populate_variants(["default"])
+        self.character_select.select_variant(self.settings.LAST_CHARACTER_VARIANT.value)
         self.prop_select.populate_variants(["default"])
+        self.prop_select.select_variant(self.settings.LAST_PROP_VARIANT.value)
 
     def _get_rig_to_build(self) -> tuple[str, str] | None:
         current_tab = self.build_tabs.get_current_tab()

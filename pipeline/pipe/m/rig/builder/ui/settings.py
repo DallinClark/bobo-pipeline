@@ -1,0 +1,10 @@
+from pipe.m.optionvar import BoolOptionVar, IntOptionVar, StringOptionVar
+
+
+class RigBuilderSettings:
+    DEV_BUILD = BoolOptionVar("rigBuilder.devBuild", False)
+    LAST_TAB = IntOptionVar("rigBuilder.lastTab", 0)
+    LAST_CHARACTER_RIG = StringOptionVar("rigBuilder.lastCharacterRig", "")
+    LAST_CHARACTER_VARIANT = StringOptionVar("rigBuilder.lastCharacterVariant", "")
+    LAST_PROP_RIG = StringOptionVar("rigBuilder.lastPropRig", "")
+    LAST_PROP_VARIANT = StringOptionVar("rigBuilder.lastPropVariant", "")

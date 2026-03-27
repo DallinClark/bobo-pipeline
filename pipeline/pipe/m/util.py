@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import maya.cmds as mc
-
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
+
+from maya import cmds
 
 if TYPE_CHECKING:
     from typing import Generator
@@ -11,9 +11,8 @@ if TYPE_CHECKING:
 
 @contextmanager
 def maintain_selection() -> Generator[None, None, None]:
-    selection = mc.ls(selection=True, long=True, ufeObjects=True, absoluteName=True)
-
+    selection = cmds.ls(selection=True, long=True, ufeObjects=True, absoluteName=True)
     try:
         yield
     finally:
-        mc.select(*selection, replace=True)
+        cmds.select(*selection, replace=True)
