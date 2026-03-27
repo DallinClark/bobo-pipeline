@@ -136,8 +136,8 @@ class RigBuilderWindow(RigBuilderWindowUI):
 
     def _load_settings(self):
         self.settings = RigBuilderSettings
-        self.dev_build_switch.setChecked(RigBuilderSettings.DEV_BUILD.value)
-        self.build_tabs.set_current_tab(RigBuilderSettings.LAST_TAB.value)
+        self.dev_build_switch.setChecked(self.settings.DEV_BUILD.value)
+        self.build_tabs.set_current_tab(self.settings.LAST_TAB.value)
 
     def _on_dev_build_changed(self, checked: bool):
         self.settings.DEV_BUILD.value = checked
