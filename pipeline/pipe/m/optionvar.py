@@ -6,6 +6,18 @@ from maya import cmds as cmds
 
 T = TypeVar("T")
 
+"""
+Example Usage:
+    >>> # Define your settings
+    >>> class MySettings:
+    >>>     SHOW_UI = BoolOptionVar("myTool.showUI", True)
+    >>>
+    >>> # Usage in code
+    >>> settings = MySettings()
+    >>> print(settings.SHOW_UI.value)  # Gets value
+    >>> settings.SHOW_UI.value = False # Sets value in Maya
+"""
+
 
 class OptionVar(Generic[T]):
     def __init__(self, key: str, default_value: T):
@@ -22,12 +34,24 @@ class OptionVar(Generic[T]):
 
     @property
     def value(self) -> T:
+        """
+        The current value of the optionVar.
+
+        Returns:
+            The value stored in Maya, or `default_value` if it doesn't exist.
+        """
         if not cmds.optionVar(exists=self.name):
             return self.default_value
         return self._get()
 
     @value.setter
     def value(self, val: T) -> None:
+        """
+        Updates the optionVar in the Maya session.
+
+        Args:
+            val: The new value to store. Must match type T.
+        """
         self._set(val)
 
     def reset(self) -> None:

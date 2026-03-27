@@ -18,3 +18,6 @@ class RigTypeTabWidget(QTabWidget):
     def get_current_tab(self) -> RigSelect:
         index: int = self.currentIndex()
         return self._tabs[index]
+
+    def set_current_tab(self, tab: int) -> None:
+        self.setCurrentIndex(tab)
