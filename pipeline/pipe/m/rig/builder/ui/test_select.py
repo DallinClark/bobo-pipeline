@@ -139,7 +139,25 @@ class TestSelectList(QListView):
             self._progress_manager.progress_changed.connect(self._progress_slot)
 
         test_runner = TestRunner(
-            (test_item.test for test_item in self.test_items if test_item.is_enabled()),
+            enabled_tests,
+            test_run_callback=self._on_test_finished_local,
+        )
+        test_runner.run_tests()
+        self._progress_manager.update_progress_finished()
+        self._progress_manager = None
+
+    def _run_tests_internal(self):
+        enabled_tests = [
+            test_item.test for test_item in self.test_items if test_item.is_enabled()
+        ]
+        self._progress_manager = TestProgressManager(
+            enabled_tests,
+        )
+        if self._progress_slot is not None:
+            self._progress_manager.progress_changed.connect(self._progress_slot)
+
+        test_runner = TestRunner(
+            enabled_tests,
             test_run_callback=self._on_test_finished_local,
         )
         test_runner.run_tests()

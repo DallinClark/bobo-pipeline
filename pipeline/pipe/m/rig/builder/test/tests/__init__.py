@@ -4,6 +4,7 @@ from .cycle import TestCyclesDG
 from .duplicate import TestDuplicateDagNames
 from .geo import TestGeoInSet
 from .joint import TestHiddenJoints
+from .namespace import TestNamespaces
 from .ng import TestNgSkinData
 from .node import TestUnknownNodes
 
@@ -28,6 +29,7 @@ __all__ = [
     "TestDuplicateDagNames",
     "TestGeoInSet",
     "TestHiddenJoints",
+    "TestNamespaces",
     "TestNgSkinData",
     "TestUnknownNodes",
 ]

@@ -95,10 +95,12 @@ class TestControlsInSet(RigBuildTest):
 
     def run(self) -> bool:
         controls = get_all_controls_by_name()
-        controls_in_set: list[str] = cmds.sets(CONTROLS_SET_NAME, query=True)  # type: ignore
-
-        problem_controls = set(controls) - set(controls_in_set)
-
+        problem_controls: set[str]
+        try:
+            controls_in_set: list[str] = cmds.sets(CONTROLS_SET_NAME, query=True)  # type: ignore
+            problem_controls = set(controls) - set(controls_in_set)
+        except ValueError:
+            problem_controls = set(controls)
         if problem_controls:
             self.log_warn(
                 f'Scene has controls that aren\'t in the controls set: {problem_controls} needs added to the "{CONTROLS_SET_NAME}" set.'

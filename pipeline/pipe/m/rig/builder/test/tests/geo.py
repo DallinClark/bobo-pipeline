@@ -18,12 +18,16 @@ class TestGeoInSet(RigBuildTest):
         mesh_transforms: list[str] = cmds.listRelatives(mesh_shapes, parent=True) or []  # type: ignore
 
         visible_geo: set[str] = set(geo for geo in mesh_transforms if is_visible(geo))
-        meshes_in_set: list[str] = cmds.sets(GEO_SET_NAME, query=True)  # type: ignore
+        problem_meshes: set[str]
+        try:
+            meshes_in_set: list[str] = cmds.sets(GEO_SET_NAME, query=True)  # type: ignore
+            visible_meshes_not_in_set = visible_geo - set(meshes_in_set)
+            problem_meshes = set(
+                mesh for mesh in visible_meshes_not_in_set if not is_control(mesh)
+            )
+        except ValueError:
+            problem_meshes = visible_geo
 
-        visible_meshes_not_in_set = visible_geo - set(meshes_in_set)
-        problem_meshes = set(
-            mesh for mesh in visible_meshes_not_in_set if not is_control(mesh)
-        )
         if problem_meshes:
             self.log_warn(
                 f'Scene has geometry that isn\'t in the geo set: {problem_meshes} needs added to the "{GEO_SET_NAME}" set.'
