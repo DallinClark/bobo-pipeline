@@ -58,3 +58,36 @@ class TestControlsZeroed(RigBuildTest):
         else:
             self.log_success()
             return True
+
+
+class TestControlsTagged(RigBuildTest):
+    """
+    Checks that the scene has no controls that aren't connected to a Maya `controller` node.
+    This is for performance and easy categorization of what is a control.
+    """
+
+    def __init__(self):
+        super().__init__("All controls tagged")
+
+    def run(self) -> bool:
+        controls = get_all_controls_by_name()
+        controller_nodes = cmds.ls(type="controller")
+
+        tagged_controls: set[str] = set()
+        for controller_node in controller_nodes:
+            connected: list[str] = cmds.listConnections(
+                f"{controller_node}.controllerObject", source=True, destination=False
+            )
+            if connected:
+                tagged_controls.add(connected[0])
+
+        problem_controls = set(controls) - tagged_controls
+
+        if problem_controls:
+            self.log_warn(
+                f"Scene has controls that haven't been tagged as controllers: {problem_controls}"
+            )
+            return False
+        else:
+            self.log_success()
+            return True
