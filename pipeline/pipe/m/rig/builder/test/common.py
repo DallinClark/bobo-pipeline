@@ -3,7 +3,17 @@ import re
 from typing import Iterator, Literal
 
 from maya import cmds
-from maya.api.OpenMaya import MFnDagNode, MItDag
+from maya.api.OpenMaya import MDagPath, MFnDagNode, MItDag, MSelectionList
+
+CONTROLS_SET_NAME = "rig_controllers_grp"
+GEO_SET_NAME = "rig_geo_grp"
+
+
+def is_visible(object: str) -> bool:
+    sel: MSelectionList = MSelectionList()
+    sel.add(object)
+    dag_path: MDagPath = sel.getDagPath(0)
+    return dag_path.isVisible()
 
 
 def get_evaluation_graph(attributes: Literal["nodes", "plugs", "connections"]):
@@ -45,3 +55,8 @@ def get_all_controls_by_name() -> list[str]:
     return [
         transform for transform in transforms if MATCH_CONTROLS_REGEX.search(transform)
     ]
+
+
+def is_control(transform: str) -> bool:
+    """Returns True if the given transform is a tagged controller."""
+    return cmds.controller(transform, query=True, isController=True)  # type: ignore

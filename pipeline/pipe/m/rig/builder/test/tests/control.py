@@ -1,7 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
-from ..common import get_all_controls_by_name
+from ..common import CONTROLS_SET_NAME, get_all_controls_by_name
 
 
 class TestControlsZeroed(RigBuildTest):
@@ -53,6 +53,57 @@ class TestControlsZeroed(RigBuildTest):
         if problem_controls:
             self.log_warn(
                 f"Scene has controls with non zeroed transforms: {problem_controls}"
+            )
+            return False
+        else:
+            self.log_success()
+            return True
+
+
+class TestControlsTagged(RigBuildTest):
+    """
+    Checks that the scene has no controls that aren't connected to a Maya `controller` node.
+    This is for performance and easy categorization of what is a control.
+    """
+
+    def __init__(self):
+        super().__init__("All controls tagged")
+
+    def run(self) -> bool:
+        controls = get_all_controls_by_name()
+        tagged_controls: list[str] = cmds.controller(query=True, allControllers=True)  # type: ignore
+
+        problem_controls = set(controls) - set(tagged_controls)
+        if problem_controls:
+            self.log_warn(
+                f"Scene has controls that aren't tagged as controllers: {problem_controls}"
+            )
+            return False
+        else:
+            self.log_success()
+            return True
+
+
+class TestControlsInSet(RigBuildTest):
+    """
+    Checks that the scene has no controls that aren't in the controls set.
+    This is for easy selection of all controls by the animator.
+    """
+
+    def __init__(self):
+        super().__init__("All controls in set")
+
+    def run(self) -> bool:
+        controls = get_all_controls_by_name()
+        problem_controls: set[str]
+        try:
+            controls_in_set: list[str] = cmds.sets(CONTROLS_SET_NAME, query=True)  # type: ignore
+            problem_controls = set(controls) - set(controls_in_set)
+        except ValueError:
+            problem_controls = set(controls)
+        if problem_controls:
+            self.log_warn(
+                f'Scene has controls that aren\'t in the controls set: {problem_controls} needs added to the "{CONTROLS_SET_NAME}" set.'
             )
             return False
         else:

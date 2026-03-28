@@ -1,7 +1,7 @@
 from maya import cmds
-from maya.api.OpenMaya import MDagPath, MSelectionList
 
 from .. import RigBuildTest
+from ..common import is_visible
 
 
 class TestHiddenJoints(RigBuildTest):
@@ -18,12 +18,9 @@ class TestHiddenJoints(RigBuildTest):
 
         visible_joints: list[str] = []
         for joint in visiblity_on_joints:
-            sel: MSelectionList = MSelectionList()
-            sel.add(joint)
-            joint_dag: MDagPath = sel.getDagPath(0)
-            if not joint_dag.isVisible():
+            if not is_visible(joint):
                 continue
-            visible_joints.append(joint_dag.partialPathName())
+            visible_joints.append(joint)
 
         problem_joints: list[str] = []
         for joint in visible_joints:
