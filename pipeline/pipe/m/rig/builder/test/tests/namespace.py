@@ -1,6 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
+from ..common import format_max_items
 
 
 class TestNamespaces(RigBuildTest):
@@ -29,7 +30,9 @@ class TestNamespaces(RigBuildTest):
                     or []
                 )
                 namespace_nodes.extend(nodes)
-            self.log_warn(f"Scene has nodes in namespaces: {namespace_nodes}")
+            self.log_warn(
+                f"Scene has nodes in namespaces: {format_max_items(namespace_nodes, 'node(s)')}"
+            )
             return False
         else:
             self.log_success()

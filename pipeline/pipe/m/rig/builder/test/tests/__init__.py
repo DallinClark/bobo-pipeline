@@ -15,6 +15,7 @@ RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestControlsZeroed,
     TestDuplicateDagNames,
     TestGeoInSet,
+    TestNamespaces,
     TestUnknownNodes,
     TestCyclesDG,
     TestNgSkinData,

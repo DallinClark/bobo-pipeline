@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Iterator, Literal
+from typing import Iterable, Iterator, Literal
 
 from maya import cmds
 from maya.api.OpenMaya import MDagPath, MFnDagNode, MItDag, MSelectionList
@@ -60,3 +60,42 @@ def get_all_controls_by_name() -> list[str]:
 def is_control(transform: str) -> bool:
     """Returns True if the given transform is a tagged controller."""
     return cmds.controller(transform, query=True, isController=True)  # type: ignore
+
+
+def format_max_items(
+    iterable: Iterable, item_name: str = "item(s)", max_items: int = 10
+):
+    displayed_items = []
+    count = 0
+
+    # Try to get length if possible
+    try:
+        total_len = len(iterable)  # works for lists, tuples, sets # type: ignore
+    except TypeError:
+        total_len = None
+
+    it: Iterator = iter(iterable)
+    try:
+        while count < max_items:
+            displayed_items.append(next(it))
+            count += 1
+    except StopIteration:
+        # Less than max_items
+        return f"[{', '.join(map(str, displayed_items))}]"
+
+    # Check if there are more items without consuming all
+    try:
+        next(it)
+        more = True
+    except StopIteration:
+        more = False
+
+    result = f"[{', '.join(map(str, displayed_items))}"
+    if more:
+        result += ", ...]"
+    else:
+        result += "]"
+
+    if total_len is not None:
+        result += f" {total_len} {item_name}"
+    return result

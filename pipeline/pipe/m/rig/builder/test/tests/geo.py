@@ -1,7 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
-from ..common import GEO_SET_NAME, is_control, is_visible
+from ..common import GEO_SET_NAME, format_max_items, is_control, is_visible
 
 
 class TestGeoInSet(RigBuildTest):
@@ -30,7 +30,8 @@ class TestGeoInSet(RigBuildTest):
 
         if problem_meshes:
             self.log_warn(
-                f'Scene has geometry that isn\'t in the geo set: {problem_meshes} needs added to the "{GEO_SET_NAME}" set.'
+                f"Scene has geometry that isn't in the geo set: "
+                f'{format_max_items(problem_meshes, "mesh(es)")} needs added to the "{GEO_SET_NAME}" set.'
             )
             return False
         else:

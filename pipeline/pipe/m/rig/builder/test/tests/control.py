@@ -1,7 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
-from ..common import CONTROLS_SET_NAME, get_all_controls_by_name
+from ..common import CONTROLS_SET_NAME, format_max_items, get_all_controls_by_name
 
 
 class TestControlsZeroed(RigBuildTest):
@@ -52,7 +52,8 @@ class TestControlsZeroed(RigBuildTest):
 
         if problem_controls:
             self.log_warn(
-                f"Scene has controls with non zeroed transforms: {problem_controls}"
+                "Scene has controls with non zeroed transforms: "
+                "{format_max_items(problem_controls, 'controls')}"
             )
             return False
         else:
@@ -76,7 +77,8 @@ class TestControlsTagged(RigBuildTest):
         problem_controls = set(controls) - set(tagged_controls)
         if problem_controls:
             self.log_warn(
-                f"Scene has controls that aren't tagged as controllers: {problem_controls}"
+                "Scene has controls that aren't tagged as controllers: "
+                "{format_max_items(problem_controls, 'controls')}"
             )
             return False
         else:
@@ -103,7 +105,8 @@ class TestControlsInSet(RigBuildTest):
             problem_controls = set(controls)
         if problem_controls:
             self.log_warn(
-                f'Scene has controls that aren\'t in the controls set: {problem_controls} needs added to the "{CONTROLS_SET_NAME}" set.'
+                "Scene has controls that aren't in the controls set: "
+                f"{format_max_items(problem_controls, 'control(s)')} need added to the \"{CONTROLS_SET_NAME}\" set."
             )
             return False
         else:
