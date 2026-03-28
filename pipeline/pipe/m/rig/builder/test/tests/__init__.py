@@ -3,6 +3,7 @@ from .control import TestControlsInSet, TestControlsTagged, TestControlsZeroed
 from .cycle import TestCyclesDG
 from .duplicate import TestDuplicateDagNames
 from .geo import TestGeoInSet
+from .hierarchy import TestSingleHierachy
 from .joint import TestHiddenJoints
 from .namespace import TestNamespaces
 from .ng import TestNgSkinData
@@ -15,6 +16,7 @@ RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestControlsZeroed,
     TestDuplicateDagNames,
     TestGeoInSet,
+    TestSingleHierachy,
     TestNamespaces,
     TestUnknownNodes,
     TestCyclesDG,
@@ -29,6 +31,7 @@ __all__ = [
     "TestCyclesDG",
     "TestDuplicateDagNames",
     "TestGeoInSet",
+    "TestSingleHierachy",
     "TestHiddenJoints",
     "TestNamespaces",
     "TestNgSkinData",

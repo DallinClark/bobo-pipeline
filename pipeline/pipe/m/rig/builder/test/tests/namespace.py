@@ -3,6 +3,8 @@ from maya import cmds
 from .. import RigBuildTest
 from ..common import format_max_items
 
+DEFAULT_NAMESPACES = {"UI", "shared"}
+
 
 class TestNamespaces(RigBuildTest):
     """
@@ -14,10 +16,9 @@ class TestNamespaces(RigBuildTest):
         super().__init__("No namespaces")
 
     def run(self) -> bool:
-        default_namespace = {"UI", "shared"}
         namespaces = cmds.namespaceInfo(listOnlyNamespaces=True, recurse=True) or []
         bad_namespaces: list[str] = [
-            ns for ns in namespaces if ns not in default_namespace
+            ns for ns in namespaces if ns not in DEFAULT_NAMESPACES
         ]
         if bad_namespaces:
             namespace_nodes: list[str] = []

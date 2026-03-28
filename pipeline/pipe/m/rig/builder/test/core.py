@@ -23,7 +23,8 @@ class TestRunner:
         for test in self.tests:
             try:
                 test_passed = test.run()
-            except Exception:
+            except Exception as e:
+                test_log.error(f"{test.name}: {e}", exc_info=e)
                 test_passed = False
             if self._test_run_callback is not None:
                 self._test_run_callback(test, test_passed)
