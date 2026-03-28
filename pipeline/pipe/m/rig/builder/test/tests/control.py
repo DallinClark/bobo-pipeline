@@ -1,9 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
-from ..common import get_all_controls_by_name
-
-CONTROLS_SET_NAME = "rig_controllers_grp"
+from ..common import CONTROLS_SET_NAME, get_all_controls_by_name
 
 
 class TestControlsZeroed(RigBuildTest):
@@ -73,18 +71,9 @@ class TestControlsTagged(RigBuildTest):
 
     def run(self) -> bool:
         controls = get_all_controls_by_name()
-        controller_nodes = cmds.ls(type="controller")
+        tagged_controls: list[str] = cmds.controller(query=True, allControllers=True)  # type: ignore
 
-        tagged_controls: set[str] = set()
-        for controller_node in controller_nodes:
-            connected: list[str] = cmds.listConnections(
-                f"{controller_node}.controllerObject", source=True, destination=False
-            )
-            if connected:
-                tagged_controls.add(connected[0])
-
-        problem_controls = set(controls) - tagged_controls
-
+        problem_controls = set(controls) - set(tagged_controls)
         if problem_controls:
             self.log_warn(
                 f"Scene has controls that aren't tagged as controllers: {problem_controls}"
@@ -112,7 +101,7 @@ class TestControlsInSet(RigBuildTest):
 
         if problem_controls:
             self.log_warn(
-                f'Scene has controls that aren\'t in the controls set: {problem_controls} need added to the "{CONTROLS_SET_NAME}" set.'
+                f'Scene has controls that aren\'t in the controls set: {problem_controls} needs added to the "{CONTROLS_SET_NAME}" set.'
             )
             return False
         else:
