@@ -3,6 +3,8 @@ from maya import cmds
 from .. import RigBuildTest
 from ..common import get_all_controls_by_name
 
+CONTROLS_SET_NAME = "rig_controllers_grp"
+
 
 class TestControlsZeroed(RigBuildTest):
     """
@@ -85,7 +87,32 @@ class TestControlsTagged(RigBuildTest):
 
         if problem_controls:
             self.log_warn(
-                f"Scene has controls that haven't been tagged as controllers: {problem_controls}"
+                f"Scene has controls that aren't tagged as controllers: {problem_controls}"
+            )
+            return False
+        else:
+            self.log_success()
+            return True
+
+
+class TestControlsInSet(RigBuildTest):
+    """
+    Checks that the scene has no controls that aren't in the controls set.
+    This is for easy selection of all controls by the animator.
+    """
+
+    def __init__(self):
+        super().__init__("All controls in set")
+
+    def run(self) -> bool:
+        controls = get_all_controls_by_name()
+        controls_in_set: list[str] = cmds.sets(CONTROLS_SET_NAME, query=True)  # type: ignore
+
+        problem_controls = set(controls) - set(controls_in_set)
+
+        if problem_controls:
+            self.log_warn(
+                f'Scene has controls that aren\'t in the controls set: {problem_controls} need added to the "{CONTROLS_SET_NAME}" set.'
             )
             return False
         else:

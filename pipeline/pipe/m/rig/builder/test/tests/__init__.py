@@ -1,5 +1,5 @@
 from ...test.core import RigBuildTest
-from .control import TestControlsTagged, TestControlsZeroed
+from .control import TestControlsInSet, TestControlsTagged, TestControlsZeroed
 from .cycle import TestCyclesDG
 from .duplicate import TestDuplicateDagNames
 from .joint import TestHiddenJoints
@@ -8,6 +8,7 @@ from .node import TestUnknownNodes
 
 RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestHiddenJoints,
+    TestControlsInSet,
     TestControlsTagged,
     TestControlsZeroed,
     TestDuplicateDagNames,
@@ -23,6 +24,7 @@ __all__ = [
     "TestNgSkinData",
     "TestUnknownNodes",
     "TestCyclesDG",
+    "TestControlsInSet",
     "TestControlsTagged",
     "TestControlsZeroed",
 ]
