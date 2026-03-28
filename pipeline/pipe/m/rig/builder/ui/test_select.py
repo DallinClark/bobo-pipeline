@@ -1,3 +1,4 @@
+import inspect
 from typing import Callable, Sequence
 
 from Qt import QtCore
@@ -30,6 +31,9 @@ class TestItem(QStandardItem):
         self.setSelectable(False)
         self.setCheckable(True)
         self.setCheckState(QtCore.Qt.CheckState.Checked)
+        docstring = inspect.getdoc(test)
+        if docstring:
+            self.setToolTip(docstring)
 
     def run(self):
         result = self.test.run()
