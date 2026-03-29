@@ -1,6 +1,9 @@
 from maya import cmds
 
 from .. import RigBuildTest
+from ..common import format_max_items
+
+DEFAULT_NAMESPACES = {"UI", "shared"}
 
 
 class TestNamespaces(RigBuildTest):
@@ -13,10 +16,9 @@ class TestNamespaces(RigBuildTest):
         super().__init__("No namespaces")
 
     def run(self) -> bool:
-        default_namespace = {"UI", "shared"}
         namespaces = cmds.namespaceInfo(listOnlyNamespaces=True, recurse=True) or []
         bad_namespaces: list[str] = [
-            ns for ns in namespaces if ns not in default_namespace
+            ns for ns in namespaces if ns not in DEFAULT_NAMESPACES
         ]
         if bad_namespaces:
             namespace_nodes: list[str] = []
@@ -29,7 +31,9 @@ class TestNamespaces(RigBuildTest):
                     or []
                 )
                 namespace_nodes.extend(nodes)
-            self.log_warn(f"Scene has nodes in namespaces: {namespace_nodes}")
+            self.log_warn(
+                f"Scene has nodes in namespaces: {format_max_items(namespace_nodes, 'node(s)')}"
+            )
             return False
         else:
             self.log_success()

@@ -1,6 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
+from ..common import format_max_items
 
 
 class TestNgSkinData(RigBuildTest):
@@ -16,7 +17,9 @@ class TestNgSkinData(RigBuildTest):
     def run(self) -> bool:
         ng_data_nodes = cmds.ls(type="ngst2SkinLayerData")
         if ng_data_nodes:
-            self.log_warn(f"Scene has ngst2SkinLayerData nodes: {ng_data_nodes}")
+            self.log_warn(
+                f"Scene has ngst2SkinLayerData nodes: {format_max_items(ng_data_nodes, 'node(s)')}"
+            )
             return False
         else:
             self.log_success()

@@ -1,7 +1,7 @@
 from maya import cmds
 
 from .. import RigBuildTest
-from ..common import is_visible
+from ..common import format_max_items, is_visible
 
 
 class TestHiddenJoints(RigBuildTest):
@@ -27,7 +27,9 @@ class TestHiddenJoints(RigBuildTest):
             if cmds.getAttr(f"{joint}.drawStyle") != 2:
                 problem_joints.append(joint)
         if problem_joints:
-            self.log_warn(f"Scene has visible joints: {problem_joints}")
+            self.log_warn(
+                f"Scene has visible joints: {format_max_items(problem_joints, 'joint(s)')}"
+            )
             return False
         else:
             self.log_success()

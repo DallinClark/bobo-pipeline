@@ -21,7 +21,11 @@ class TestRunner:
         """Runs all of the TestRunner's tests and returns True if all tests passed."""
         passing: bool = True
         for test in self.tests:
-            test_passed = test.run()
+            try:
+                test_passed = test.run()
+            except Exception as e:
+                test_log.error(f"{test.name}: {e}", exc_info=e)
+                test_passed = False
             if self._test_run_callback is not None:
                 self._test_run_callback(test, test_passed)
             if not test_passed:

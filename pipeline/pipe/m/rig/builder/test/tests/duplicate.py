@@ -3,7 +3,7 @@ from collections import Counter, defaultdict
 from maya.api.OpenMaya import MItDag
 
 from .. import RigBuildTest
-from ..common import iter_dag_nodes
+from ..common import format_max_items, iter_dag_nodes
 
 
 class TestDuplicateDagNames(RigBuildTest):
@@ -30,7 +30,9 @@ class TestDuplicateDagNames(RigBuildTest):
             if count > 1
         ]
         if duplicates:
-            self.log_warn(f"Scene has duplicate DAG node names: {duplicates}")
+            self.log_warn(
+                f"Scene has duplicate DAG node names: {format_max_items(duplicates, 'duplicate(s)')}"
+            )
             return False
         else:
             self.log_success()
