@@ -19,7 +19,7 @@ def get_dag_path(transform: str) -> MDagPath:
 def is_visible(object: str) -> bool:
     try:
         dag_path: MDagPath = get_dag_path(object)
-    except TypeError:
+    except Exception:
         return False
     return dag_path.isVisible()
 
