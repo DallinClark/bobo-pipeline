@@ -9,10 +9,18 @@ CONTROLS_SET_NAME = "rig_controllers_grp"
 GEO_SET_NAME = "rig_geo_grp"
 
 
-def is_visible(object: str) -> bool:
+def get_dag_path(transform: str) -> MDagPath:
     sel: MSelectionList = MSelectionList()
-    sel.add(object)
+    sel.add(transform)
     dag_path: MDagPath = sel.getDagPath(0)
+    return dag_path
+
+
+def is_visible(object: str) -> bool:
+    try:
+        dag_path: MDagPath = get_dag_path(object)
+    except TypeError:
+        return False
     return dag_path.isVisible()
 
 
@@ -57,9 +65,22 @@ def get_all_controls_by_name() -> list[str]:
     ]
 
 
-def is_control(transform: str) -> bool:
+def get_all_visible_meshes() -> list[str]:
+    mesh_shapes: list[str] = cmds.ls(type="mesh")
+    mesh_transforms: list[str] = cmds.listRelatives(mesh_shapes, parent=True) or []  # type: ignore
+
+    visible_geo: list[str] = [geo for geo in mesh_transforms if is_visible(geo)]
+    return visible_geo
+
+
+def is_control(transform: str, strict: bool = True) -> bool:
     """Returns True if the given transform is a tagged controller."""
-    return cmds.controller(transform, query=True, isController=True)  # type: ignore
+    if strict:
+        return cmds.controller(transform, query=True, isController=True)  # type: ignore
+    else:
+        return cmds.controller(transform, query=True, isController=True) or bool(
+            MATCH_CONTROLS_REGEX.search(transform)
+        )  # type: ignore
 
 
 def format_max_items(

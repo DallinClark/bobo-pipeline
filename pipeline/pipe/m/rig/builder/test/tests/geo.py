@@ -1,7 +1,12 @@
 from maya import cmds
 
 from .. import RigBuildTest
-from ..common import GEO_SET_NAME, format_max_items, is_control, is_visible
+from ..common import (
+    GEO_SET_NAME,
+    format_max_items,
+    get_all_visible_meshes,
+    is_control,
+)
 
 
 class TestGeoInSet(RigBuildTest):
@@ -14,10 +19,7 @@ class TestGeoInSet(RigBuildTest):
         super().__init__("All geometry in set")
 
     def run(self) -> bool:
-        mesh_shapes: list[str] = cmds.ls(type="mesh")
-        mesh_transforms: list[str] = cmds.listRelatives(mesh_shapes, parent=True) or []  # type: ignore
-
-        visible_geo: set[str] = set(geo for geo in mesh_transforms if is_visible(geo))
+        visible_geo: set[str] = set(get_all_visible_meshes())
         problem_meshes: set[str]
         try:
             meshes_in_set: list[str] = cmds.sets(GEO_SET_NAME, query=True)  # type: ignore

@@ -8,6 +8,7 @@ from .joint import TestHiddenJoints
 from .namespace import TestNamespaces
 from .ng import TestNgSkinData
 from .node import TestUnknownNodes
+from .root_transform import TestRootRotate, TestRootScale, TestRootTranslation
 
 RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestHiddenJoints,
@@ -21,6 +22,9 @@ RIG_BUILD_TESTS: list[type[RigBuildTest]] = [
     TestUnknownNodes,
     TestCyclesDG,
     TestNgSkinData,
+    TestRootTranslation,
+    TestRootRotate,
+    TestRootScale,
 ]
 
 __all__ = [
@@ -36,4 +40,7 @@ __all__ = [
     "TestNamespaces",
     "TestNgSkinData",
     "TestUnknownNodes",
+    "TestRootTranslation",
+    "TestRootRotate",
+    "TestRootScale",
 ]
