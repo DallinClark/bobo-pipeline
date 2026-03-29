@@ -128,7 +128,7 @@ def _compare_before_after_transform(
 
 class TestRootTranslation(RigBuildTest):
     """
-    Checks that scaling the root control behaves as expected (a rigid transformation of the points).
+    Checks that translating the root control behaves as expected (a rigid transformation of the points).
     """
 
     def __init__(self):
@@ -158,7 +158,7 @@ class TestRootTranslation(RigBuildTest):
 
 class TestRootRotate(RigBuildTest):
     """
-    Checks that scaling the root control behaves as expected (a rigid transformation of the points).
+    Checks that rotating the root control behaves as expected (a rigid transformation of the points).
     """
 
     def __init__(self):
