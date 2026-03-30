@@ -1,19 +1,10 @@
+from ctypes import c_float
 from typing import Iterable
 
 import numpy as np
+from maya import OpenMaya as om
 from maya import cmds
-from maya.api.OpenMaya import (
-    MDagPath,
-    MEulerRotation,
-    MFnMesh,
-    MFnTransform,
-    MItDag,
-    MMatrix,
-    MPointArray,
-    MSelectionList,
-    MSpace,
-    MVector,
-)
+from maya.api import OpenMaya as om2
 from numpy.typing import NDArray
 
 from .. import RigBuildTest
@@ -23,9 +14,9 @@ EPSILON: float = 0.01
 
 
 def _get_root_control() -> str | None:
-    it = MItDag(MItDag.kBreadthFirst)
+    it = om2.MItDag(om2.MItDag.kBreadthFirst)
     while not it.isDone():
-        dag: MDagPath = it.getPath()
+        dag: om2.MDagPath = it.getPath()
         name = dag.partialPathName()
         if not name:
             it.next()
@@ -50,22 +41,34 @@ def _get_visible_mesh_shapes() -> list[str]:
 
 
 def _get_mesh_points(mesh_shape: str) -> NDArray[np.float64]:
-    msel: MSelectionList = MSelectionList()
+    # Thanks to this article this isn't a buns slow loop through points to build the numpy array
+    # https://python.polas.net/fast-data-conversion-from-maya-to-numpy/
+    msel: om.MSelectionList = om.MSelectionList()
     msel.add(mesh_shape)
-    mesh_dag: MDagPath = msel.getDagPath(0)
+    mesh_dag: om.MDagPath = om.MDagPath()
+    msel.getDagPath(0, mesh_dag)
 
     # make the function set and get the points
-    fn_mesh: MFnMesh = MFnMesh(mesh_dag)
+    fn_mesh: om.MFnMesh = om.MFnMesh(mesh_dag)
 
-    mesh_points: MPointArray = fn_mesh.getPoints(space=MSpace.kWorld)
-    np_points = np.array(
-        [[pt.x, pt.y, pt.z, pt.w] for pt in mesh_points], dtype=np.float64
-    )
-    return np_points
+    mesh_points = om.MPointArray()
+    fn_mesh.getPoints(mesh_points, om.MSpace.kWorld)
+
+    num_points = mesh_points.length()
+    array_size = num_points * 4
+    util = om.MScriptUtil()
+    util.createFromList([float()] * array_size, array_size)
+    ptr = om.MScriptUtil.asFloat4Ptr(util)
+    mesh_points.get(ptr)  # copy points to ptr
+    # x,y,z,w per point
+    c_float_array = ((c_float * 4) * num_points).from_address(int(ptr))
+    np_array = np.ctypeslib.as_array(c_float_array)
+    np_array = np_array.copy()
+    return np_array
 
 
 def _transform_mesh_points(
-    points: NDArray[np.float64], matrix: MMatrix
+    points: NDArray[np.float64], matrix: om2.MMatrix
 ) -> NDArray[np.float64]:
     np_matrix = np.array(matrix, dtype=np.float64).reshape(4, 4)
     return points @ np_matrix
@@ -89,22 +92,22 @@ def _compare_before_after_transform(
     mesh_points_mapping = {mesh: _get_mesh_points(mesh) for mesh in meshes}
 
     control_dag = get_dag_path(control)
-    transform_mfn = MFnTransform(control_dag)
-    original_world_matrix: MMatrix = control_dag.inclusiveMatrix()
+    transform_mfn = om2.MFnTransform(control_dag)
+    original_world_matrix: om2.MMatrix = control_dag.inclusiveMatrix()
 
-    original_translation = transform_mfn.translation(MSpace.kTransform)
-    original_rotation = transform_mfn.rotation(MSpace.kTransform)
+    original_translation = transform_mfn.translation(om2.MSpace.kTransform)
+    original_rotation = transform_mfn.rotation(om2.MSpace.kTransform)
     original_scale = transform_mfn.scale()
 
     # Apply our transform
     if translation is not None:
-        transform_mfn.translateBy(MVector(translation), MSpace.kTransform)
+        transform_mfn.translateBy(om2.MVector(translation), om2.MSpace.kTransform)
     if rotation is not None:
-        transform_mfn.rotateBy(MEulerRotation(rotation), MSpace.kTransform)
+        transform_mfn.rotateBy(om2.MEulerRotation(rotation), om2.MSpace.kTransform)
     if scale is not None:
         transform_mfn.scaleBy(scale)
 
-    new_world_matrix: MMatrix = control_dag.inclusiveMatrix()
+    new_world_matrix: om2.MMatrix = control_dag.inclusiveMatrix()
     offset_matrix = original_world_matrix.inverse() * new_world_matrix
     all_match = True
     for mesh, original_points in mesh_points_mapping.items():
@@ -117,9 +120,9 @@ def _compare_before_after_transform(
 
     # Reset transform
     if translation is not None:
-        transform_mfn.setTranslation(original_translation, MSpace.kTransform)
+        transform_mfn.setTranslation(original_translation, om2.MSpace.kTransform)
     if rotation is not None:
-        transform_mfn.setRotation(original_rotation, MSpace.kTransform)
+        transform_mfn.setRotation(original_rotation, om2.MSpace.kTransform)
     if scale is not None:
         transform_mfn.setScale(original_scale)
 

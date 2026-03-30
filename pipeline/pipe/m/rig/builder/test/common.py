@@ -69,8 +69,8 @@ def get_all_visible_meshes() -> list[str]:
     mesh_shapes: list[str] = cmds.ls(type="mesh")
     mesh_transforms: list[str] = cmds.listRelatives(mesh_shapes, parent=True) or []  # type: ignore
 
-    visible_geo: list[str] = [geo for geo in mesh_transforms if is_visible(geo)]
-    return visible_geo
+    visible_geo: set[str] = set(geo for geo in mesh_transforms if is_visible(geo))
+    return list(visible_geo)
 
 
 def is_control(transform: str, strict: bool = True) -> bool:
