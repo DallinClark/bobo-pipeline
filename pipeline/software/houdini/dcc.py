@@ -170,6 +170,13 @@ class HoudiniDCC(DCC):
             )
             return
 
+        # Flush any pending WAL into the main DB file before comparing.
+        # hou.AssetGalleryDataSource writes via SQLite WAL mode, so session
+        # changes live in assetGallery.db-wal until checkpointed — the main
+        # .db file bytes are unchanged and filecmp would falsely see no diff.
+        with closing(sqlite3.connect(self._assetdb_path)) as conn:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
         # Skip merge if the session made no gallery changes.
         filecmp.clear_cache()
         if filecmp.cmp(self._orig_assetdb_path, self._assetdb_path, shallow=False):
