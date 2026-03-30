@@ -86,7 +86,7 @@ class AnimPublisher(Publisher):
             ),
             "frameStride": 1.0,
             "shadingMode": "none",
-            "stripNamespaces": True,
+            "stripNamespaces": False,
         }
 
     def _get_confirm_message(self):

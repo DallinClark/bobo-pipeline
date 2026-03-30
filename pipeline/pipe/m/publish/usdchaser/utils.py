@@ -278,6 +278,9 @@ def split_by_namespace(
                 edit.Add(Sdf.NamespaceEdit.Remove(prim.GetPath()))
 
         layer.Apply(edit)
+        if not remove_namespace(layer, path_dag_map):
+            raise RuntimeError(f"Could not remove namespace on layer `{layer_name}`")
+
         layer.Save()
         layers.update({layer_name: layer})
 
