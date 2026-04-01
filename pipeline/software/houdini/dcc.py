@@ -81,8 +81,14 @@ class HoudiniDCC(DCC):
                     "&",
                 ]
             ),
-            # Splash file
-            "HOUDINI_SPLASH_FILE": str(pipe_path / "lib/splash/bobini_splash.png"),
+            # Splash file (per-user if available, else studio default)
+            "HOUDINI_SPLASH_FILE": str(
+                pipe_path / "lib/splash/users" / f"{os.getenv('USER', '')}.png"
+                if (
+                    pipe_path / "lib/splash/users" / f"{os.getenv('USER', '')}.png"
+                ).exists()
+                else pipe_path / "lib/splash/bobini_splash.png"
+            ),
             # Project-specific preference overrides
             "HSITE": str(resolve_mapped_path(this_path.parent / "hsite")),
             # Job directory

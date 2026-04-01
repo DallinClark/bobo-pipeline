@@ -37,6 +37,21 @@ class MayaDCC(DCC):
 
         env_vars: typing.Mapping[str, int | str | None] | None  #############
 
+        # Per-user splash: copy to temp dir as MayaEDUStartupImage.png and prepend to XBMLANGPATH
+        xbm_paths = [
+            this_path.parent / "scripts/studiolibrary/src/studiolibrary/resource/icons",
+            pipe_path / "lib/icon",
+            pipe_path / "lib/splash",
+        ]
+        user_splash_src = (
+            pipe_path / "lib/splash/users" / f"{os.getenv('USER', '')}.png"
+        )
+        if user_splash_src.exists():
+            user_splash_tmp = Path(os.getenv("TMPDIR", "tmp")).resolve() / "maya_splash"
+            user_splash_tmp.mkdir(exist_ok=True)
+            shutil.copy(user_splash_src, user_splash_tmp / "MayaEDUStartupImage.png")
+            xbm_paths.insert(0, user_splash_tmp)
+
         module_paths = []  # Initialize an empty list for module paths
         # add the production path plus the folders where we put our modules
         module_paths.append(str(get_production_path() / "maya/module"))
@@ -79,15 +94,7 @@ class MayaDCC(DCC):
             ),
             # Icons
             "XBMLANGPATH": os.pathsep.join(
-                [
-                    str(pth) + ("/%B" if system == "Linux" else "")
-                    for pth in [
-                        this_path.parent
-                        / "scripts/studiolibrary/src/studiolibrary/resource/icons",
-                        pipe_path / "lib/icon",
-                        pipe_path / "lib/splash",
-                    ]
-                ]
+                [str(pth) + ("/%B" if system == "Linux" else "") for pth in xbm_paths]
             ),
         }
 
