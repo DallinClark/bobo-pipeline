@@ -514,7 +514,7 @@ class MatlibNodeBuilder:
         metallic_workflow.setPosition(hou.Vector2(-2, y + 1))
         normal.setPosition(hou.Vector2(-2, y - 3.5))
         layer.setPosition(hou.Vector2(1, y))
-
+        self._set_parm_if_exists(color, "linearize", True)
         roughness_remap.setNamedInput("inputRGB", roughness, "resultRGB")
         metallic_workflow.setNamedInput("baseColor", color, "resultRGB")
         metallic_workflow.setNamedInput("metallic", metallic, "resultR")
