@@ -172,7 +172,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
 
     def _post_export_char(self):
         scale_down_geo(self._stage)
-        update_material_bindings(self._stage, "/ROOT", "/ROOT/MODEL", "MAT_")
+        update_material_bindings(self._stage, "/rig", "/rig/geo", "MAT_")
 
     def _post_export_cam(self):
         # We don't scale down the camera here because we need to import it
