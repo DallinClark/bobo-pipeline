@@ -573,6 +573,14 @@ class MatlibNodeBuilder:
 
         preview_surface.setPosition(hou.Vector2(11, row_y))
 
+        preview_uv = self._create_primvar_reader(
+            parent=parent,
+            varname="preview_uv",
+            name="preview_uv",
+            y=row_y,
+            signature="Float 2",
+        )
+
         diffuse = self._create_preview_texture(
             parent,
             tex_set_id,
@@ -610,6 +618,8 @@ class MatlibNodeBuilder:
             self._connect_named(
                 preview_surface, "diffuseColor", diffuse, ("rgb", "resultRGB", "result")
             )
+            if preview_uv:
+                self._connect_named(diffuse, "st", preview_uv, ("result",))
         if emissive:
             self._connect_named(
                 preview_surface,
@@ -617,20 +627,29 @@ class MatlibNodeBuilder:
                 emissive,
                 ("rgb", "resultRGB", "result"),
             )
+            if preview_uv:
+                self._connect_named(emissive, "st", preview_uv, ("result",))
         if orm:
+            self._connect_named(
+                preview_surface, "occlusion", orm, ("r", "outR", "resultR")
+            )
             self._connect_named(
                 preview_surface, "roughness", orm, ("g", "outG", "resultG")
             )
             self._connect_named(
                 preview_surface, "metallic", orm, ("b", "outB", "resultB")
             )
+            if preview_uv:
+                self._connect_named(orm, "st", preview_uv, ("result",))
         if normal:
             self._connect_named(
                 preview_surface, "normal", normal, ("rgb", "resultRGB", "result")
             )
+            if preview_uv:
+                self._connect_named(normal, "st", preview_uv, ("result",))
         preview_nodes = [preview_surface]
         preview_nodes.extend(
-            [node for node in (diffuse, orm, emissive, normal) if node]
+            [node for node in (diffuse, orm, emissive, normal, preview_uv) if node]
         )
         return preview_surface, preview_nodes
 
@@ -778,6 +797,31 @@ class MatlibNodeBuilder:
                 node.setInput(connection.inputIndex(), None)
             except (hou.OperationFailed, hou.InvalidInput):
                 continue
+
+    def _create_primvar_reader(
+        self,
+        parent: hou.Node,
+        varname: str,
+        name: str,
+        y: int,
+        *,
+        signature: str,
+    ) -> hou.Node | None:
+        node = self._create_first_supported_node(
+            parent,
+            ("usdprimvarreader", "usdprimvarreader"),
+            f"{name}_primvar",
+        )
+        if node is None:
+            log.warning(
+                f"USD PrimVar node type unavailable; skipping {name} primvar reader"
+            )
+            return None
+        node.setPosition(hou.Vector2(3, y))
+
+        self._set_parm_if_exists(node, "signature", signature)
+        self._set_parm_if_exists(node, "varname", varname)
+        return node
 
     def _create_preview_texture(
         self,
