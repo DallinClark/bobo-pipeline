@@ -528,8 +528,9 @@ def create_skd_component_geometry(
 
     # Configure Component Geometry node
     _set_parm_if_exists(cgeo, "dogeommodelapi", True)
-    _set_parm_if_exists(cgeo, "attribs", "P uv")
+    _set_parm_if_exists(cgeo, "attribs", "P uv preview_uv")
     _set_parm_if_exists(cgeo, "indexattribs", "texset")
+    _set_parm_if_exists(cgeo, "prefixpartitionsubsets", False)
     _set_parm_if_exists(cgeo, "geovariantname", geo_variant or cgeo.name())
 
     importer = cgeo.node("./sopnet/geo/import_usd")
@@ -1098,13 +1099,13 @@ def skd_layout(kwargs: dict, parent: Optional[hou.Node] = None) -> hou.Node:
     layoutprim.setUserData("nodeshape", "chevron_down")
     contextoptions.setUserData("nodeshape", "chevron_up")
 
-    envprim.parm("primpath").set("/environment")
-    envprim.parm("parentprimtype").set("None")
-    envprim.parm("primtype").set("UsdGeomXform")
+    cast(Any, envprim.parm("primpath")).set("/environment")
+    cast(Any, envprim.parm("parentprimtype")).set("None")
+    cast(Any, envprim.parm("primtype")).set("UsdGeomXform")
 
-    layoutprim.parm("primpath").set("`@PATH`")
-    layoutprim.parm("primkind").set("Assembly")
-    layoutprim.parm("parentprimtype").set("UsdGeomXform")
+    cast(Any, layoutprim.parm("primpath")).set("`@PATH`")
+    cast(Any, layoutprim.parm("primkind")).set("Assembly")
+    cast(Any, layoutprim.parm("parentprimtype")).set("UsdGeomXform")
 
     contextoptions.addSpareParmTuple(
         hou.StringParmTemplate(
@@ -1114,18 +1115,20 @@ def skd_layout(kwargs: dict, parent: Optional[hou.Node] = None) -> hou.Node:
             default_value=("$OS",),
         )
     )
-    contextoptions.parm("optioncount").insertMultiParmInstance(0)
-    contextoptions.parm("optionname1").set("ASSEMBLY")
-    contextoptions.parm("optionstrvalue1").set('`chs("./assembly")`')
-    contextoptions.parm("optionname2").set("PATH")
-    contextoptions.parm("optionstrvalue2").set('/environment/`chs("./assembly")`')
+    cast(Any, contextoptions.parm("optioncount")).insertMultiParmInstance(0)
+    cast(Any, contextoptions.parm("optionname1")).set("ASSEMBLY")
+    cast(Any, contextoptions.parm("optionstrvalue1")).set('`chs("./assembly")`')
+    cast(Any, contextoptions.parm("optionname2")).set("PATH")
+    cast(Any, contextoptions.parm("optionstrvalue2")).set(
+        '/environment/`chs("./assembly")`'
+    )
 
-    contextoptions.parm("createoptionsblock").hide(True)
+    cast(Any, contextoptions.parm("createoptionsblock")).hide(True)
     _hide_contextoptions_folders(contextoptions)
 
-    rop.parm("lopoutput").set("$HIP/main.usd")
+    cast(Any, rop.parm("lopoutput")).set("$HIP/main.usd")
 
-    load.parm("filepath").set("$HIP/maya_layout.usd")
+    cast(Any, load.parm("filepath")).set("$HIP/maya_layout.usd")
 
     envprim_move = hou.Vector2(0, 6.7)
     layoutprim_move = hou.Vector2(0, 6.0)
