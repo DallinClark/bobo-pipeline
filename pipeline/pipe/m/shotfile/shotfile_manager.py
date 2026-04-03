@@ -502,7 +502,9 @@ class MShotFileManager(FileManager):
                 if layout:
                     env_path = self._resolve_layout_usd_path(layout.environment_path)
                     if (
-                        self._path_has_layout_name(layout.environment_path, self.FOREST_LAYOUT_NAME)
+                        self._path_has_layout_name(
+                            layout.environment_path, self.FOREST_LAYOUT_NAME
+                        )
                         and env_override_layer
                     ):
                         if self._ensure_forest_mount(env_override_layer, env_path):
@@ -526,7 +528,9 @@ class MShotFileManager(FileManager):
             if env_stub and (env := self._conn.get_env_by_stub(env_stub)):
                 env_path = self._resolve_layout_usd_path(env.environment_path)
                 if (
-                    self._path_has_layout_name(env.environment_path, self.FOREST_LAYOUT_NAME)
+                    self._path_has_layout_name(
+                        env.environment_path, self.FOREST_LAYOUT_NAME
+                    )
                     and env_override_layer
                 ):
                     if self._ensure_forest_mount(env_override_layer, env_path):

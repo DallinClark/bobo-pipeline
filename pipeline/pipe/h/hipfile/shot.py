@@ -663,7 +663,9 @@ class HShotFileManager(HFileManager):
             self._conn.get_env_by_stub(environment_stub) if environment_stub else None
         )
         if layout:
-            load_layer.parm("layout_path").set(f"$JOB/{layout.environment_path}/main.usd")  # type: ignore[union-attr]
+            load_layer.parm("layout_path").set(  # type: ignore[unresolved-attribute]
+                f"$JOB/{layout.environment_path}/main.usd"
+            )
 
         return load_layer
 
