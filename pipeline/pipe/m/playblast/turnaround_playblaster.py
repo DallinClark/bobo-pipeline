@@ -22,8 +22,8 @@ DEFAULT_WIDTH = 1920
 DEFAULT_HEIGHT = 1080
 DEFAULT_FRAMES_PER_PASS = 96
 DEFAULT_FOCAL_LENGTH = 50.0
-DEFAULT_CAMERA_PADDING = 1.15
-DEFAULT_AIM_HEIGHT_BIAS = 0.12
+DEFAULT_CAMERA_PADDING = 1.25
+DEFAULT_AIM_HEIGHT_BIAS = 0.0
 
 BACKGROUND_COLOR = (0.33, 0.33, 0.33)
 BACKGROUND_TOP = (0.42, 0.44, 0.47)
@@ -149,6 +149,7 @@ class TurnaroundPlayblaster:
         wireframe_on_shaded: bool,
     ) -> None:
         config = self._config
+        display_appearance = "wireframe" if wireframe_on_shaded else "smoothShaded"
         capture(
             camera=camera_shape,
             width=config.width,
@@ -180,7 +181,7 @@ class TurnaroundPlayblaster:
                 "cameras": False,
                 "deformers": False,
                 "dimensions": False,
-                "displayAppearance": "smoothShaded",
+                "displayAppearance": display_appearance,
                 "displayLights": "default",
                 "displayTextures": not config.use_default_material,
                 "dynamicConstraints": False,
@@ -215,7 +216,7 @@ class TurnaroundPlayblaster:
                 "textures": False,
                 "twoSidedLighting": True,
                 "useDefaultMaterial": config.use_default_material,
-                "wireframeOnShaded": wireframe_on_shaded,
+                "wireframeOnShaded": False,
             },
             viewport2_options={
                 "consolidateWorld": True,
@@ -287,6 +288,10 @@ class TurnaroundPlayblaster:
                 continue
 
             temp_movie_path = combined_base.with_suffix(f".{preset.ext}")
+            encode_kwargs = dict(preset.out_kwargs)
+            if preset.ext == "mp4":
+                encode_kwargs.setdefault("pix_fmt", "yuv420p")
+                encode_kwargs.setdefault("movflags", "+faststart")
             try:
                 (
                     ffmpeg.output(
@@ -294,9 +299,11 @@ class TurnaroundPlayblaster:
                             image_pattern,
                             start_number=1,
                             r=self._config.frame_rate,
-                        ),
+                            colorspace="bt709",
+                            color_trc="iec61966-2-1",
+                        ).filter("format", "yuv422p"),
                         str(temp_movie_path),
-                        **preset.out_kwargs,
+                        **encode_kwargs,
                         r=self._config.frame_rate,
                     )
                     .overwrite_output()
@@ -404,7 +411,8 @@ def _temporary_turnaround_camera(
     center = _bounding_box_center_from_bbox(bbox)
     size_x, size_y, size_z = _bounding_box_size_from_bbox(bbox)
     radius = max(0.5 * math.sqrt(size_x**2 + size_y**2 + size_z**2), 1.0)
-    aim_height = center[1] + (size_y * aim_height_bias)
+    del size_y
+    del aim_height_bias
 
     camera_transform, camera_shape = mc.camera(name=_unique_name("assetTurnaround_cam"))
     aim_locator = mc.spaceLocator(name=_unique_name("assetTurnaroundAim_LOC"))[0]
@@ -422,8 +430,8 @@ def _temporary_turnaround_camera(
         mc.setAttr(f"{camera_shape}.nearClipPlane", near_clip)
         mc.setAttr(f"{camera_shape}.farClipPlane", far_clip)
 
-        camera_position = (center[0], aim_height, center[2] - distance)
-        aim_position = (center[0], aim_height, center[2])
+        camera_position = (center[0], center[1], center[2] - distance)
+        aim_position = center
         mc.xform(camera_transform, worldSpace=True, translation=camera_position)
         mc.xform(aim_locator, worldSpace=True, translation=aim_position)
         aim_constraint = mc.aimConstraint(
