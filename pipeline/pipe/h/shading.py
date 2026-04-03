@@ -514,7 +514,7 @@ class MatlibNodeBuilder:
         metallic_workflow.setPosition(hou.Vector2(-2, y + 1))
         normal.setPosition(hou.Vector2(-2, y - 3.5))
         layer.setPosition(hou.Vector2(1, y))
-
+        self._set_parm_if_exists(color, "linearize", True)
         roughness_remap.setNamedInput("inputRGB", roughness, "resultRGB")
         metallic_workflow.setNamedInput("baseColor", color, "resultRGB")
         metallic_workflow.setNamedInput("metallic", metallic, "resultR")
@@ -645,6 +645,9 @@ class MatlibNodeBuilder:
             self._connect_named(
                 preview_surface, "normal", normal, ("rgb", "resultRGB", "result")
             )
+            # Scale the 0-1 RGB space to -1 to 1 tangent space
+            self._set_parm_tuple_if_exists(normal, "scale", (2, 2, 2, 1))
+            self._set_parm_tuple_if_exists(normal, "bias", (-1, -1, -1, 0))
             if preview_uv:
                 self._connect_named(normal, "st", preview_uv, ("result",))
         preview_nodes = [preview_surface]
@@ -865,6 +868,13 @@ class MatlibNodeBuilder:
     @staticmethod
     def _set_parm_if_exists(node: hou.Node, parm_name: str, value) -> None:
         parm = node.parm(parm_name)
+        if parm is None:
+            return
+        parm.set(value)
+
+    @staticmethod
+    def _set_parm_tuple_if_exists(node: hou.Node, parm_name: str, value: tuple) -> None:
+        parm = node.parmTuple(parm_name)
         if parm is None:
             return
         parm.set(value)

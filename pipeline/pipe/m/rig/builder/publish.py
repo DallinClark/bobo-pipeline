@@ -6,6 +6,8 @@ from maya import cmds
 
 from pipe.asset.paths import paths_for_asset
 from pipe.db import DB
+from pipe.m.publish import ExportChaser
+from pipe.m.publish.usdchaser import ExportChaserMode
 from pipe.versioning.store import next_version, versioned_filename
 
 from .build import RigBuilder
@@ -64,6 +66,24 @@ class RigPublisher:
         test_runner = TestRunner(test_objects, self._on_test_run)
         return test_runner.run_tests()
 
+    def _publish_rig_model(self, rig_name: str):
+        publish_asset = self._conn.get_asset_by_name(rig_name)
+        publish_asset_paths = paths_for_asset(publish_asset)
+        rig_model_publish_path = publish_asset_paths.rig_path / "usd/geo.usd"
+        cmds.mayaUSDExport(  # type: ignore
+            chaser=[ExportChaser.ID],
+            file=str(rig_model_publish_path),
+            chaserArgs=[(ExportChaser.ID, "mode", ExportChaserMode.RIG)],
+            exportCollectionBasedBindings=True,
+            exportMaterialCollections=True,
+            legacyMaterialScope=True,
+            materialCollectionsPath="/rig/geo",
+            shadingMode="useRegistry",
+        )
+        log.info(
+            f"PUBLISH: {rig_name} rig model USD published to {rig_model_publish_path}"
+        )
+
     def _publish_rig(self, rig_name: str) -> bool:
         publish_asset = self._conn.get_asset_by_name(rig_name)
         publish_asset_paths = paths_for_asset(publish_asset)
@@ -108,3 +128,4 @@ class RigPublisher:
             return
         else:
             self._publish_rig(rig_name)
+            self._publish_rig_model(rig_name)

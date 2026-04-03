@@ -23,7 +23,6 @@ from .usdchaser import ExportChaser, ExportChaserMode
 log = logging.getLogger(__name__)
 
 CACHE_SET = "rig_geo_grp"
-PROP_SET = "prop_SET"
 
 
 class AnimPublisher(Publisher):
