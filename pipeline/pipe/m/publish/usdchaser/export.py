@@ -42,7 +42,7 @@ log = logging.getLogger(__name__)
 class ExportChaserMode(IntEnum):
     ANIM = 1
     CAM = 2
-    CHAR = 3
+    RIG = 3
 
 
 @attrs.define
@@ -75,8 +75,8 @@ class ExportChaser(mayaUsdLib.ExportChaser):
         if self._chaser_args.mode == ExportChaserMode.ANIM:
             self._post_export_anim()
 
-        elif self._chaser_args.mode == ExportChaserMode.CHAR:
-            self._post_export_char()
+        elif self._chaser_args.mode == ExportChaserMode.RIG:
+            self._post_export_rig()
 
         elif self._chaser_args.mode == ExportChaserMode.CAM:
             self._post_export_cam()
@@ -170,7 +170,7 @@ class ExportChaser(mayaUsdLib.ExportChaser):
                     Sdf.Path(f"/__class__/anim/{name}")
                 ]
 
-    def _post_export_char(self):
+    def _post_export_rig(self):
         scale_down_geo(self._stage)
         update_material_bindings(self._stage, "/rig", "/rig/geo", "MAT_")
 
