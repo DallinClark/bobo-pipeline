@@ -244,7 +244,7 @@ global proc shelf_Bobo_Assets () {
         -style "iconOnly"
         -marginWidth 0
         -marginHeight 1
-        -command "from pipe.m.turnaround import Turnaround; Turnaround()"
+        -command "from pipe.m.turnaround import show_turnaround_dialog; show_turnaround_dialog()"
         -sourceType "python"
         -commandRepeatable 1
         -flat 1

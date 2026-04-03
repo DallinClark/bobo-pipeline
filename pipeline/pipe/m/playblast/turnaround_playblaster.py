@@ -1,0 +1,661 @@
+from __future__ import annotations
+
+import logging
+import math
+import shutil
+import tempfile
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+
+import ffmpeg  # type: ignore[import-untyped]
+import maya.cmds as mc
+from mayacapture.capture import capture  # type: ignore[import-not-found]
+
+from pipe.m.util import maintain_selection
+from pipe.util import Playblaster
+
+log = logging.getLogger(__name__)
+
+DEFAULT_WIDTH = 1920
+DEFAULT_HEIGHT = 1080
+DEFAULT_FRAMES_PER_PASS = 96
+DEFAULT_FOCAL_LENGTH = 50.0
+DEFAULT_CAMERA_PADDING = 1.15
+DEFAULT_AIM_HEIGHT_BIAS = 0.12
+
+BACKGROUND_COLOR = (0.33, 0.33, 0.33)
+BACKGROUND_TOP = (0.42, 0.44, 0.47)
+BACKGROUND_BOTTOM = (0.17, 0.17, 0.18)
+
+
+@dataclass(frozen=True)
+class TurnaroundReviewRoots:
+    """Resolved roots to display in the turnaround capture."""
+
+    roots: tuple[str, ...]
+    source_label: str
+
+    @property
+    def summary(self) -> str:
+        if not self.roots:
+            return "No review roots found."
+
+        if len(self.roots) == 1:
+            return _short_name(self.roots[0])
+
+        first_name = _short_name(self.roots[0])
+        return f"{first_name} + {len(self.roots) - 1} more"
+
+
+@dataclass(frozen=True)
+class TurnaroundPlayblastConfig:
+    """All settings required to export an asset turnaround movie."""
+
+    asset_label: str
+    output_paths: dict[Playblaster.PRESET, list[str | Path]]
+    review_roots: tuple[str, ...]
+    width: int = DEFAULT_WIDTH
+    height: int = DEFAULT_HEIGHT
+    frames_per_pass: int = DEFAULT_FRAMES_PER_PASS
+    frame_rate: int = Playblaster.FR
+    focal_length: float = DEFAULT_FOCAL_LENGTH
+    camera_padding: float = DEFAULT_CAMERA_PADDING
+    aim_height_bias: float = DEFAULT_AIM_HEIGHT_BIAS
+    use_default_material: bool = True
+    use_shadows: bool = True
+    use_anti_aliasing: bool = True
+    include_wireframe_pass: bool = True
+
+
+def resolve_turnaround_review_roots() -> TurnaroundReviewRoots:
+    """Resolve review roots from the current Maya selection or visible meshes."""
+
+    selected_transforms = _collapse_to_root_transforms(
+        _selected_root_candidates(),
+    )
+    if selected_transforms:
+        return TurnaroundReviewRoots(selected_transforms, "Selection")
+
+    scene_transforms = _collapse_to_root_transforms(_visible_scene_mesh_roots())
+    return TurnaroundReviewRoots(scene_transforms, "Visible Geometry")
+
+
+class TurnaroundPlayblaster:
+    """Capture a shaded and wireframe asset turnaround into one movie."""
+
+    _config: TurnaroundPlayblastConfig
+
+    def configure(self, config: TurnaroundPlayblastConfig) -> TurnaroundPlayblaster:
+        self._config = config
+        return self
+
+    def playblast(self) -> None:
+        config = self._config
+        if not config.review_roots:
+            raise ValueError("No review roots were resolved for turnaround export.")
+
+        with tempfile.TemporaryDirectory(prefix="skd_turnaround_") as temp_dir:
+            temp_root = Path(temp_dir)
+            shaded_base = temp_root / "turnaround_shaded"
+            wireframe_base = temp_root / "turnaround_wireframe"
+            combined_base = temp_root / "turnaround_combined"
+
+            with (
+                maintain_selection(),
+                _preserved_current_time(),
+                _staged_turntable_roots(
+                    config.review_roots,
+                    frames_per_pass=config.frames_per_pass,
+                ) as staged_roots,
+                _temporary_turnaround_camera(
+                    staged_roots,
+                    focal_length=config.focal_length,
+                    camera_padding=config.camera_padding,
+                    aim_height_bias=config.aim_height_bias,
+                ) as camera_shape,
+            ):
+                self._capture_pass(
+                    output_base=shaded_base,
+                    camera_shape=camera_shape,
+                    review_roots=staged_roots,
+                    wireframe_on_shaded=False,
+                )
+
+                if config.include_wireframe_pass:
+                    self._capture_pass(
+                        output_base=wireframe_base,
+                        camera_shape=camera_shape,
+                        review_roots=staged_roots,
+                        wireframe_on_shaded=True,
+                    )
+
+            self._assemble_combined_sequence(
+                shaded_base=shaded_base,
+                wireframe_base=wireframe_base
+                if config.include_wireframe_pass
+                else None,
+                combined_base=combined_base,
+            )
+            self._encode_output_movies(combined_base=combined_base)
+
+    def _capture_pass(
+        self,
+        *,
+        output_base: Path,
+        camera_shape: str,
+        review_roots: tuple[str, ...],
+        wireframe_on_shaded: bool,
+    ) -> None:
+        config = self._config
+        capture(
+            camera=camera_shape,
+            width=config.width,
+            height=config.height,
+            filename=str(output_base),
+            start_frame=1,
+            end_frame=config.frames_per_pass,
+            format="image",
+            compression="png",
+            off_screen=True,
+            show_ornaments=False,
+            overwrite=True,
+            maintain_aspect_ratio=False,
+            viewer=0,
+            isolate=list(review_roots),
+            display_options={
+                "displayGradient": True,
+                "background": BACKGROUND_COLOR,
+                "backgroundTop": BACKGROUND_TOP,
+                "backgroundBottom": BACKGROUND_BOTTOM,
+            },
+            camera_options={
+                "displayFilmGate": False,
+                "displayGateMask": False,
+                "displayResolution": False,
+                "overscan": 1.0,
+            },
+            viewport_options={
+                "cameras": False,
+                "deformers": False,
+                "dimensions": False,
+                "displayAppearance": "smoothShaded",
+                "displayLights": "default",
+                "displayTextures": not config.use_default_material,
+                "dynamicConstraints": False,
+                "dynamics": False,
+                "fluids": False,
+                "follicles": False,
+                "fogging": False,
+                "grid": False,
+                "hairSystems": False,
+                "handles": False,
+                "headsUpDisplay": False,
+                "hulls": False,
+                "ikHandles": False,
+                "imagePlane": False,
+                "joints": False,
+                "lights": False,
+                "locators": False,
+                "manipulators": False,
+                "nCloths": False,
+                "nParticles": False,
+                "nRigids": False,
+                "nurbsCurves": False,
+                "nurbsSurfaces": True,
+                "planes": False,
+                "polymeshes": True,
+                "pivots": False,
+                "rendererName": "vp2Renderer",
+                "selectionHiliteDisplay": False,
+                "shadows": config.use_shadows,
+                "strokes": False,
+                "subdivSurfaces": True,
+                "textures": False,
+                "twoSidedLighting": True,
+                "useDefaultMaterial": config.use_default_material,
+                "wireframeOnShaded": wireframe_on_shaded,
+            },
+            viewport2_options={
+                "consolidateWorld": True,
+                "enableTextureMaxRes": True,
+                "lineAAEnable": config.use_anti_aliasing,
+                "maxHardwareLights": 4,
+                "multiSampleCount": 8,
+                "multiSampleEnable": config.use_anti_aliasing,
+                "ssaoEnable": config.use_anti_aliasing,
+                "textureMaxResolution": 4096,
+                "useMaximumHardwareLights": True,
+            },
+        )
+
+    def _assemble_combined_sequence(
+        self,
+        *,
+        shaded_base: Path,
+        wireframe_base: Path | None,
+        combined_base: Path,
+    ) -> None:
+        self._copy_sequence(
+            source_base=shaded_base,
+            destination_base=combined_base,
+            source_start=1,
+            destination_start=1,
+            frame_count=self._config.frames_per_pass,
+        )
+
+        if wireframe_base is None:
+            return
+
+        self._copy_sequence(
+            source_base=wireframe_base,
+            destination_base=combined_base,
+            source_start=1,
+            destination_start=self._config.frames_per_pass + 1,
+            frame_count=self._config.frames_per_pass,
+        )
+
+    @staticmethod
+    def _copy_sequence(
+        *,
+        source_base: Path,
+        destination_base: Path,
+        source_start: int,
+        destination_start: int,
+        frame_count: int,
+    ) -> None:
+        for offset in range(frame_count):
+            source_frame = source_start + offset
+            destination_frame = destination_start + offset
+            source_path = source_base.with_name(
+                f"{source_base.name}.{source_frame:04d}.png"
+            )
+            if not source_path.is_file():
+                raise FileNotFoundError(f"Missing turnaround frame: {source_path}")
+
+            destination_path = destination_base.with_name(
+                f"{destination_base.name}.{destination_frame:04d}.png"
+            )
+            shutil.copyfile(source_path, destination_path)
+
+    def _encode_output_movies(self, *, combined_base: Path) -> None:
+        image_pattern = str(combined_base) + ".%04d.png"
+
+        for preset, output_bases in self._config.output_paths.items():
+            if not output_bases:
+                continue
+
+            temp_movie_path = combined_base.with_suffix(f".{preset.ext}")
+            try:
+                (
+                    ffmpeg.output(
+                        ffmpeg.input(
+                            image_pattern,
+                            start_number=1,
+                            r=self._config.frame_rate,
+                        ),
+                        str(temp_movie_path),
+                        **preset.out_kwargs,
+                        r=self._config.frame_rate,
+                    )
+                    .overwrite_output()
+                    .run()
+                )
+            except ffmpeg.Error as exc:
+                stdout = exc.stdout.decode() if exc.stdout else ""
+                stderr = exc.stderr.decode() if exc.stderr else ""
+                log.error(
+                    "Turnaround encode failed.\nstdout:%s\nstderr:%s", stdout, stderr
+                )
+                raise RuntimeError("Turnaround movie encoding failed.") from exc
+
+            for output_base in output_bases:
+                output_path = Path(str(output_base) + f".{preset.ext}")
+                output_path.parent.mkdir(mode=0o770, parents=True, exist_ok=True)
+                shutil.copyfile(temp_movie_path, output_path)
+
+
+@contextmanager
+def _preserved_current_time():
+    current_time = int(mc.currentTime(query=True))
+    try:
+        yield
+    finally:
+        mc.currentTime(current_time, edit=True)
+
+
+@contextmanager
+def _staged_turntable_roots(
+    review_roots: Iterable[str],
+    *,
+    frames_per_pass: int,
+):
+    resolved_roots: list[str] = []
+    for root in review_roots:
+        current_root = _current_node_path(_node_uuid(root))
+        if current_root:
+            resolved_roots.append(current_root)
+
+    resolved_root_paths = tuple(resolved_roots)
+    if not resolved_root_paths:
+        raise ValueError("No valid review roots were found in the scene.")
+
+    root_records: list[tuple[str, str | None]] = []
+    for root in resolved_root_paths:
+        parent = _parent_path(root)
+        parent_uuid = _node_uuid(parent) if parent else None
+        root_records.append((_node_uuid(root), parent_uuid))
+
+    turntable_group = str(
+        mc.createNode("transform", name=_unique_name("assetTurnaroundTurntable_GRP"))
+    )
+    center = _bounding_box_center(resolved_root_paths)
+    mc.xform(turntable_group, worldSpace=True, translation=center)
+
+    try:
+        for root_uuid, _ in root_records:
+            current_root = _current_node_path(root_uuid)
+            if not current_root:
+                raise RuntimeError("Could not resolve review root before staging.")
+            mc.parent(current_root, turntable_group, absolute=True)
+
+        _set_linear_turntable_animation(
+            turntable_group,
+            frames_per_pass=frames_per_pass,
+        )
+        staged_roots = tuple(
+            path
+            for path in (_current_node_path(root_uuid) for root_uuid, _ in root_records)
+            if path
+        )
+        if len(staged_roots) != len(root_records):
+            raise RuntimeError("Could not resolve staged turnaround roots.")
+        yield staged_roots
+    finally:
+        for root_uuid, original_parent_uuid in root_records:
+            current_root = _current_node_path(root_uuid)
+            if not current_root:
+                continue
+
+            original_parent = (
+                _current_node_path(original_parent_uuid)
+                if original_parent_uuid is not None
+                else None
+            )
+            if original_parent and mc.objExists(original_parent):
+                mc.parent(current_root, original_parent, absolute=True)
+            else:
+                mc.parent(current_root, world=True, absolute=True)
+
+        if mc.objExists(turntable_group):
+            mc.delete(turntable_group)
+
+
+@contextmanager
+def _temporary_turnaround_camera(
+    review_roots: Iterable[str],
+    *,
+    focal_length: float,
+    camera_padding: float,
+    aim_height_bias: float,
+):
+    bbox = _exact_bounding_box(review_roots)
+    center = _bounding_box_center_from_bbox(bbox)
+    size_x, size_y, size_z = _bounding_box_size_from_bbox(bbox)
+    radius = max(0.5 * math.sqrt(size_x**2 + size_y**2 + size_z**2), 1.0)
+    aim_height = center[1] + (size_y * aim_height_bias)
+
+    camera_transform, camera_shape = mc.camera(name=_unique_name("assetTurnaround_cam"))
+    aim_locator = mc.spaceLocator(name=_unique_name("assetTurnaroundAim_LOC"))[0]
+    aim_constraint = None
+
+    try:
+        mc.setAttr(f"{camera_shape}.focalLength", focal_length)
+        distance = _camera_distance_for_radius(
+            camera_shape,
+            radius=radius,
+            padding=camera_padding,
+        )
+        near_clip = max(0.1, distance - (radius * 2.0))
+        far_clip = max(distance + (radius * 4.0), 1000.0)
+        mc.setAttr(f"{camera_shape}.nearClipPlane", near_clip)
+        mc.setAttr(f"{camera_shape}.farClipPlane", far_clip)
+
+        camera_position = (center[0], aim_height, center[2] - distance)
+        aim_position = (center[0], aim_height, center[2])
+        mc.xform(camera_transform, worldSpace=True, translation=camera_position)
+        mc.xform(aim_locator, worldSpace=True, translation=aim_position)
+        aim_constraint = mc.aimConstraint(
+            aim_locator,
+            camera_transform,
+            aimVector=(0, 0, -1),
+            upVector=(0, 1, 0),
+            worldUpType="vector",
+            worldUpVector=(0, 1, 0),
+        )[0]
+        yield str(camera_shape)
+    finally:
+        if aim_constraint and mc.objExists(aim_constraint):
+            mc.delete(aim_constraint)
+        if mc.objExists(aim_locator):
+            mc.delete(aim_locator)
+        if mc.objExists(camera_transform):
+            mc.delete(camera_transform)
+
+
+def _selected_root_candidates() -> tuple[str, ...]:
+    selection = mc.ls(selection=True, long=True, objectsOnly=True) or []
+    resolved_roots: list[str] = []
+    for node in selection:
+        transform = _as_transform(node)
+        if transform:
+            resolved_roots.append(transform)
+    return tuple(resolved_roots)
+
+
+def _visible_scene_mesh_roots() -> tuple[str, ...]:
+    scene_roots: list[str] = []
+    for mesh in mc.ls(type="mesh", long=True) or []:
+        if mc.getAttr(f"{mesh}.intermediateObject"):
+            continue
+        parent = _first_parent(mesh)
+        if not parent or not _is_visible_in_hierarchy(parent):
+            continue
+        scene_roots.append(parent)
+    return tuple(scene_roots)
+
+
+def _collapse_to_root_transforms(nodes: Iterable[str]) -> tuple[str, ...]:
+    candidate_paths_by_uuid: dict[str, str] = {}
+    for node in nodes:
+        normalized = str(node).strip()
+        if not normalized:
+            continue
+
+        transform = _as_transform(normalized)
+        if not transform:
+            continue
+        candidate_paths_by_uuid[_node_uuid(transform)] = transform
+
+    candidate_paths = tuple(candidate_paths_by_uuid.values())
+    candidate_set = set(candidate_paths)
+
+    collapsed_roots: list[str] = []
+    for node in candidate_paths:
+        parent = _first_parent(node)
+        has_selected_ancestor = False
+        while parent:
+            if parent in candidate_set:
+                has_selected_ancestor = True
+                break
+            parent = _first_parent(parent)
+
+        if not has_selected_ancestor:
+            collapsed_roots.append(node)
+
+    return tuple(collapsed_roots)
+
+
+def _as_transform(node: str) -> str | None:
+    if not mc.objExists(node):
+        return None
+
+    if mc.nodeType(node) == "transform":
+        return str(mc.ls(node, long=True)[0])
+
+    parent = _first_parent(node)
+    if parent:
+        return parent
+    return None
+
+
+def _first_parent(node: str) -> str | None:
+    parents = mc.listRelatives(node, parent=True, fullPath=True) or []
+    if not parents:
+        return None
+    return str(parents[0])
+
+
+def _is_visible_in_hierarchy(node: str) -> bool:
+    current = node
+    while current:
+        try:
+            if not mc.getAttr(f"{current}.visibility"):
+                return False
+        except Exception:
+            return False
+
+        parent = _first_parent(current)
+        if parent == current:
+            break
+        current = parent
+    return True
+
+
+def _exact_bounding_box(
+    nodes: Iterable[str],
+) -> tuple[float, float, float, float, float, float]:
+    resolved_nodes = list(nodes)
+    if not resolved_nodes:
+        raise ValueError("Bounding box requires at least one node.")
+
+    min_x, min_y, min_z, max_x, max_y, max_z = mc.exactWorldBoundingBox(resolved_nodes)
+    return (
+        float(min_x),
+        float(min_y),
+        float(min_z),
+        float(max_x),
+        float(max_y),
+        float(max_z),
+    )
+
+
+def _bounding_box_center(nodes: Iterable[str]) -> tuple[float, float, float]:
+    return _bounding_box_center_from_bbox(_exact_bounding_box(nodes))
+
+
+def _bounding_box_center_from_bbox(
+    bbox: tuple[float, float, float, float, float, float],
+) -> tuple[float, float, float]:
+    min_x, min_y, min_z, max_x, max_y, max_z = bbox
+    return (
+        (min_x + max_x) * 0.5,
+        (min_y + max_y) * 0.5,
+        (min_z + max_z) * 0.5,
+    )
+
+
+def _bounding_box_size_from_bbox(
+    bbox: tuple[float, float, float, float, float, float],
+) -> tuple[float, float, float]:
+    min_x, min_y, min_z, max_x, max_y, max_z = bbox
+    return (
+        max(max_x - min_x, 0.001),
+        max(max_y - min_y, 0.001),
+        max(max_z - min_z, 0.001),
+    )
+
+
+def _camera_distance_for_radius(
+    camera_shape: str,
+    *,
+    radius: float,
+    padding: float,
+) -> float:
+    focal_length = float(mc.getAttr(f"{camera_shape}.focalLength"))
+    horizontal_aperture = (
+        float(mc.getAttr(f"{camera_shape}.horizontalFilmAperture")) * 25.4
+    )
+    vertical_aperture = float(mc.getAttr(f"{camera_shape}.verticalFilmAperture")) * 25.4
+
+    horizontal_fov = 2.0 * math.atan(horizontal_aperture / (2.0 * focal_length))
+    vertical_fov = 2.0 * math.atan(vertical_aperture / (2.0 * focal_length))
+    fit_fov = max(min(horizontal_fov, vertical_fov), 0.001)
+    return (radius * padding) / math.sin(fit_fov * 0.5)
+
+
+def _set_linear_turntable_animation(
+    turntable_group: str,
+    *,
+    frames_per_pass: int,
+) -> None:
+    start_frame = 1
+    end_key_frame = frames_per_pass + 1
+    mc.setAttr(f"{turntable_group}.rotateX", 0)
+    mc.setAttr(f"{turntable_group}.rotateY", 0)
+    mc.setAttr(f"{turntable_group}.rotateZ", 0)
+    mc.setKeyframe(turntable_group, attribute="rotateY", t=start_frame, v=0.0)
+    mc.setKeyframe(turntable_group, attribute="rotateY", t=end_key_frame, v=360.0)
+    mc.keyTangent(
+        turntable_group,
+        attribute="rotateY",
+        time=(start_frame, end_key_frame),
+        inTangentType="linear",
+        outTangentType="linear",
+    )
+
+
+def _short_name(node: str) -> str:
+    return str(node).split("|")[-1]
+
+
+def _node_uuid(node: str) -> str:
+    uuids = mc.ls(node, uuid=True) or []
+    if not uuids:
+        raise ValueError(f"Could not resolve UUID for node '{node}'.")
+    return str(uuids[0])
+
+
+def _current_node_path(node_uuid: str) -> str | None:
+    matches = mc.ls(node_uuid, long=True) or []
+    if not matches:
+        return None
+    return str(matches[0])
+
+
+def _parent_path(node: str) -> str | None:
+    return _first_parent(node)
+
+
+def _unique_name(base_name: str) -> str:
+    if not mc.objExists(base_name):
+        return base_name
+
+    index = 1
+    while True:
+        candidate = f"{base_name}{index}"
+        if not mc.objExists(candidate):
+            return candidate
+        index += 1
+
+
+__all__ = [
+    "DEFAULT_FRAMES_PER_PASS",
+    "DEFAULT_HEIGHT",
+    "DEFAULT_WIDTH",
+    "TurnaroundPlayblastConfig",
+    "TurnaroundPlayblaster",
+    "TurnaroundReviewRoots",
+    "resolve_turnaround_review_roots",
+]
