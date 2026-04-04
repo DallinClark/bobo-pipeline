@@ -11,7 +11,12 @@ from typing import Iterable
 
 import ffmpeg  # type: ignore[import-untyped]
 import maya.cmds as mc
-from mayacapture.capture import capture  # type: ignore[import-not-found]
+from mayacapture.capture import (  # type: ignore[import-not-found]
+    CameraOptions,
+    DisplayOptions,
+    ViewportOptions,
+    capture,
+)
 
 from pipe.m.util import maintain_selection
 from pipe.util import Playblaster
@@ -149,7 +154,49 @@ class TurnaroundPlayblaster:
         wireframe_on_shaded: bool,
     ) -> None:
         config = self._config
-        display_appearance = "wireframe" if wireframe_on_shaded else "smoothShaded"
+        display_options, camera_options, viewport_options, viewport2_options = (
+            _default_capture_options()
+        )
+
+        display_options.update(
+            {
+                "displayGradient": True,
+                "background": BACKGROUND_COLOR,
+                "backgroundTop": BACKGROUND_TOP,
+                "backgroundBottom": BACKGROUND_BOTTOM,
+            }
+        )
+        camera_options.update(
+            {
+                "displayFilmGate": False,
+                "displayGateMask": False,
+                "displayResolution": False,
+                "overscan": 1.0,
+            }
+        )
+        viewport_options.update(
+            {
+                # Autodesk documents wireframe overlay through
+                # `wireframeOnShaded` on shaded objects, so keep the pass in
+                # smooth shaded mode and only toggle that flag between passes.
+                "displayAppearance": "smoothShaded",
+                "headsUpDisplay": False,
+                "nurbsSurfaces": True,
+                "shadows": config.use_shadows,
+                "subdivSurfaces": True,
+                "useDefaultMaterial": config.use_default_material,
+                "wireframeOnShaded": wireframe_on_shaded,
+            }
+        )
+
+        viewport2_options.update(
+            {
+                "lineAAEnable": config.use_anti_aliasing,
+                "multiSampleEnable": config.use_anti_aliasing,
+                "ssaoEnable": config.use_anti_aliasing,
+            }
+        )
+
         capture(
             camera=camera_shape,
             width=config.width,
@@ -165,70 +212,10 @@ class TurnaroundPlayblaster:
             maintain_aspect_ratio=False,
             viewer=0,
             isolate=list(review_roots),
-            display_options={
-                "displayGradient": True,
-                "background": BACKGROUND_COLOR,
-                "backgroundTop": BACKGROUND_TOP,
-                "backgroundBottom": BACKGROUND_BOTTOM,
-            },
-            camera_options={
-                "displayFilmGate": False,
-                "displayGateMask": False,
-                "displayResolution": False,
-                "overscan": 1.0,
-            },
-            viewport_options={
-                "cameras": False,
-                "deformers": False,
-                "dimensions": False,
-                "displayAppearance": display_appearance,
-                "displayLights": "default",
-                "displayTextures": not config.use_default_material,
-                "dynamicConstraints": False,
-                "dynamics": False,
-                "fluids": False,
-                "follicles": False,
-                "fogging": False,
-                "grid": False,
-                "hairSystems": False,
-                "handles": False,
-                "headsUpDisplay": False,
-                "hulls": False,
-                "ikHandles": False,
-                "imagePlane": False,
-                "joints": False,
-                "lights": False,
-                "locators": False,
-                "manipulators": False,
-                "nCloths": False,
-                "nParticles": False,
-                "nRigids": False,
-                "nurbsCurves": False,
-                "nurbsSurfaces": True,
-                "planes": False,
-                "polymeshes": True,
-                "pivots": False,
-                "rendererName": "vp2Renderer",
-                "selectionHiliteDisplay": False,
-                "shadows": config.use_shadows,
-                "strokes": False,
-                "subdivSurfaces": True,
-                "textures": False,
-                "twoSidedLighting": True,
-                "useDefaultMaterial": config.use_default_material,
-                "wireframeOnShaded": False,
-            },
-            viewport2_options={
-                "consolidateWorld": True,
-                "enableTextureMaxRes": True,
-                "lineAAEnable": config.use_anti_aliasing,
-                "maxHardwareLights": 4,
-                "multiSampleCount": 8,
-                "multiSampleEnable": config.use_anti_aliasing,
-                "ssaoEnable": config.use_anti_aliasing,
-                "textureMaxResolution": 4096,
-                "useMaximumHardwareLights": True,
-            },
+            display_options=display_options,
+            camera_options=camera_options,
+            viewport_options=viewport_options,
+            viewport2_options=viewport2_options,
         )
 
     def _assemble_combined_sequence(
@@ -472,6 +459,45 @@ def _visible_scene_mesh_roots() -> tuple[str, ...]:
             continue
         scene_roots.append(parent)
     return tuple(scene_roots)
+
+
+def _default_capture_options() -> tuple[dict, dict, dict, dict]:
+    display_options = dict(DisplayOptions)
+    camera_options = dict(CameraOptions)
+    viewport_options = dict(ViewportOptions)
+    viewport2_options: dict[str, bool] = {}
+
+    panel = _resolve_active_model_panel()
+    if panel:
+        try:
+            viewport_options["twoSidedLighting"] = mc.modelEditor(
+                panel,
+                query=True,
+                twoSidedLighting=True,
+            )
+        except Exception:
+            log.warning(
+                "Could not read two-sided lighting from model panel '%s'.",
+                panel,
+                exc_info=True,
+            )
+
+    return display_options, camera_options, viewport_options, viewport2_options
+
+
+def _resolve_active_model_panel() -> str:
+    panel = str(mc.sequenceManager(query=True, modelPanel=True) or "")
+    if panel and mc.modelPanel(panel, exists=True):
+        return panel
+
+    focused_panel = str(mc.getPanel(withFocus=True) or "")
+    if focused_panel and mc.modelPanel(focused_panel, exists=True):
+        return focused_panel
+
+    model_panels = mc.getPanel(type="modelPanel") or []
+    if model_panels:
+        return str(model_panels[0])
+    return ""
 
 
 def _collapse_to_root_transforms(nodes: Iterable[str]) -> tuple[str, ...]:
