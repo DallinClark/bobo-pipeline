@@ -150,8 +150,26 @@ class TurnaroundPlayblaster:
     ) -> None:
         config = self._config
 
-        # Smooth shaded for both passes; wireframeOnShaded toggles the edge
-        # overlay on the second pass without changing the display appearance.
+        viewport_options: dict[str, str | bool] = {
+            # The turnaround always uses a shaded view. Maya's documented
+            # topology overlay for that view is `wireframeOnShaded`.
+            "displayAppearance": "smoothShaded",
+            "wireframeOnShaded": wireframe_on_shaded,
+        }
+        if config.use_default_material:
+            viewport_options["useDefaultMaterial"] = True
+        if config.use_shadows:
+            viewport_options["shadows"] = True
+
+        viewport2_options: dict[str, bool] = {}
+        if config.use_anti_aliasing:
+            viewport2_options.update(
+                {
+                    "lineAAEnable": True,
+                    "multiSampleEnable": True,
+                }
+            )
+
         capture(
             camera=camera_shape,
             width=config.width,
@@ -161,7 +179,10 @@ class TurnaroundPlayblaster:
             end_frame=config.frames_per_pass,
             format="image",
             compression="png",
-            off_screen=True,
+            # Keep this capture on-screen. `mayacapture` does not expose
+            # Maya's `offScreenViewportUpdate` flag, and the topology overlay
+            # needs a live model panel draw to be reliable.
+            off_screen=False,
             show_ornaments=False,
             overwrite=True,
             maintain_aspect_ratio=False,
@@ -173,20 +194,8 @@ class TurnaroundPlayblaster:
                 "backgroundTop": BACKGROUND_TOP,
                 "backgroundBottom": BACKGROUND_BOTTOM,
             },
-            viewport_options={
-                "displayAppearance": "smoothShaded",
-                "headsUpDisplay": False,
-                "nurbsSurfaces": True,
-                "shadows": config.use_shadows,
-                "subdivSurfaces": True,
-                "useDefaultMaterial": config.use_default_material,
-                "wireframeOnShaded": wireframe_on_shaded,
-            },
-            viewport2_options={
-                "lineAAEnable": config.use_anti_aliasing,
-                "multiSampleEnable": config.use_anti_aliasing,
-                "ssaoEnable": config.use_anti_aliasing,
-            },
+            viewport_options=viewport_options,
+            viewport2_options=viewport2_options,
         )
 
     def _assemble_combined_sequence(
