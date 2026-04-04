@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -14,7 +15,11 @@ import maya.cmds as mc
 from mayacapture.capture import capture  # type: ignore[import-not-found]
 
 from pipe.m.util import maintain_selection
+from pipe.playblast_artist import resolve_artist_display_name
 from pipe.util import Playblaster
+
+from .playblaster import applied_hud
+from .struct import HudDefinition
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +29,7 @@ DEFAULT_FRAMES_PER_PASS = 96
 DEFAULT_FOCAL_LENGTH = 50.0
 DEFAULT_CAMERA_PADDING = 1.25
 DEFAULT_AIM_HEIGHT_BIAS = 0.0
+CURRENT_FRAME_HUD = "HUDCurrentFrame"
 
 BACKGROUND_COLOR = (0.33, 0.33, 0.33)
 BACKGROUND_TOP = (0.42, 0.44, 0.47)
@@ -103,6 +109,7 @@ class TurnaroundPlayblaster:
             combined_base = temp_root / "turnaround_combined"
 
             with (
+                applied_hud(*_turnaround_huds(config.asset_label)),
                 maintain_selection(),
                 _preserved_current_time(),
                 _staged_turntable_roots(
@@ -154,6 +161,7 @@ class TurnaroundPlayblaster:
             # The turnaround always uses a shaded view. Maya's documented
             # topology overlay for that view is `wireframeOnShaded`.
             "displayAppearance": "smoothShaded",
+            "headsUpDisplay": True,
             "wireframeOnShaded": wireframe_on_shaded,
         }
         if config.use_default_material:
@@ -183,7 +191,7 @@ class TurnaroundPlayblaster:
             # Maya's `offScreenViewportUpdate` flag, and the topology overlay
             # needs a live model panel draw to be reliable.
             off_screen=False,
-            show_ornaments=False,
+            show_ornaments=True,
             overwrite=True,
             maintain_aspect_ratio=False,
             viewer=False,
@@ -439,6 +447,42 @@ def _visible_scene_mesh_roots() -> tuple[str, ...]:
             continue
         scene_roots.append(parent)
     return tuple(scene_roots)
+
+
+def _turnaround_huds(asset_label: str) -> tuple[list[str], list[HudDefinition]]:
+    return (
+        [CURRENT_FRAME_HUD],
+        [
+            HudDefinition(
+                "SKD_turnaround_file",
+                command=_scene_filename_label,
+                label="File:",
+                section=5,
+                event="SceneSaved",
+            ),
+            HudDefinition(
+                "SKD_turnaround_artist",
+                command=resolve_artist_display_name,
+                label="Artist:",
+                section=5,
+                event="SceneOpened",
+            ),
+            HudDefinition(
+                "SKD_turnaround_asset",
+                command=lambda: asset_label,
+                label="Asset:",
+                section=7,
+                idle_refresh=True,
+            ),
+        ],
+    )
+
+
+def _scene_filename_label() -> str:
+    scene_name = str(mc.file(query=True, sceneName=True) or "")
+    if not scene_name:
+        return ""
+    return os.path.splitext(os.path.basename(scene_name))[0]
 
 
 def _collapse_to_root_transforms(nodes: Iterable[str]) -> tuple[str, ...]:
