@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import math
-import os
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -29,7 +28,6 @@ DEFAULT_FRAMES_PER_PASS = 96
 DEFAULT_FOCAL_LENGTH = 50.0
 DEFAULT_CAMERA_PADDING = 1.25
 DEFAULT_AIM_HEIGHT_BIAS = 0.0
-CURRENT_FRAME_HUD = "HUDCurrentFrame"
 
 BACKGROUND_COLOR = (0.33, 0.33, 0.33)
 BACKGROUND_TOP = (0.42, 0.44, 0.47)
@@ -109,7 +107,7 @@ class TurnaroundPlayblaster:
             combined_base = temp_root / "turnaround_combined"
 
             with (
-                applied_hud(*_turnaround_huds(config.asset_label)),
+                applied_hud(*_turnaround_huds(config.asset_label, config.review_roots)),
                 maintain_selection(),
                 _preserved_current_time(),
                 _staged_turntable_roots(
@@ -449,16 +447,20 @@ def _visible_scene_mesh_roots() -> tuple[str, ...]:
     return tuple(scene_roots)
 
 
-def _turnaround_huds(asset_label: str) -> tuple[list[str], list[HudDefinition]]:
+def _turnaround_huds(
+    asset_label: str,
+    review_roots: tuple[str, ...],
+) -> tuple[list[str], list[HudDefinition]]:
+    point_count_label = _polygon_point_count_label(review_roots)
     return (
-        [CURRENT_FRAME_HUD],
+        [],
         [
             HudDefinition(
-                "SKD_turnaround_file",
-                command=_scene_filename_label,
-                label="File:",
-                section=5,
-                event="SceneSaved",
+                "SKD_turnaround_points",
+                command=lambda: point_count_label,
+                label="Points:",
+                section=9,
+                idle_refresh=True,
             ),
             HudDefinition(
                 "SKD_turnaround_artist",
@@ -478,11 +480,31 @@ def _turnaround_huds(asset_label: str) -> tuple[list[str], list[HudDefinition]]:
     )
 
 
-def _scene_filename_label() -> str:
-    scene_name = str(mc.file(query=True, sceneName=True) or "")
-    if not scene_name:
-        return ""
-    return os.path.splitext(os.path.basename(scene_name))[0]
+def _polygon_point_count_label(review_roots: tuple[str, ...]) -> str:
+    return str(_polygon_point_count(review_roots))
+
+
+def _polygon_point_count(review_roots: tuple[str, ...]) -> int:
+    mesh_shapes: dict[str, str] = {}
+    for root in review_roots:
+        for mesh in mc.ls(root, dag=True, long=True, type="mesh") or []:
+            mesh_path = str(mesh)
+            if not mc.objExists(mesh_path):
+                continue
+            try:
+                if mc.getAttr(f"{mesh_path}.intermediateObject"):
+                    continue
+            except Exception:
+                continue
+            mesh_shapes[_node_uuid(mesh_path)] = mesh_path
+
+    point_count = 0
+    for mesh_path in mesh_shapes.values():
+        try:
+            point_count += int(mc.polyEvaluate(mesh_path, vertex=True) or 0)
+        except Exception:
+            log.warning("Could not evaluate point count for mesh '%s'.", mesh_path)
+    return point_count
 
 
 def _collapse_to_root_transforms(nodes: Iterable[str]) -> tuple[str, ...]:
